@@ -1,5 +1,8 @@
 Swarm is high-perfomance library for web crawling.
 
+Depends on libcurl, uriparser, libxml2.
+Debian packages for build are: liburiparser-dev libcurl4-openssl-dev libxml2-dev
+
 libcurl built with --enable-ares is highly needed for better perfomance.
 libcurl must be built with SSL support for accessing https sites.
 

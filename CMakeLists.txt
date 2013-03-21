@@ -1,6 +1,6 @@
 project(swarm)
 cmake_minimum_required(VERSION 2.8)
-add_definitions(-std=c++11)
+add_definitions(-std=c++0x)
 
 aux_source_directory(lib SWARM_SRC_LIST)
 add_library(swarm SHARED ${SWARM_SRC_LIST})
