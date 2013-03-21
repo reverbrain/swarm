@@ -215,15 +215,6 @@ config.tests/unix/sse2/sse2
 # ---------------------
 
 debug
-examples/tools/plugandpaint/plugins
-include/*
-include/*/*
-lib/*
-imports/*
-!lib/fonts
-!lib/README
-plugins/*/*
-release
 tmp
 doc-build
 doc/html/*
@@ -241,9 +232,6 @@ tmp-release-shared
 qtc-debugging-helper
 qtc-qmldump
 qtc-qmldbg
-src/corelib/lib
-src/network/lib
-src/xml/lib/
 
 .pc/
 
@@ -255,6 +243,7 @@ src/xml/lib/
 *.dnm
 *.dep
 *.map
+CMakeLists.txt.user
 work
 
 
