@@ -29,6 +29,8 @@ class network_manager_private;
 
 struct network_request
 {
+    network_request() : follow_location(false) {}
+
     std::string url;
     bool follow_location;
     std::vector<std::pair<std::string, std::string> > headers;
@@ -37,6 +39,8 @@ struct network_request
 
 struct network_reply
 {
+    network_reply() : code(0), error(0) {}
+
     network_request request;
 
     int code;
