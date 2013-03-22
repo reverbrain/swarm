@@ -129,6 +129,10 @@ public:
                 continue;
             }
 
+//            struct curl_slist *headers_list = NULL;
+//            for (auto &header : request->request.headers)
+//                headers_list = curl_slist_append(headers_list, header.c_str());
+
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
@@ -141,8 +145,6 @@ public:
 
             CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
             if (err == CURLM_OK) {
-                // Will be deleted later
-                info.release();
                 ++active_connections;
             } else {
                 info->reply.code = 600 + err;
@@ -151,6 +153,8 @@ public:
                 } catch (...) {
                 }
             }
+            // Will be deleted later
+            info.release();
         }
     }
 
