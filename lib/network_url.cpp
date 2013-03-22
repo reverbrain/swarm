@@ -42,7 +42,9 @@ public:
 
     bool is_hex(char ch)
     {
-        return ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'));
+        return ((ch >= '0' && ch <= '9')
+                || (ch >= 'a' && ch <= 'f')
+                || (ch >= 'A' && ch <= 'F'));
     }
 
     char to_hex(char value)
@@ -53,7 +55,6 @@ public:
 
     std::string encode_url(const std::string &url)
     {
-        static const char hex[] = "0123456789abcdef";
         std::string tmp;
         tmp.reserve(url.size() * 3);
 
@@ -131,7 +132,7 @@ bool network_url::set_base(const std::string &url)
 
 static std::string to_string(const UriTextRangeA &range)
 {
-    if (!range.first)
+    if (!range.first || !range.afterLast)
         return std::string();
     return std::string(range.first, range.afterLast);
 }
