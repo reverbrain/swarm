@@ -21,6 +21,7 @@
 #include <memory>
 #include <functional>
 #include <vector>
+#include <map>
 
 namespace ioremap {
 namespace swarm {
@@ -34,7 +35,6 @@ struct network_request
     std::string url;
     bool follow_location;
     std::vector<std::pair<std::string, std::string> > headers;
-    std::vector<std::pair<std::string, std::string> > cookies;
 };
 
 struct network_reply
@@ -47,7 +47,6 @@ struct network_reply
     int error;
     std::string url;
     std::vector<std::pair<std::string, std::string> > headers;
-    std::vector<std::pair<std::string, std::string> > cookies;
     std::string data;
 };
 
