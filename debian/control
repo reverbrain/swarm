@@ -1,0 +1,22 @@
+Source: swarm
+Priority: extra
+Maintainer: Ruslan Nigmatullin <euroelessar@yandex.ru>
+Build-Depends: debhelper (>= 8.0.0), cmake, liburiparser-dev, libcurl4-openssl-dev, libxml2-dev, libev-dev
+Standards-Version: 3.9.3
+Section: libs
+Homepage: https://github.com/reverbrain/swarm
+Vcs-Git: git://github.com/reverbrain/swarm.git
+Vcs-Browser: https://github.com/reverbrain/swarm
+
+Package: libswarm-dev
+Section: libdevel
+Architecture: any
+Depends: libswarm (= ${binary:Version}), libev-dev
+Description: Swarm is aiming at your web (devel)
+ Development files
+
+Package: libswarm
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Swarm is aiming at your web

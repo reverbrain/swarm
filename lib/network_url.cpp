@@ -129,6 +129,13 @@ bool network_url::set_base(const std::string &url)
     return true;
 }
 
+static std::string to_string(const UriTextRangeA &range)
+{
+    if (!range.first)
+        return std::string();
+    return std::string(range.first, range.afterLast);
+}
+
 static std::string network_url_normalized(UriUriA *uri)
 {
     const unsigned int dirtyParts = uriNormalizeSyntaxMaskRequiredA(uri);
@@ -164,8 +171,7 @@ std::string network_url::normalized()
 
 std::string network_url::host()
 {
-    UriTextRangeA &hostText = p->uri.hostText;
-    return std::string(hostText.first, hostText.afterLast);
+    return to_string(p->uri.hostText);
 }
 
 std::string network_url::relative(const std::string &other, std::string *other_host)
@@ -187,10 +193,8 @@ std::string network_url::relative(const std::string &other, std::string *other_h
         return std::string();
     destination_cleaner.reset(&absolute_destination);
 
-    if (other_host) {
-        UriTextRangeA &hostText = absolute_destination.hostText;
-        other_host->assign(hostText.first, hostText.afterLast);
-    }
+    if (other_host)
+        *other_host = to_string(absolute_destination.hostText);
     return network_url_normalized(&absolute_destination);
 }
 
