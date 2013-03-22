@@ -38,19 +38,20 @@ public:
     network_connection_info() : easy(NULL)
     {
         ++counter;
+//        error[0] = '\0';
     }
     ~network_connection_info()
     {
 //        std::cerr << "~network_connection_info: " << --counter << std::endl;
         curl_easy_cleanup(easy);
-        error[CURL_ERROR_SIZE - 1] = '\0';
+//        error[CURL_ERROR_SIZE - 1] = '\0';
     }
 
     CURL *easy;
     network_reply reply;
     std::function<void (const network_reply &reply)> handler;
     std::stringstream data;
-    char error[CURL_ERROR_SIZE];
+//    char error[CURL_ERROR_SIZE];
 };
 
 class network_manager_private
@@ -137,7 +138,7 @@ public:
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
-            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
+//            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
 
             if (request->request.follow_location)

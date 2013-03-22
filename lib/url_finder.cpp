@@ -33,13 +33,17 @@ static void parser_start_element(void *void_context,
     parser_context *context = reinterpret_cast<parser_context*>(void_context);
 
     if (strcasecmp(reinterpret_cast<const char*>(tag_name), "a") == 0) {
-        for (size_t index = 0; attributes && attributes[index]; index += 2) {
-            const xmlChar *name = attributes[index];
-            const xmlChar *value = attributes[index + 1];
-            if (strcmp(reinterpret_cast<const char*>(name), "href") == 0) {
-                context->urls.push_back(reinterpret_cast<const char*>(value));
+        if (attributes) {
+            for (size_t index = 0; attributes[index]; index += 2) {
+                const xmlChar *name = attributes[index];
+                const xmlChar *value = attributes[index + 1];
+                if (!value)
+                    continue;
+
+                if (strcmp(reinterpret_cast<const char*>(name), "href") == 0) {
+                    context->urls.push_back(reinterpret_cast<const char*>(value));
+                }
             }
-            fflush(stdout);
         }
     }
 }
