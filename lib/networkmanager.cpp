@@ -189,7 +189,6 @@ public:
                 if (easy) {
                     curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
                     curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
-                    curl_multi_remove_handle(multi, easy);
 
                     try {
                         --active_connections;
@@ -205,6 +204,7 @@ public:
                     } catch (...) {
                     }
 
+                    curl_multi_remove_handle(multi, easy);
                     delete info;
                 }
             } while (easy);
