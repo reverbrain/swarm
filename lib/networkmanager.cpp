@@ -123,10 +123,7 @@ public:
             info->handler = request->handler;
             if (!info->easy) {
                 info->reply.code = 650;
-                try {
-                    request->handler(info->reply);
-                } catch (...) {
-                }
+                request->handler(info->reply);
                 continue;
             }
 
@@ -137,6 +134,10 @@ public:
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
+
+	    /*
+	     * Grab raw data and free it later in curl_easy_cleanup()
+	     */
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
 //            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
@@ -147,15 +148,20 @@ public:
             CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
             if (err == CURLM_OK) {
                 ++active_connections;
+                /*
+	         * We saved info's content in info->easy and stored it in multi handler,
+	         * which will free it, so we just forget about info's content here.
+	         * Info's destructor (~network_connection_info()) will not be called.
+	         */
+                info.release();
             } else {
                 info->reply.code = 600 + err;
-                try {
-                    info->handler(info->reply);
-                } catch (...) {
-                }
+		/*
+		 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
+		 * which is ok, since easy handler was not added into multi handler in this case.
+		 */
+                info->handler(info->reply);
             }
-            // Will be deleted later
-            info.release();
         }
     }
 
@@ -172,11 +178,12 @@ public:
             CURLcode res;
 
             /*
-          I am still uncertain whether it is safe to remove an easy handle
-          from inside the curl_multi_info_read loop, so here I will search
-          for completed transfers in the inner "while" loop, and then remove
-          them in the outer "do-while" loop...
-       */
+	     * I am still uncertain whether it is safe to remove an easy handle
+	     * from inside the curl_multi_info_read loop, so here I will search
+	     * for completed transfers in the inner "while" loop, and then remove
+	     * them in the outer "do-while" loop...
+	     */
+
             do {
                 easy = NULL;
                 while ((msg = curl_multi_info_read(multi, &messsages_left))) {
@@ -186,27 +193,33 @@ public:
                         break;
                     }
                 }
-                if (easy) {
-                    curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
-                    curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 
-                    try {
-                        --active_connections;
-                        long code = 200;
-                        long err = 0;
-                        curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
-                        curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
-                        info->reply.code = code;
-                        info->reply.error = -err;
-                        info->reply.url = effective_url;
-                        info->reply.data = info->data.str();
-                        info->handler(info->reply);
-                    } catch (...) {
-                    }
+                if (!easy)
+		    break;
 
+                curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
+                curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
+
+                try {
+                    --active_connections;
+                    long code = 200;
+                    long err = 0;
+                    curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
+                    curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
+                    info->reply.code = code;
+                    info->reply.error = -err;
+                    info->reply.url = effective_url;
+                    info->reply.data = info->data.str();
+                    info->handler(info->reply);
+                } catch (...) {
                     curl_multi_remove_handle(multi, easy);
                     delete info;
+
+		    throw;
                 }
+
+                curl_multi_remove_handle(multi, easy);
+                delete info;
             } while (easy);
 
             next_connections();
