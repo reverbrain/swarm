@@ -13,8 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "networkmanager.h"
-
+#include <string.h>
 #include <curl/curl.h>
 
 #include <sstream>
@@ -22,6 +21,8 @@
 #include <mutex>
 #include <atomic>
 #include <list>
+
+#include "networkmanager.h"
 
 #define debug() if (1) {} else std::cerr << __PRETTY_FUNCTION__ << ": " << __LINE__ << " "
 
@@ -50,7 +51,6 @@ public:
     CURL *easy;
     network_reply reply;
     std::function<void (const network_reply &reply)> handler;
-    std::vector<std::string> headers;
     std::stringstream data;
 //    char error[CURL_ERROR_SIZE];
 };
@@ -135,13 +135,16 @@ public:
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
-	    curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
+
+            if (request->request.want_headers) {
+	        curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
+                curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
+	    }
 
 	    /*
 	     * Grab raw data and free it later in curl_easy_cleanup()
 	     */
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
-            curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
 //            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
             curl_easy_setopt(info->easy, CURLOPT_HEADER, 1);
@@ -283,8 +286,15 @@ public:
         char *d = (char*)buffer;
 	network_connection_info *info = reinterpret_cast<network_connection_info *>(userp);
  
-	std::string s(d, size * nmemb);
-	info->headers.push_back(s);
+	char *delim = strchr(d, ':');
+	if (delim) {
+		*delim++ = '\0';
+		int flen = delim - d;
+		flen--;
+
+		int slen = size * nmemb - flen;
+		info->reply.headers.push_back(std::make_pair(std::string(d, flen), std::string(delim, slen)));
+	}
         return size * nmemb;
     }
 

@@ -30,10 +30,11 @@ class network_manager_private;
 
 struct network_request
 {
-    network_request() : follow_location(false) {}
+    network_request() : follow_location(false), want_headers(false) {}
 
     std::string url;
     bool follow_location;
+    bool want_headers;
     std::vector<std::pair<std::string, std::string> > headers;
 };
 
