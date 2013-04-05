@@ -50,6 +50,7 @@ public:
     CURL *easy;
     network_reply reply;
     std::function<void (const network_reply &reply)> handler;
+    std::vector<std::string> headers;
     std::stringstream data;
 //    char error[CURL_ERROR_SIZE];
 };
@@ -134,13 +135,16 @@ public:
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
+	    curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
 
 	    /*
 	     * Grab raw data and free it later in curl_easy_cleanup()
 	     */
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
+            curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
 //            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
+            curl_easy_setopt(info->easy, CURLOPT_HEADER, 1);
 
             if (request->request.follow_location)
                 curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
@@ -273,6 +277,15 @@ public:
         size_t realsize = size * nmemb;
         info->data.write(reinterpret_cast<char*>(ptr), realsize);
         return realsize;
+    }
+
+    static size_t header_callback(void *buffer, size_t size, size_t nmemb, void *userp) {
+        char *d = (char*)buffer;
+	network_connection_info *info = reinterpret_cast<network_connection_info *>(userp);
+ 
+	std::string s(d, size * nmemb);
+	info->headers.push_back(s);
+        return size * nmemb;
     }
 
     struct request_info
