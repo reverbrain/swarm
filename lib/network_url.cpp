@@ -85,11 +85,11 @@ public:
         }
 
         // Reserved and unreserved characters are fine
-    //         unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
-    //         reserved      = gen-delims / sub-delims
-    //         gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
-    //         sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
-    //                         / "*" / "+" / "," / ";" / "="
+        //         unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+        //         reserved      = gen-delims / sub-delims
+        //         gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+        //         sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+        //                         / "*" / "+" / "," / ";" / "="
         // Replace everything else with percent encoding
         static const char doEncode[] = " \"<>[\\]^`{|}";
         static const char doEncodeHost[] = " \"<>\\^`{|}";

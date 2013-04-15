@@ -21,6 +21,7 @@
 #include <mutex>
 #include <atomic>
 #include <list>
+#include <algorithm>
 
 #include "networkmanager.h"
 
@@ -39,20 +40,20 @@ public:
     network_connection_info() : easy(NULL)
     {
         ++counter;
-//        error[0] = '\0';
+        //        error[0] = '\0';
     }
     ~network_connection_info()
     {
-//        std::cerr << "~network_connection_info: " << --counter << std::endl;
+        //        std::cerr << "~network_connection_info: " << --counter << std::endl;
         curl_easy_cleanup(easy);
-//        error[CURL_ERROR_SIZE - 1] = '\0';
+        //        error[CURL_ERROR_SIZE - 1] = '\0';
     }
 
     CURL *easy;
     network_reply reply;
     std::function<void (const network_reply &reply)> handler;
     std::stringstream data;
-//    char error[CURL_ERROR_SIZE];
+    char error[CURL_ERROR_SIZE];
 };
 
 class network_manager_private
@@ -128,26 +129,38 @@ public:
                 continue;
             }
 
-//            struct curl_slist *headers_list = NULL;
-//            for (auto &header : request->request.headers)
-//                headers_list = curl_slist_append(headers_list, header.c_str());
+            struct curl_slist *headers_list = NULL;
+            for (auto it = request->request.headers.begin();
+                 it != request->request.headers.end();
+                 ++it) {
+                std::string line;
+                line.reserve(it->first.size() + 2 + it->second.size());
+                line += it->first;
+                line += ": ";
+                line += it->second;
+
+                headers_list = curl_slist_append(headers_list, line.c_str());
+            }
+
+            curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
 
-            if (request->request.want_headers) {
-	        curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
-                curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
-	    }
+//            if (request->request.want_headers) {
+//                curl_easy_setopt(info->easy, CURLOPT_HEADER, 1);
+//            }
 
-	    /*
-	     * Grab raw data and free it later in curl_easy_cleanup()
-	     */
+            curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
+            curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
+
+            /*
+             * Grab raw data and free it later in curl_easy_cleanup()
+             */
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
 //            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
-            curl_easy_setopt(info->easy, CURLOPT_HEADER, 1);
 
             if (request->request.follow_location)
                 curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
@@ -156,17 +169,17 @@ public:
             if (err == CURLM_OK) {
                 ++active_connections;
                 /*
-	         * We saved info's content in info->easy and stored it in multi handler,
-	         * which will free it, so we just forget about info's content here.
-	         * Info's destructor (~network_connection_info()) will not be called.
-	         */
+                 * We saved info's content in info->easy and stored it in multi handler,
+                 * which will free it, so we just forget about info's content here.
+                 * Info's destructor (~network_connection_info()) will not be called.
+                 */
                 info.release();
             } else {
                 info->reply.code = 600 + err;
-		/*
-		 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
-		 * which is ok, since easy handler was not added into multi handler in this case.
-		 */
+                /*
+                 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
+                 * which is ok, since easy handler was not added into multi handler in this case.
+                 */
                 info->handler(info->reply);
             }
         }
@@ -185,11 +198,11 @@ public:
             CURLcode res;
 
             /*
-	     * I am still uncertain whether it is safe to remove an easy handle
-	     * from inside the curl_multi_info_read loop, so here I will search
-	     * for completed transfers in the inner "while" loop, and then remove
-	     * them in the outer "do-while" loop...
-	     */
+             * I am still uncertain whether it is safe to remove an easy handle
+             * from inside the curl_multi_info_read loop, so here I will search
+             * for completed transfers in the inner "while" loop, and then remove
+             * them in the outer "do-while" loop...
+             */
 
             do {
                 easy = NULL;
@@ -202,7 +215,7 @@ public:
                 }
 
                 if (!easy)
-		    break;
+                    break;
 
                 curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
                 curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
@@ -222,7 +235,7 @@ public:
                     curl_multi_remove_handle(multi, easy);
                     delete info;
 
-		    throw;
+                    throw;
                 }
 
                 curl_multi_remove_handle(multi, easy);
@@ -274,27 +287,52 @@ public:
         return 0;
     }
 
-    static size_t write_callback(void *ptr, size_t size, size_t nmemb, network_connection_info *info)
+    static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
     {
         debug() << std::endl;
-        size_t realsize = size * nmemb;
-        info->data.write(reinterpret_cast<char*>(ptr), realsize);
-        return realsize;
+        const size_t real_size = size * nmemb;
+        info->data.write(data, real_size);
+        return real_size;
     }
 
-    static size_t header_callback(void *buffer, size_t size, size_t nmemb, void *userp) {
-        char *d = (char*)buffer;
-	network_connection_info *info = reinterpret_cast<network_connection_info *>(userp);
- 
-	char *delim = strchr(d, ':');
-	if (delim) {
-		*delim++ = '\0';
-		int flen = delim - d;
-		flen--;
+    static std::string trimmed(const char *begin, const char *end)
+    {
+        while (begin < end && isspace(*begin))
+            ++begin;
+        while (begin < end && isspace(*(end - 1)))
+            --end;
 
-		int slen = size * nmemb - flen;
-		info->reply.headers.push_back(std::make_pair(std::string(d, flen), std::string(delim, slen)));
-	}
+        return std::string(begin, end);
+    }
+
+    static size_t header_callback(char *data, size_t size, size_t nmemb, network_connection_info *info) {
+        const size_t real_size = size * nmemb;
+
+        char *lf;
+        char *end = data + real_size;
+        char *colon = std::find(data, end, ':');
+
+        if (colon != end) {
+            const std::string field = trimmed(data, colon);
+            std::string value;
+
+            data = colon + 1;
+
+            // any number of LWS is allowed after field, rfc 2068
+            do {
+                lf = std::find(data, end, '\n');
+
+                if (!value.empty())
+                    value += ' ';
+
+                value += trimmed(data, lf);
+
+                data = lf;
+            } while (data < end && (*(data + 1) == ' ' || *(data + 1) == '\t'));
+
+            info->reply.headers.emplace_back(field, value);
+        }
+
         return size * nmemb;
     }
 

@@ -38,8 +38,14 @@ set_target_properties(swarm PROPERTIES
     SOVERSION ${SWARM_VERSION_ABI}
     )
 
-add_executable(crawler example/crawler.cpp)
-target_link_libraries(crawler swarm ev)
+option(BUILD_EXAMPLES "Build examples, needs >=gcc-4.6" OFF)
+
+if(BUILD_EXAMPLES)
+    add_executable(crawler example/crawler.cpp)
+    target_link_libraries(crawler swarm ev)
+    add_executable(download example/download.cpp)
+    target_link_libraries(download swarm ev)
+endif()
 
 install(FILES
 	lib/network_url.h

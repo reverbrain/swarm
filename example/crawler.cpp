@@ -15,7 +15,6 @@
 
 #include <iostream>
 #include <mutex>
-#include <atomic>
 #include <thread>
 #include <condition_variable>
 #include <vector>
@@ -25,6 +24,12 @@
 #include <unistd.h>
 #include <algorithm>
 #include <functional>
+
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#  include <cstdatomic>
+#else
+#  include <atomic>
+#endif
 
 #include <fcntl.h>
 #include <sys/prctl.h>
