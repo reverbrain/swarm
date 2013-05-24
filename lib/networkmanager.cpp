@@ -19,7 +19,11 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
-#include <atomic>
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#  include <cstdatomic>
+#else
+#  include <atomic>
+#endif
 #include <list>
 #include <algorithm>
 
@@ -35,8 +39,6 @@ enum http_command {
     POST
 };
 
-static std::atomic_size_t counter;
-
 class network_connection_info
 {
 public:
@@ -44,14 +46,12 @@ public:
 
     network_connection_info() : easy(NULL)
     {
-        ++counter;
-        //        error[0] = '\0';
+//        error[0] = '\0';
     }
     ~network_connection_info()
     {
-        //        std::cerr << "~network_connection_info: " << --counter << std::endl;
         curl_easy_cleanup(easy);
-        //        error[CURL_ERROR_SIZE - 1] = '\0';
+//                error[CURL_ERROR_SIZE - 1] = '\0';
     }
 
     CURL *easy;
@@ -59,7 +59,7 @@ public:
     std::function<void (const network_reply &reply)> handler;
     std::string body;
     std::stringstream data;
-    char error[CURL_ERROR_SIZE];
+//    char error[CURL_ERROR_SIZE];
 };
 
 class network_manager_private
@@ -164,6 +164,7 @@ public:
             curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
             curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
             curl_easy_setopt(info->easy, CURLOPT_NOSIGNAL, 1L);
+//            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
 
             /*
              * Grab raw data and free it later in curl_easy_cleanup()
