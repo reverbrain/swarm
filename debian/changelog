@@ -1,9 +1,3 @@
-swarm (v0.3.0.1) unstable; urgency=low
-
-  * Fixed compilation on Lucid 
-
- -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 24 May 2013 19:54:34 +0400
-
 swarm (0.3.0.0) unstable; urgency=low
 
   * Added headers support
