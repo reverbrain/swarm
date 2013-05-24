@@ -159,7 +159,7 @@ static std::string network_url_normalized(UriUriA *uri)
         return std::string();
 
     result.resize(charsRequired - fragment_size);
-    if (result.back() == '#')
+    if (result[result.size() - 1] == '#')
         result.resize(result.size() - 1);
 
     return result;
