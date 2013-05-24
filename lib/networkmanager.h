@@ -30,25 +30,25 @@ class network_manager_private;
 
 struct network_request
 {
-    network_request() : follow_location(false), want_headers(false) {}
+    network_request() : follow_location(false), timeout(30000) {}
 
-    std::string url;
-    bool follow_location;
-    bool want_headers;
-    std::vector<std::pair<std::string, std::string> > headers;
+    std::string url; // Request URL
+    bool follow_location; // Follow Location from 302 HTTP replies
+    long timeout; // Timeout in ms
+    std::vector<std::pair<std::string, std::string> > headers; // List of headers
 };
 
 struct network_reply
 {
     network_reply() : code(0), error(0) {}
 
-    network_request request;
+    network_request request; // Original request
 
-    int code;
-    int error;
-    std::string url;
-    std::vector<std::pair<std::string, std::string> > headers;
-    std::string data;
+    int code; // HTTP code
+    int error; // Errno
+    std::string url; // Final URL from HTTP reply
+    std::vector<std::pair<std::string, std::string> > headers; // List of headers
+    std::string data; // Reply data
 };
 
 class network_manager
@@ -60,7 +60,7 @@ public:
     void set_limit(int active_connections);
 
     void get(const std::function<void (const network_reply &reply)> &handler, const network_request &request);
-//    void post(const std::function<void (const network_reply &reply)> &handler, const network_request &request, const std::string &body);
+    void post(const std::function<void (const network_reply &reply)> &handler, const network_request &request, const std::string &body);
 
 private:
     network_manager(const network_manager &other);

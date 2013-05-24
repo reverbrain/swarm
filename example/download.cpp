@@ -16,6 +16,7 @@
 #include "networkmanager.h"
 #include <list>
 #include <iostream>
+#include <chrono>
 
 struct sig_handler
 {
@@ -29,6 +30,11 @@ struct sig_handler
 
 int main(int argc, char **argv)
 {
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " url" << std::endl;
+        return 1;
+    }
+
     ev::default_loop loop;
 
     sig_handler shandler = { loop };
@@ -46,13 +52,21 @@ int main(int argc, char **argv)
 
     ioremap::swarm::network_request request;
     request.url = argv[1];
-    request.want_headers = 1;
+    request.follow_location = 1;
+    request.timeout = 50;
     request.headers = {
         { "Content-Type", "text/html; always" },
-        { "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthirdline" }
+        { "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
     };
 
+    typedef std::chrono::high_resolution_clock clock;
+
+    auto begin_time = clock::now();
+
     manager.get([&loop] (const ioremap::swarm::network_reply &reply) {
+        std::cout << "HTTP code: " << reply.code << std::endl;
+        std::cout << "Network error: " << reply.error << std::endl;
+
         for (auto pair : reply.headers) {
             std::cout << "header: \"" << pair.first << "\": \"" << pair.second << "\"" << std::endl;
         }
@@ -62,6 +76,11 @@ int main(int argc, char **argv)
     }, request);
 
     loop.loop();
+
+    auto end_time = clock::now();
+
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time);
+    std::cout << "Finished in: " << ms.count() << " ms" << std::endl;
 
     return 0;
 }

@@ -30,6 +30,11 @@
 namespace ioremap {
 namespace swarm {
 
+enum http_command {
+    GET,
+    POST
+};
+
 static std::atomic_size_t counter;
 
 class network_connection_info
@@ -52,6 +57,7 @@ public:
     CURL *easy;
     network_reply reply;
     std::function<void (const network_reply &reply)> handler;
+    std::string body;
     std::stringstream data;
     char error[CURL_ERROR_SIZE];
 };
@@ -123,6 +129,7 @@ public:
             info->reply.url = request->request.url;
             info->reply.code = 200;
             info->handler = request->handler;
+            info->body = request->body;
             if (!info->easy) {
                 info->reply.code = 650;
                 request->handler(info->reply);
@@ -142,24 +149,26 @@ public:
                 headers_list = curl_slist_append(headers_list, line.c_str());
             }
 
+            if (request->command == POST) {
+                curl_easy_setopt(info->easy, CURLOPT_POST, true);
+                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, request->body.c_str());
+                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, request->body.size());
+            }
+
             curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
+            curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request.timeout);
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
-
-//            if (request->request.want_headers) {
-//                curl_easy_setopt(info->easy, CURLOPT_HEADER, 1);
-//            }
-
             curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
             curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
+            curl_easy_setopt(info->easy, CURLOPT_NOSIGNAL, 1L);
 
             /*
              * Grab raw data and free it later in curl_easy_cleanup()
              */
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
-//            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
 
             if (request->request.follow_location)
@@ -222,12 +231,17 @@ public:
 
                 try {
                     --active_connections;
-                    long code = 200;
-                    long err = 0;
-                    curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
-                    curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
-                    info->reply.code = code;
-                    info->reply.error = -err;
+                    if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
+                        info->reply.code = 0;
+                        info->reply.error = -ETIMEDOUT;
+                    } else {
+                        long code = 200;
+                        long err = 0;
+                        curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
+                        curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
+                        info->reply.code = code;
+                        info->reply.error = -err;
+                    }
                     info->reply.url = effective_url;
                     info->reply.data = info->data.str();
                     info->handler(info->reply);
@@ -341,6 +355,8 @@ public:
         typedef std::shared_ptr<request_info> ptr;
 
         network_request request;
+        http_command command;
+        std::string body;
         std::function<void (const network_reply &reply)> handler;
     };
 
@@ -381,6 +397,20 @@ void network_manager::get(const std::function<void (const network_reply &reply)>
     auto info = std::make_shared<network_manager_private::request_info>();
     info->handler = handler;
     info->request = request;
+    info->command = GET;
+
+    std::lock_guard<std::mutex> lock(p->mutex);
+    p->requests.push_back(info);
+    p->async.send();
+}
+
+void network_manager::post(const std::function<void (const network_reply &)> &handler, const network_request &request, const std::string &body)
+{
+    auto info = std::make_shared<network_manager_private::request_info>();
+    info->handler = handler;
+    info->request = request;
+    info->command = POST;
+    info->body = body;
 
     std::lock_guard<std::mutex> lock(p->mutex);
     p->requests.push_back(info);
