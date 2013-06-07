@@ -50,6 +50,7 @@ endif()
 install(FILES
 	lib/network_url.h
 	lib/networkmanager.h
+	lib/networkrequest.h
 	lib/url_finder.h
 	DESTINATION include/swarm/
 	)

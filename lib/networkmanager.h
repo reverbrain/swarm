@@ -16,40 +16,18 @@
 #ifndef COCAINE_SERVICE_NETWORKMANAGER_H
 #define COCAINE_SERVICE_NETWORKMANAGER_H
 
+#include "networkrequest.h"
+
 #define EV_MULTIPLICITY 1
 #include <ev++.h>
 #include <memory>
 #include <functional>
-#include <vector>
 #include <map>
 
 namespace ioremap {
 namespace swarm {
 
 class network_manager_private;
-
-struct network_request
-{
-    network_request() : follow_location(false), timeout(30000) {}
-
-    std::string url; // Request URL
-    bool follow_location; // Follow Location from 302 HTTP replies
-    long timeout; // Timeout in ms
-    std::vector<std::pair<std::string, std::string> > headers; // List of headers
-};
-
-struct network_reply
-{
-    network_reply() : code(0), error(0) {}
-
-    network_request request; // Original request
-
-    int code; // HTTP code
-    int error; // Errno
-    std::string url; // Final URL from HTTP reply
-    std::vector<std::pair<std::string, std::string> > headers; // List of headers
-    std::string data; // Reply data
-};
 
 class network_manager
 {

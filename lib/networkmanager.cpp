@@ -125,20 +125,20 @@ public:
 
             network_connection_info::ptr info(new network_connection_info);
             info->easy = curl_easy_init();
-            info->reply.request = request->request;
-            info->reply.url = request->request.url;
-            info->reply.code = 200;
+            info->reply.set_request(request->request);
+            info->reply.set_url(request->request.get_url());
+            info->reply.set_code(200);
             info->handler = request->handler;
             info->body = request->body;
             if (!info->easy) {
-                info->reply.code = 650;
+                info->reply.set_code(650);
                 request->handler(info->reply);
                 continue;
             }
 
             struct curl_slist *headers_list = NULL;
-            for (auto it = request->request.headers.begin();
-                 it != request->request.headers.end();
+            for (auto it = request->request.get_headers().begin();
+                 it != request->request.get_headers().end();
                  ++it) {
                 std::string line;
                 line.reserve(it->first.size() + 2 + it->second.size());
@@ -158,8 +158,8 @@ public:
             curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
             //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
-            curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request.url.c_str());
-            curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request.timeout);
+            curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.get_request().get_url().c_str());
+            curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.get_request().get_timeout());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
             curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
             curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
@@ -172,7 +172,7 @@ public:
             curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
             curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
 
-            if (request->request.follow_location)
+            if (request->request.get_follow_location())
                 curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
 
             CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
@@ -185,7 +185,7 @@ public:
                  */
                 info.release();
             } else {
-                info->reply.code = 600 + err;
+                info->reply.set_code(600 + err);
                 /*
                  * If exception is being thrown, info will be deleted and easy handler will be destroyed,
                  * which is ok, since easy handler was not added into multi handler in this case.
@@ -233,18 +233,18 @@ public:
                 try {
                     --active_connections;
                     if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-                        info->reply.code = 0;
-                        info->reply.error = -ETIMEDOUT;
+                        info->reply.set_code(0);
+                        info->reply.set_error(-ETIMEDOUT);
                     } else {
                         long code = 200;
                         long err = 0;
                         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
                         curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
-                        info->reply.code = code;
-                        info->reply.error = -err;
+                        info->reply.set_code(code);
+                        info->reply.set_error(-err);
                     }
-                    info->reply.url = effective_url;
-                    info->reply.data = info->data.str();
+                    info->reply.set_url(effective_url);
+                    info->reply.set_data(info->data.str());
                     info->handler(info->reply);
                 } catch (...) {
                     curl_multi_remove_handle(multi, easy);
@@ -345,7 +345,7 @@ public:
                 data = lf;
             } while (data < end && (*(data + 1) == ' ' || *(data + 1) == '\t'));
 
-            info->reply.headers.emplace_back(field, value);
+            info->reply.add_header(field, value);
         }
 
         return size * nmemb;

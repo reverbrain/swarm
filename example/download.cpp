@@ -51,26 +51,26 @@ int main(int argc, char **argv)
     ioremap::swarm::network_manager manager(loop);
 
     ioremap::swarm::network_request request;
-    request.url = argv[1];
-    request.follow_location = 1;
-    request.timeout = 50;
-    request.headers = {
+    request.set_url(argv[1]);
+    request.set_follow_location(1);
+    request.set_timeout(50);
+    request.set_headers({
         { "Content-Type", "text/html; always" },
         { "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
-    };
+    });
 
     typedef std::chrono::high_resolution_clock clock;
 
     auto begin_time = clock::now();
 
     manager.get([&loop] (const ioremap::swarm::network_reply &reply) {
-        std::cout << "HTTP code: " << reply.code << std::endl;
-        std::cout << "Network error: " << reply.error << std::endl;
+        std::cout << "HTTP code: " << reply.get_code() << std::endl;
+        std::cout << "Network error: " << reply.get_error() << std::endl;
 
-        for (auto pair : reply.headers) {
+        for (auto pair : reply.get_headers()) {
             std::cout << "header: \"" << pair.first << "\": \"" << pair.second << "\"" << std::endl;
         }
-        std::cout << "data: " << reply.data << std::endl;
+        std::cout << "data: " << reply.get_data() << std::endl;
 
         loop.unloop();
     }, request);

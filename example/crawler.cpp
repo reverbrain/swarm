@@ -95,16 +95,16 @@ struct result_handler
     {
         ++scope.counter;
 
-        if (reply.code == 200 && !reply.error) {
+        if (reply.get_code() == 200 && !reply.get_error()) {
             ++scope.in_progress;
-            queue_element element = { reply.request, reply.url, reply.data, depth - 1 };
+            queue_element element = { reply.get_request(), reply.get_url(), reply.get_data(), depth - 1 };
             std::unique_lock<std::mutex> lock(scope.fs_mutex);
             scope.files.push_back(element);
             scope.fs_condition.notify_all();
         }
 
-        if (reply.error) {
-            std::cerr << "Error at \"" << reply.request.url << "\": " << strerror(-reply.error) << ": " << reply.error << std::endl;
+        if (reply.get_error()) {
+            std::cerr << "Error at \"" << reply.get_request().get_url() << "\": " << strerror(-reply.get_error()) << ": " << reply.get_error() << std::endl;
         }
 
         scope.check_end(--scope.in_progress);
@@ -199,8 +199,8 @@ struct fs_thread
                         continue;
 
                     std::string host;
-                    element.request.url = base_url.relative(url, &host);
-                    if (element.request.url.empty() || host.empty())
+                    element.request.set_url(base_url.relative(url, &host));
+                    if (element.request.get_url().empty() || host.empty())
                         continue;
 
                     if (!scope.base_host.empty()) {
@@ -221,7 +221,7 @@ struct fs_thread
                     {
                         std::lock_guard<std::mutex> lock(scope.mutex);
                         if (scope.need_to_load > 0) {
-                            inserted = scope.used.insert(element.request.url).second;
+                            inserted = scope.used.insert(element.request.get_url()).second;
                             if (inserted)
                                 --scope.need_to_load;
                         }
@@ -404,9 +404,9 @@ int main(int argc, char **argv)
     scope.asyncs.push_back(&async);
 
     ioremap::swarm::network_request request;
-    request.follow_location = true;
+    request.set_follow_location(true);
     result_handler handler = { scope, max_depth };
-    request.url = url;
+    request.set_url(url);
     --scope.need_to_load;
     ++scope.in_progress;
     scope.managers[rand() % scope.managers.size()]->get(handler, request);
