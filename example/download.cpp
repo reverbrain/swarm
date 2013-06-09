@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     ioremap::swarm::network_request request;
     request.set_url(argv[1]);
     request.set_follow_location(1);
-    request.set_timeout(50);
+    request.set_timeout(5000);
     request.set_headers({
         { "Content-Type", "text/html; always" },
         { "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
