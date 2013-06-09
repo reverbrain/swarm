@@ -1,3 +1,10 @@
+swarm (0.4.0.0) unstable; urgency=low
+
+  * Changed requests/replies API
+  * Added If-Modified-Since and Last-Modified headers support
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Sun, 09 Jun 2013 12:23:49 +0400
+
 swarm (0.3.0.1) unstable; urgency=low
 
   * Fixed compilation on Lucid
