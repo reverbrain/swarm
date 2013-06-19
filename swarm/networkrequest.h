@@ -13,6 +13,9 @@
  * GNU General Public License for more details.
  */
 
+#ifndef COCAINE_SERVICE_NETWORKREQUEST_H
+#define COCAINE_SERVICE_NETWORKREQUEST_H
+
 #include <vector>
 #include <string>
 #include <utility>
@@ -106,6 +109,23 @@ public:
     std::string get_if_modified_since_string() const;
     void set_if_modified_since(const std::string &time);
     void set_if_modified_since(time_t time);
+    // TheVoid specific arguments
+    void set_http_version(int major_version, int minor_version);
+    int get_http_major_version() const;
+    int get_http_minor_version() const;
+
+    void set_method(const std::string &method);
+    std::string get_method() const;
+
+    void set_content_length(size_t length);
+    bool has_content_length() const;
+	size_t get_content_length() const;
+
+    void set_content_type(const std::string &type);
+    bool has_content_type() const;
+	std::string get_content_type() const;
+
+	bool is_keep_alive() const;
 
 private:
     shared_data_ptr<network_request_data> m_data;
@@ -114,6 +134,25 @@ private:
 class network_reply
 {
 public:
+    enum status_type {
+		ok = 200,
+		created = 201,
+		accepted = 202,
+		no_content = 204,
+		multiple_choices = 300,
+		moved_permanently = 301,
+		moved_temporarily = 302,
+		not_modified = 304,
+		bad_request = 400,
+		unauthorized = 401,
+		forbidden = 403,
+		not_found = 404,
+		internal_server_error = 500,
+		not_implemented = 501,
+		bad_gateway = 502,
+		service_unavailable = 503
+	};
+
     network_reply();
     network_reply(const network_reply &other);
     ~network_reply();
@@ -153,9 +192,21 @@ public:
     void set_last_modified(const std::string &last_modified);
     void set_last_modified(time_t last_modified);
 
+    // Content length
+    void set_content_length(size_t length);
+    bool has_content_length() const;
+	size_t get_content_length() const;
+
+    // Content type
+    void set_content_type(const std::string &type);
+    bool has_content_type() const;
+	std::string get_content_type() const;
+
 private:
     shared_data_ptr<network_reply_data> m_data;
 };
 
 }
 }
+
+#endif // COCAINE_SERVICE_NETWORKREQUEST_H

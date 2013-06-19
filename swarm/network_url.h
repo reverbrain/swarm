@@ -34,6 +34,7 @@ public:
 
     std::string normalized();
     std::string host();
+    std::string path();
     std::string relative(const std::string &other, std::string *other_host = NULL);
 
 private:

@@ -37,9 +37,9 @@
 #define EV_MULTIPLICITY 1
 #include <ev++.h>
 
-#include "networkmanager.h"
-#include "url_finder.h"
-#include "network_url.h"
+#include <swarm/networkmanager.h>
+#include <swarm/url_finder.h>
+#include <swarm/network_url.h>
 
 struct queue_element
 {

@@ -175,6 +175,21 @@ std::string network_url::host()
     return to_string(p->uri.hostText);
 }
 
+std::string network_url::path()
+{
+    std::string path;
+
+    if (p->uri.absolutePath) {
+        path += "/";
+    }
+
+    for (auto it = p->uri.pathTail; it; it = it->next) {
+        path += to_string(it->text);
+    }
+
+    return path;
+}
+
 std::string network_url::relative(const std::string &other, std::string *other_host)
 {
     std::string url = p->encode_url(other);

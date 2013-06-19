@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "networkmanager.h"
+#include <swarm/networkmanager.h>
 #include <list>
 #include <iostream>
 #include <chrono>
