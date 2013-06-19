@@ -1,2 +1,2 @@
 usr/include/swarm/*
-usr/lib/lib*.so
+usr/lib/libswarm*.so
