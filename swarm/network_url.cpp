@@ -114,6 +114,11 @@ network_url::network_url() : p(new network_url_private)
 {
 }
 
+network_url::network_url(const std::string &url) : p(new network_url_private)
+{
+	set_base(url);
+}
+
 network_url::~network_url()
 {
 }
@@ -212,6 +217,11 @@ std::string network_url::relative(const std::string &other, std::string *other_h
 	if (other_host)
 		*other_host = to_string(absolute_destination.hostText);
 	return network_url_normalized(&absolute_destination);
+}
+
+std::string network_url::query() const
+{
+	return to_string(p->uri.query);
 }
 
 } // namespace crawler

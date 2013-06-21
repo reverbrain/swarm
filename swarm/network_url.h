@@ -28,6 +28,7 @@ class network_url
 {
 public:
 	network_url();
+	network_url(const std::string &url);
 	~network_url();
 
 	bool set_base(const std::string &url);
@@ -36,6 +37,8 @@ public:
 	std::string host();
 	std::string path();
 	std::string relative(const std::string &other, std::string *other_host = NULL);
+
+	std::string query() const;
 
 private:
 	network_url(const network_url &other);
