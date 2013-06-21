@@ -1,0 +1,7 @@
+{
+    "type": "or",
+    "indexes": [
+        "fast",
+        "distributed"
+    ]
+}
