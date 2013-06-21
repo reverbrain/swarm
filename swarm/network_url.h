@@ -27,21 +27,21 @@ class network_url_private;
 class network_url
 {
 public:
-    network_url();
-    ~network_url();
+	network_url();
+	~network_url();
 
-    bool set_base(const std::string &url);
+	bool set_base(const std::string &url);
 
-    std::string normalized();
-    std::string host();
-    std::string path();
-    std::string relative(const std::string &other, std::string *other_host = NULL);
+	std::string normalized();
+	std::string host();
+	std::string path();
+	std::string relative(const std::string &other, std::string *other_host = NULL);
 
 private:
-    network_url(const network_url &other);
-    network_url &operator =(const network_url &other);
+	network_url(const network_url &other);
+	network_url &operator =(const network_url &other);
 
-    std::unique_ptr<network_url_private> p;
+	std::unique_ptr<network_url_private> p;
 };
 
 } // namespace crawler
