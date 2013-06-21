@@ -28,6 +28,13 @@ namespace thevoid {
 
 #define debug(arg) do {} while (0)
 
+static std::atomic_int connections_counter(0);
+
+int get_connections_counter()
+{
+	return connections_counter;
+}
+
 template <typename T>
 connection<T>::connection(boost::asio::io_service &service)
 	: m_strand(service),
@@ -44,6 +51,8 @@ connection<T>::connection(boost::asio::io_service &service)
 template <typename T>
 connection<T>::~connection()
 {
+	--connections_counter;
+
 	if (m_handler)
 		m_handler->on_close(boost::system::error_code());
 
@@ -59,6 +68,8 @@ T &connection<T>::socket()
 template <typename T>
 void connection<T>::start(const std::shared_ptr<base_server> &server)
 {
+	++connections_counter;
+
 	m_server = server;
 	async_read();
 }
@@ -126,7 +137,7 @@ void connection<T>::process_next()
 	m_state = read_headers;
 	m_request_parser.reset();
 
-    m_request = swarm::network_request();
+	m_request = swarm::network_request();
 
 //	m_request.method.resize(0);
 //	m_request.uri.resize(0);

@@ -35,6 +35,8 @@ template <typename T>
 class connection : public std::enable_shared_from_this<connection<T>>, public reply_stream, private boost::noncopyable
 {
 public:
+    typedef T socket_type;
+
 	enum state {
 		processing_request = 0x00,
 		read_headers       = 0x01,
@@ -64,8 +66,7 @@ private:
 	void process_next();
 
 	//! Handle completion of a read operation.
-	void handle_read(const boost::system::error_code &err,
-			 std::size_t bytes_transferred);
+	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
 	void process_data(char *begin, char *end);
 
 	void async_read();
@@ -109,6 +110,9 @@ private:
 	char *m_unprocessed_begin;
 	char *m_unprocessed_end;
 };
+
+typedef connection<boost::asio::ip::tcp::socket> tcp_connection;
+typedef connection<boost::asio::local::stream_protocol::socket> unix_connection;
 
 }} // namespace ioremap::thevoid
 

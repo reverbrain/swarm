@@ -14,7 +14,7 @@ locate_library(LIBEV "ev++.h" "ev" "libev")
 locate_library(CURL "curl.h" "curl" "curl" "libcurl")
 locate_library(URIPARSER "Uri.h" "uriparser" "uriparser")
 locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
-find_package(Boost COMPONENTS system thread REQUIRED)
+find_package(Boost COMPONENTS system thread program_options REQUIRED)
 
 include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -33,3 +33,6 @@ if(BUILD_EXAMPLES)
     add_executable(elliptics-server example/elliptics-server.cpp)
     target_link_libraries(elliptics-server thevoid elliptics_cpp pthread)
 endif()
+
+install(DIRECTORY thevoid/rapidjson
+    DESTINATION include/thevoid)

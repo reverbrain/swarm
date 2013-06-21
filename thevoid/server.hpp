@@ -28,6 +28,8 @@
 #include <string>
 #include <vector>
 
+#include <thevoid/rapidjson/document.h>
+
 namespace ioremap {
 namespace thevoid {
 
@@ -61,9 +63,9 @@ public:
 	virtual ~base_server();
 
 	void listen(const std::string &host);
-	void run();
+	int run(int argc, char **argv);
 
-	virtual void initialize();
+	virtual bool initialize(const rapidjson::Value &config) = 0;
 
 protected:
 	void on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory);
@@ -104,7 +106,6 @@ std::shared_ptr<Server> create_server(Args &&...args)
 {
 	auto server = std::make_shared<Server>(std::forward<Args>(args)...);
 	server->set_server(server);
-	server->initialize();
 	return server;
 }
 

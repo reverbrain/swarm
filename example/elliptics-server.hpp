@@ -14,6 +14,7 @@
  */
 
 #include <thevoid/server.hpp>
+#include <elliptics/session.hpp>
 
 namespace ioremap {
 namespace thevoid {
@@ -23,17 +24,19 @@ class elliptics_server : public server<elliptics_server>
 public:
 	elliptics_server();
 
-	void initialize() /*override*/;
+	bool initialize(const rapidjson::Value &config) /*override*/;
 
-	struct on_update : public simple_request_stream<elliptics_server>
+	struct on_update : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_update>
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
+		virtual void on_update_finished(const ioremap::elliptics::error_info &error);
 		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
-	struct on_find : public simple_request_stream<elliptics_server>
+	struct on_find : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_find>
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
+		virtual void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result, const ioremap::elliptics::error_info &error);
 		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
@@ -42,6 +45,14 @@ public:
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
+
+protected:
+	ioremap::elliptics::session create_session();
+
+private:
+	std::unique_ptr<ioremap::elliptics::logger> m_logger;
+	std::unique_ptr<ioremap::elliptics::node> m_node;
+	std::unique_ptr<ioremap::elliptics::session> m_session;
 };
 
 } } // namespace ioremap::thevoid
