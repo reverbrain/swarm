@@ -19,7 +19,7 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 	acceptor->open(endpoint.protocol());
 	acceptor->set_option(boost::asio::socket_base::reuse_address(true));
 	acceptor->bind(endpoint);
-	acceptor->listen(MAX_CONNECTIONS_COUNT);
+	acceptor->listen(data.backlog_size);
 
 	start_acceptor(acceptors.size() - 1);
 }

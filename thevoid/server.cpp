@@ -39,6 +39,8 @@ class server_data;
 static std::weak_ptr<signal_handler> global_signal_set;
 
 server_data::server_data() :
+	threads_count(2),
+	backlog_size(128),
 	local_acceptors(*this),
 	tcp_acceptors(*this),
 	monitor_acceptors(*this),
@@ -157,23 +159,23 @@ int base_server::run(int argc, char **argv)
 		return -1;
 	}
 
-	rapidjson::Document doc;
-	int err = read_config(doc, config_path.c_str());
+	rapidjson::Document config;
+	int err = read_config(config, config_path.c_str());
 
 	if (err)
 		return err;
 
-	if (!doc.HasMember("application")) {
+	if (!config.HasMember("application")) {
 		std::cerr << "\"application\" field is missed" << std::endl;
 		return -5;
 	}
 
-	if (!initialize(doc.FindMember("application")->value)) {
+	if (!initialize(config.FindMember("application")->value)) {
 		std::cerr << "Failed to initialize application" << std::endl;
 		return -5;
 	}
 
-	auto endpoints = doc.FindMember("endpoints");
+	auto endpoints = config.FindMember("endpoints");
 
 	if (!endpoints) {
 		std::cerr << "\"endpoints\" field is missed" << std::endl;
@@ -191,13 +193,19 @@ int base_server::run(int argc, char **argv)
 
 	int monitor_port = -1;
 
-	if (doc.HasMember("daemon")) {
-		auto &daemon = doc["daemon"];
+	if (config.HasMember("daemon")) {
+		auto &daemon = config["daemon"];
 
 		if (daemon.HasMember("monitor-port")) {
 			monitor_port = daemon["monitor-port"].GetInt();
 		}
 	}
+
+	if (config.HasMember("backlog"))
+		m_data->backlog_size = config["backlog"].GetInt();
+
+	if (config.HasMember("threads"))
+		m_data->threads_count = config["threads"].GetInt();
 
 	if (monitor_port != -1) {
 		m_data->monitor_acceptors.add_acceptor("0.0.0.0:" + boost::lexical_cast<std::string>(monitor_port));
@@ -205,8 +213,8 @@ int base_server::run(int argc, char **argv)
 
 	std::vector<std::thread> threads;
 
-	m_data->local_acceptors.start_threads(4, threads);
-	m_data->tcp_acceptors.start_threads(4, threads);
+	m_data->local_acceptors.start_threads(m_data->threads_count, threads);
+	m_data->tcp_acceptors.start_threads(m_data->threads_count, threads);
 	m_data->monitor_acceptors.start_threads(1, threads);
 
 	// Wait for all threads in the pool to exit.

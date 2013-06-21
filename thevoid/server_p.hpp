@@ -52,8 +52,9 @@ public:
 	std::weak_ptr<base_server> server;
 	//! The io_service used to perform asynchronous operations.
 	boost::asio::io_service io_service;
-	//! Size of thread pool
+	//! Size of thread pool per socket
 	unsigned int threads_count;
+	unsigned int backlog_size;
 	//! List of activated acceptors
 	acceptors_list<unix_connection> local_acceptors;
 	acceptors_list<tcp_connection> tcp_acceptors;
