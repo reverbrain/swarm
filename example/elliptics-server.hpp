@@ -19,6 +19,14 @@
 namespace ioremap {
 namespace thevoid {
 
+struct id_comparator
+{
+	bool operator() (const dnet_raw_id &first, const dnet_raw_id &second) const
+	{
+		return memcmp(first.id, second.id, sizeof(first.id)) < 0;
+	}
+};
+
 class elliptics_server : public server<elliptics_server>
 {
 public:
@@ -37,7 +45,10 @@ public:
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 		virtual void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result, const ioremap::elliptics::error_info &error);
+		virtual void on_send_finished(const std::string &);
 		virtual void on_close(const boost::system::error_code &err) /*override*/;
+
+		std::map<dnet_raw_id, std::string, id_comparator> m_map;
 	};
 
 	struct on_get : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_get>

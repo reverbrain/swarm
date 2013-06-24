@@ -19,6 +19,9 @@
 #include <swarm/network_url.h>
 #include <swarm/network_query_list.h>
 
+#include <thevoid/rapidjson/stringbuffer.h>
+#include <thevoid/rapidjson/prettywriter.h>
+
 using namespace ioremap::swarm;
 using namespace ioremap::thevoid;
 using namespace ioremap::elliptics;
@@ -143,9 +146,6 @@ void elliptics_server::on_find::on_request(const swarm::network_request &req, co
 
 	(void) req;
 
-
-	get_reply()->send_error(swarm::network_reply::not_implemented);
-
 	rapidjson::Document data;
 	data.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
 
@@ -154,24 +154,67 @@ void elliptics_server::on_find::on_request(const swarm::network_request &req, co
 		return;
 	}
 
-	if (!data.HasMember("id") || !data.HasMember("indexes")) {
+	if (!data.HasMember("type") || !data.HasMember("indexes")) {
 		get_reply()->send_error(swarm::network_reply::bad_request);
 		return;
 	}
 
 	session sess = get_server()->create_session();
 
+	const std::string type = data["type"].GetString();
+
 	auto &indexesArray = data["indexes"];
 
-	std::vector<std::string> indexes;
+	std::vector<dnet_raw_id> indexes;
 
-	std::transform(indexesArray.Begin(), indexesArray.End(),
-		std::back_inserter(indexes),
-		std::bind(&rapidjson::Value::GetString, std::placeholders::_1));
+	for (auto it = indexesArray.Begin(); it != indexesArray.End(); ++it) {
+		key index = std::string(it->GetString());
+		sess.transform(index);
 
-	sess.find_indexes(indexes)
+		indexes.push_back(index.raw_id());
+		m_map[index.raw_id()] = index.to_string();
+	}
+
+	if (type != "and" && type != "or") {
+		get_reply()->send_error(swarm::network_reply::bad_request);
+		return;
+	}
+
+	(type == "and" ? sess.find_all_indexes(indexes) : sess.find_any_indexes(indexes))
 			.connect(std::bind(&on_find::on_find_finished, shared_from_this(), _1, _2));
 }
+
+class JsonValue : public rapidjson::Value
+{
+public:
+	JsonValue()
+	{
+		SetObject();
+	}
+
+	~JsonValue()
+	{
+	}
+
+	std::string ToString()
+	{
+		rapidjson::StringBuffer buffer;
+		rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+
+		Accept(writer);
+		buffer.Put('\n');
+
+		return std::string(buffer.GetString(), buffer.GetSize());
+	}
+
+	rapidjson::MemoryPoolAllocator<> &GetAllocator()
+	{
+		return m_allocator;
+	}
+
+private:
+	rapidjson::MemoryPoolAllocator<> m_allocator;
+};
 
 void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result &result, const error_info &error)
 {
@@ -180,13 +223,39 @@ void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result 
 		return;
 	}
 
-	rapidjson::Document doc;
+	JsonValue result_object;
+
+	static char id_str[2 * DNET_ID_SIZE + 1];
 
 	for (size_t i = 0; i < result.size(); ++i) {
 		const find_indexes_result_entry &entry = result[i];
 
-//		entry.id
+		rapidjson::Value indexes;
+		indexes.SetObject();
+
+		for (auto it = entry.indexes.begin(); it != entry.indexes.end(); ++it) {
+			const std::string data = it->second.to_string();
+			rapidjson::Value value(data.c_str(), data.size(), result_object.GetAllocator());
+			indexes.AddMember(m_map[it->first].c_str(), value, result_object.GetAllocator());
+		}
+
+		dnet_dump_id_len_raw(entry.id.id, DNET_ID_SIZE, id_str);
+		result_object.AddMember(id_str, indexes, result_object.GetAllocator());
 	}
+
+	const std::string result_str = result_object.ToString();
+
+	swarm::network_reply reply;
+	reply.set_code(swarm::network_reply::ok);
+	reply.set_content_length(result_str.size());
+	reply.set_content_type("text/json");
+	get_reply()->send_headers(reply, boost::asio::buffer(result_str),
+				  std::bind(&on_find::on_send_finished, shared_from_this(), result_str));
+}
+
+void elliptics_server::on_find::on_send_finished(const std::string &)
+{
+	get_reply()->close(boost::system::error_code());
 }
 
 void elliptics_server::on_find::on_close(const boost::system::error_code &err)

@@ -1,8 +1,8 @@
 {
     "id": "elliptics",
-    "indexes": [
-        "fast",
-        "distributed",
-        "fault-tolerant"
-    ]
+    "indexes": {
+        "fast": "1",
+        "distributed": "2",
+        "fault-tolerant": "3"
+    }
 }
