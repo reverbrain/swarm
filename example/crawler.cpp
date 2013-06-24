@@ -78,8 +78,7 @@ struct crawler_scope
 
     void force_end()
     {
-        for (auto async : asyncs)
-            async->send();
+        std::for_each(asyncs.begin(), asyncs.end(), std::bind(&ev::async::send, std::placeholders::_1));
         std::unique_lock<std::mutex> lock(fs_mutex);
         done = true;
         fs_condition.notify_all();
@@ -194,7 +193,9 @@ struct fs_thread
 
             result_handler handler = { scope, element.depth };
             if (element.depth >= 0) {
-                for (std::string url : finder.urls()) {
+                for (auto it = finder.urls().begin(); it != finder.urls().end(); ++it) {
+                    std::string url = *it;
+
                     if (url.compare(0, 7, "mailto:") == 0)
                         continue;
 
@@ -238,7 +239,7 @@ struct fs_thread
             while ((index = filepath.find("//", index)) != std::string::npos) {
                 filepath.erase(index, 1);
             }
-            if (filepath.back() == '/')
+            if (filepath[filepath.size() - 1] == '/')
                 filepath.resize(filepath.size() - 1);
             filepath += "~file-tag";
 
@@ -366,10 +367,12 @@ int main(int argc, char **argv)
 
     std::list<ev::sig> sigs;
 
-    for (auto signal : { SIGINT, SIGTERM }) {
+    int signal_ids[] = { SIGINT, SIGTERM };
+
+    for (size_t i = 0; i < sizeof(signal_ids) / sizeof(signal_ids[0]); ++i) {
         sigs.emplace_back(loop);
         ev::sig &sig_watcher = sigs.back();
-        sig_watcher.set(signal);
+        sig_watcher.set(signal_ids[i]);
         sig_watcher.set<sig_handler>(&shandler);
         sig_watcher.start();
     }
@@ -414,8 +417,8 @@ int main(int argc, char **argv)
     loop.loop();
 
     // make sure that all threads finished their work
-    for (auto &thread : threads)
-        thread.join();
+    std::for_each(threads.begin(), threads.end(),
+        std::bind(&std::thread::join, std::placeholders::_1));
 
     counter(timer, 0);
 

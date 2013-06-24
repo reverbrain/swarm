@@ -23,7 +23,7 @@ include_directories(
 add_subdirectory(swarm)
 add_subdirectory(thevoid)
 
-option(BUILD_EXAMPLES "Build examples, needs >=gcc-4.6" OFF)
+option(BUILD_EXAMPLES "Build examples" ON)
 
 if(BUILD_EXAMPLES)
     add_executable(crawler example/crawler.cpp)

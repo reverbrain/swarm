@@ -18,6 +18,12 @@
 #include <boost/bind.hpp>
 #include <iostream>
 
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#  include <cstdatomic>
+#else
+#  include <atomic>
+#endif
+
 #include "server.hpp"
 #include "stockreplies_p.hpp"
 

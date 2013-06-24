@@ -28,6 +28,25 @@ struct sig_handler
     }
 };
 
+struct request_handler_functor
+{
+        ev::loop_ref &loop;
+
+        void operator() (const ioremap::swarm::network_reply &reply) const {
+	        std::cout << "HTTP code: " << reply.get_code() << std::endl;
+                std::cout << "Network error: " << reply.get_error() << std::endl;
+
+	        const auto &headers = reply.get_headers();
+
+                for (auto it = headers.begin(); it != headers.end(); ++it) {
+                    std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
+                }
+                std::cout << "data: " << reply.get_data() << std::endl;
+
+                loop.unloop();
+        }
+};
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
@@ -39,41 +58,36 @@ int main(int argc, char **argv)
 
     sig_handler shandler = { loop };
     std::list<ev::sig> sigs;
+    int signal_ids[] = { SIGINT, SIGTERM };
 
-    for (auto signal : { SIGINT, SIGTERM }) {
+    for (size_t i = 0; i < sizeof(signal_ids) / sizeof(signal_ids[0]); ++i) {
         sigs.emplace_back(loop);
         ev::sig &sig_watcher = sigs.back();
-        sig_watcher.set(signal);
+	sig_watcher.set(signal_ids[i]);
         sig_watcher.set(&shandler);
         sig_watcher.start();
     }
 
     ioremap::swarm::network_manager manager(loop);
 
+    std::vector<ioremap::swarm::headers_entry> headers = {
+	    { "Content-Type", "text/html; always" },
+	    { "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
+    };
+
     ioremap::swarm::network_request request;
     request.set_url(argv[1]);
     request.set_follow_location(1);
     request.set_timeout(5000);
-    request.set_headers({
-        { "Content-Type", "text/html; always" },
-        { "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
-    });
+    request.set_headers(headers);
 
     typedef std::chrono::high_resolution_clock clock;
 
     auto begin_time = clock::now();
 
-    manager.get([&loop] (const ioremap::swarm::network_reply &reply) {
-        std::cout << "HTTP code: " << reply.get_code() << std::endl;
-        std::cout << "Network error: " << reply.get_error() << std::endl;
+    request_handler_functor request_handler = { loop };
 
-        for (auto pair : reply.get_headers()) {
-            std::cout << "header: \"" << pair.first << "\": \"" << pair.second << "\"" << std::endl;
-        }
-        std::cout << "data: " << reply.get_data() << std::endl;
-
-        loop.unloop();
-    }, request);
+    manager.get(request_handler, request);
 
     loop.loop();
 

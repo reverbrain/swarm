@@ -66,7 +66,7 @@ template <typename Server>
 class request_stream : public base_request_stream
 {
 public:
-	request_stream() : m_server(NULL) {}
+	request_stream() {}
 	virtual ~request_stream() {}
 
 	void set_server(const std::shared_ptr<Server> &server)
