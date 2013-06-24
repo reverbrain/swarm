@@ -16,6 +16,10 @@
 #include "elliptics-server.hpp"
 #include <iostream>
 
+#include <swarm/network_url.h>
+#include <swarm/network_query_list.h>
+
+using namespace ioremap::swarm;
 using namespace ioremap::thevoid;
 using namespace ioremap::elliptics;
 
@@ -68,6 +72,8 @@ bool elliptics_server::initialize(const rapidjson::Value &config)
 
 	on<on_update>("/update");
 	on<on_find>("/find");
+	on<on_get>("/get");
+	on<on_upload>("/upload");
 	on<on_ping>("/ping");
 
 	return true;
@@ -140,22 +146,22 @@ void elliptics_server::on_find::on_request(const swarm::network_request &req, co
 
 	get_reply()->send_error(swarm::network_reply::not_implemented);
 
-	rapidjson::Document doc;
-	doc.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
+	rapidjson::Document data;
+	data.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
 
-	if (doc.HasParseError()) {
+	if (data.HasParseError()) {
 		get_reply()->send_error(swarm::network_reply::bad_request);
 		return;
 	}
 
-	if (!doc.HasMember("id") || !doc.HasMember("indexes")) {
+	if (!data.HasMember("id") || !data.HasMember("indexes")) {
 		get_reply()->send_error(swarm::network_reply::bad_request);
 		return;
 	}
 
 	session sess = get_server()->create_session();
 
-	auto &indexesArray = doc["indexes"];
+	auto &indexesArray = data["indexes"];
 
 	std::vector<std::string> indexes;
 
@@ -188,6 +194,112 @@ void elliptics_server::on_find::on_close(const boost::system::error_code &err)
 	(void) err;
 }
 
+void elliptics_server::on_get::on_request(const ioremap::swarm::network_request &req, const boost::asio::const_buffer &buffer)
+{
+	using namespace std::placeholders;
+
+	swarm::network_url url(req.get_url());
+	swarm::network_query_list query_list(url.query());
+
+	if (!query_list.has_item("name")) {
+		get_reply()->send_error(network_reply::bad_request);
+		return;
+	}
+
+	std::string name = query_list.item_value("name");
+
+	std::cerr << "name: \"" << name << "\"" << std::endl;
+
+	session sess = get_server()->create_session();
+
+	sess.read_data(name, 0, 0)
+			.connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
+}
+
+void elliptics_server::on_get::on_read_finished(const sync_read_result &result, const error_info &error)
+{
+	if (error.code() == -ENOENT) {
+		get_reply()->send_error(swarm::network_reply::not_found);
+		return;
+	} else if (error) {
+		get_reply()->send_error(swarm::network_reply::service_unavailable);
+		return;
+	}
+
+	const read_result_entry &entry = result[0];
+
+	data_pointer file = entry.file();
+
+	const dnet_time &ts = entry.io_attribute()->timestamp;
+	const network_request &request = get_request();
+
+	if (request.has_if_modified_since()) {
+		if (ts.tsec <= request.get_if_modified_since()) {
+			get_reply()->send_error(swarm::network_reply::not_modified);
+			return;
+		}
+	}
+
+	swarm::network_reply reply;
+	reply.set_code(swarm::network_reply::ok);
+	reply.set_content_length(file.size());
+	reply.set_content_type("text/plain");
+	reply.set_last_modified(ts.tsec);
+	get_reply()->send_headers(reply, boost::asio::buffer(file.data(), file.size()),
+				  std::bind(&on_get::on_send_finished, shared_from_this(), file));
+}
+
+void elliptics_server::on_get::on_send_finished(const data_pointer &)
+{
+	get_reply()->close(boost::system::error_code());
+}
+
+void elliptics_server::on_get::on_close(const boost::system::error_code &err)
+{
+	(void) err;
+}
+
+
+void elliptics_server::on_upload::on_request(const ioremap::swarm::network_request &req, const boost::asio::const_buffer &buffer)
+{
+	using namespace std::placeholders;
+
+	swarm::network_url url(req.get_url());
+	swarm::network_query_list query_list(url.query());
+
+	std::string name = query_list.item_value("name");
+
+	session sess = get_server()->create_session();
+
+	auto data = boost::asio::buffer_cast<const char*>(buffer);
+	auto size = boost::asio::buffer_size(buffer);
+
+	sess.write_data(name, data_pointer::from_raw(const_cast<char *>(data), size), 0)
+			.connect(std::bind(&on_upload::on_write_finished, shared_from_this(), _1, _2));
+}
+
+void elliptics_server::on_upload::on_write_finished(const sync_write_result &result, const error_info &error)
+{
+	if (error) {
+		get_reply()->send_error(swarm::network_reply::service_unavailable);
+		return;
+	}
+
+	const write_result_entry &entry = result[0];
+
+	swarm::network_reply reply;
+	reply.set_code(swarm::network_reply::ok);
+	reply.set_content_length(0);
+	reply.set_content_type("text/html");
+	get_reply()->send_headers(reply, boost::asio::buffer("", 0),
+				  std::bind(&reply_stream::close, get_reply(), std::placeholders::_1));
+}
+
+void elliptics_server::on_upload::on_close(const boost::system::error_code &err)
+{
+	(void) err;
+}
+
 void elliptics_server::on_ping::on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer)
 {
 	auto conn = get_reply();
@@ -207,7 +319,8 @@ void elliptics_server::on_ping::on_close(const boost::system::error_code &err)
 }
 
 
+
 int main(int argc, char **argv)
 {
-    return create_server<elliptics_server>()->run(argc, argv);
+	return create_server<elliptics_server>()->run(argc, argv);
 }

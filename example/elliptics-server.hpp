@@ -40,6 +40,21 @@ public:
 		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
+	struct on_get : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_get>
+	{
+		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
+		virtual void on_read_finished(const ioremap::elliptics::sync_read_result &result, const ioremap::elliptics::error_info &error);
+		virtual void on_send_finished(const ioremap::elliptics::data_pointer &);
+		virtual void on_close(const boost::system::error_code &err) /*override*/;
+	};
+
+	struct on_upload : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_upload>
+	{
+		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
+		virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error);
+		virtual void on_close(const boost::system::error_code &err) /*override*/;
+	};
+
 	struct on_ping : public simple_request_stream<elliptics_server>
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
