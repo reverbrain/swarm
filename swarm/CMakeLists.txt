@@ -22,6 +22,7 @@ set_target_properties(swarm PROPERTIES
 
 install(FILES
 	network_url.h
+	network_query_list.h
 	networkmanager.h
 	networkrequest.h
 	url_finder.h
