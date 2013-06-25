@@ -5,6 +5,7 @@
 #include "acceptorlist_p.hpp"
 #include "connection_p.hpp"
 #include "monitor_connection_p.hpp"
+#include <signal.h>
 
 #include <mutex>
 #include <set>
