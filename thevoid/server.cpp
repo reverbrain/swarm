@@ -187,8 +187,12 @@ int base_server::run(int argc, char **argv)
 		return -4;
 	}
 
-	for (auto it = endpoints->value.Begin(); it != endpoints->value.End(); ++it) {
-		listen(it->GetString());
+	try {
+		for (auto it = endpoints->value.Begin(); it != endpoints->value.End(); ++it) {
+			listen(it->GetString());
+		}
+	} catch (...) {
+		return -6;
 	}
 
 	int monitor_port = -1;
@@ -207,8 +211,12 @@ int base_server::run(int argc, char **argv)
 	if (config.HasMember("threads"))
 		m_data->threads_count = config["threads"].GetInt();
 
-	if (monitor_port != -1) {
-		m_data->monitor_acceptors.add_acceptor("0.0.0.0:" + boost::lexical_cast<std::string>(monitor_port));
+	try {
+		if (monitor_port != -1) {
+			m_data->monitor_acceptors.add_acceptor("0.0.0.0:" + boost::lexical_cast<std::string>(monitor_port));
+		}
+	} catch (...) {
+		return -7;
 	}
 
 	std::vector<std::thread> threads;

@@ -1,30 +1,13 @@
 {
     "endpoints": [
-        "0.0.0.0:8080"
+        "0.0.0.0:8080",
+        "unix:test.sock"
     ],
     "daemon": {
         "monitor-port": 20000
     },
     "backlog": 128,
     "threads": 2,
-    "modules": {
-        "elliptics": "libelliptics-thevoid.so"
-    },
-    "components": {
-        "elliptics": {
-            "type": "elliptics",
-            "config": {
-                "remotes": [
-                    "localhost:1025:2"
-                ],
-                "groups": [
-                    1,
-                    2,
-                    3
-                ]
-            }
-        }
-    },
     "application": {
         "loglevel": 0,
         "remotes": [

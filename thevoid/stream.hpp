@@ -45,7 +45,7 @@ public:
 
 	virtual void on_headers(const swarm::network_request &req) = 0;
 	virtual void on_data(const boost::asio::const_buffer &buffer) = 0;
-	virtual void on_close(const boost::system::error_code &err) = 0;
+	virtual void on_close(const boost::system::error_code &err) { (void) err; }
 
 	void initialize(const std::shared_ptr<reply_stream> &reply) { m_reply = reply; }
 

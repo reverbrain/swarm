@@ -7,6 +7,17 @@ namespace ioremap { namespace thevoid {
 
 enum { MAX_CONNECTIONS_COUNT = 128 };
 
+template <typename Endpoint>
+static void complete_socket_creation(Endpoint endpoint)
+{
+	(void) endpoint;
+}
+
+static void complete_socket_creation(boost::asio::local::stream_protocol::endpoint endpoint)
+{
+	chmod(endpoint.path().c_str(), 0666);
+}
+
 template <typename Connection>
 void acceptors_list<Connection>::add_acceptor(const std::string &address)
 {
@@ -15,11 +26,20 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 
 	auto &acceptor = acceptors.back();
 
-	endpoint_type endpoint = create_endpoint(*acceptor, address);
-	acceptor->open(endpoint.protocol());
-	acceptor->set_option(boost::asio::socket_base::reuse_address(true));
-	acceptor->bind(endpoint);
-	acceptor->listen(data.backlog_size);
+	try {
+		endpoint_type endpoint = create_endpoint(*acceptor, address);
+
+		acceptor->open(endpoint.protocol());
+		acceptor->set_option(boost::asio::socket_base::reuse_address(true));
+		acceptor->bind(endpoint);
+		acceptor->listen(data.backlog_size);
+
+		complete_socket_creation(endpoint);
+	} catch (boost::system::system_error &error) {
+		std::cerr << "Can not bind socket \"" << address << "\": " << error.what() << std::endl;
+		std::cerr.flush();
+		throw;
+	}
 
 	start_acceptor(acceptors.size() - 1);
 }
