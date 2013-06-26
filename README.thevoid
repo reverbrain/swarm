@@ -1,0 +1,7 @@
+TheVoid is asynchronious event-driven C++ library for building high-perfomance
+web applications.
+
+Depends on boost::asio and Swarm.
+
+Example of application build using thevoid as web engine and elliptics as
+storage engine is available at example/elliptics-server.{h,c}pp.
