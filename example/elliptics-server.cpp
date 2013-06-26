@@ -391,5 +391,5 @@ void elliptics_server::on_ping::on_close(const boost::system::error_code &err)
 
 int main(int argc, char **argv)
 {
-	return create_server<elliptics_server>()->run(argc, argv);
+	return run_server<elliptics_server>(argc, argv);
 }

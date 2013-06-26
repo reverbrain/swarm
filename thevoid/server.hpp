@@ -109,6 +109,12 @@ std::shared_ptr<Server> create_server(Args &&...args)
 	return server;
 }
 
+template <typename Server, typename... Args>
+int run_server(int argc, char **argv, Args &&...args)
+{
+	return create_server<Server>(std::forward<Args>(args)...)->run(argc, argv);
+}
+
 } } // namespace ioremap::thevoid
 
 #endif // IOREMAP_THEVOID_SERVER_HPP
