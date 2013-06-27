@@ -33,12 +33,12 @@ elliptics_server::elliptics_server()
 bool elliptics_server::initialize(const rapidjson::Value &config)
 {
 	if (!config.HasMember("remotes")) {
-		std::cerr << "\"remotes\" field is missed";
+		std::cerr << "\"remotes\" field is missed" << std::endl;
 		return false;
 	}
 
 	if (!config.HasMember("groups")) {
-		std::cerr << "\"groups\" field is missed";
+		std::cerr << "\"groups\" field is missed" << std::endl;
 		return false;
 	}
 

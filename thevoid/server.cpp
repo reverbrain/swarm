@@ -170,8 +170,13 @@ int base_server::run(int argc, char **argv)
 		return -5;
 	}
 
-	if (!initialize(config.FindMember("application")->value)) {
-		std::cerr << "Failed to initialize application" << std::endl;
+	try {
+		if (!initialize(config.FindMember("application")->value)) {
+			std::cerr << "Failed to initialize application" << std::endl;
+			return -5;
+		}
+	} catch (std::exception &exc) {
+		std::cerr << "Failed to initialize application: " << exc.what() << std::endl;
 		return -5;
 	}
 
@@ -234,7 +239,14 @@ int base_server::run(int argc, char **argv)
 
 void base_server::on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
 {
-	m_data->handlers[url] = factory;
+	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
+		if (it->first == url) {
+			throw std::logic_error("Handler \"" + url + "\" is already registered");
+		} else if (url.compare(0, it->first.size(), it->first) == 0) {
+			throw std::logic_error("Handler \"" + url + "\" is not accessable because \"" + it->first + "\" already registered");
+		}
+	}
+	m_data->handlers.emplace_back(url, factory);
 }
 
 void base_server::set_server(const std::weak_ptr<base_server> &server)
@@ -246,7 +258,15 @@ std::shared_ptr<base_stream_factory> base_server::get_factory(const std::string 
 {
 	swarm::network_url url_parser;
 	url_parser.set_base(url);
-	return m_data->handlers[url_parser.path()];
+	const std::string path = url_parser.path();
+
+	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
+		if (it->first.compare(0, url.size(), path) == 0) {
+			return it->second;
+		}
+	}
+
+	return std::shared_ptr<base_stream_factory>();
 }
 
 

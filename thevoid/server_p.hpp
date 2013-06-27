@@ -63,7 +63,7 @@ public:
 	//! The signal_set is used to register for process termination notifications.
 	std::shared_ptr<signal_handler> signal_set;
 	//! User handlers for urls
-	std::map<std::string, std::shared_ptr<base_stream_factory>> handlers;
+	std::vector<std::pair<std::string, std::shared_ptr<base_stream_factory>>> handlers;
 };
 
 }}
