@@ -51,9 +51,12 @@ private:
 	{
 		switch (m_state) {
 			case method_start:
-				if (!is_char(input) || is_ctl(input) || is_tspecial(input)) {
+				if (input == '\r' || input == '\n') {
+                    // Ignore CRLF characters between requests in Keep-Alive connection
+					return boost::indeterminate;
+				} else if (!is_char(input) || is_ctl(input) || is_tspecial(input)) {
 					return false;
-				} else {
+                } else {
 					m_state = method;
 					m_method.push_back(input);
 					return boost::indeterminate;
