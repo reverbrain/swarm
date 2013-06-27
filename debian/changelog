@@ -1,3 +1,10 @@
+swarm (0.5.0.0) unstable; urgency=low
+
+  * Added TheVoid - asynchronous HTTP backend
+  * Added network_query_list for parsing URL query list
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 27 Jun 2013 17:04:26 +0400
+
 swarm (0.4.0.0) unstable; urgency=low
 
   * Changed requests/replies API
