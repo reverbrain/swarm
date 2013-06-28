@@ -29,7 +29,7 @@ link_directories(
     ${CURL_LIBRARY_DIRS}
     ${URIPARSER_LIBRARY_DIRS}
     ${LIBXML2_LIBRARY_DIRS}
-    ${Boost_INCLUDE_DIRS}
+    ${Boost_LIBRARY_DIRS}
 )
 
 add_subdirectory(swarm)
