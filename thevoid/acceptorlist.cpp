@@ -3,6 +3,7 @@
 #include "monitor_connection_p.hpp"
 #include <boost/bind.hpp>
 #include <iostream>
+#include <sys/stat.h>
 
 namespace ioremap { namespace thevoid {
 
