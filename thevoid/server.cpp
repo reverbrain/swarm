@@ -133,13 +133,13 @@ static int read_config(rapidjson::Document &doc, const char *config_path)
 int base_server::run(int argc, char **argv)
 {
 	namespace po = boost::program_options;
-		po::options_description description("Options (required options are marked with *)");
+		po::options_description description("Options");
 
 	std::string config_path;
 
 	description.add_options()
 		("help", "this help message")
-		("config,c", po::value<std::string>(&config_path)->required(), "config path")
+		("config,c", po::value<std::string>(&config_path), "config path (required)")
 	;
 
 	po::variables_map options;
@@ -148,13 +148,15 @@ int base_server::run(int argc, char **argv)
 		  options);
 	try {
 		po::notify(options);
-	} catch (po::required_option &e) {
+	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;
 		std::cerr << description << std::endl;
 		return -1;
 	}
 
-	if (options.count("help")) {
+	if (options.count("help") || !options.count("config")) {
+		if (!options.count("config"))
+			std::cerr << "\"config\" is required" << std::endl;
 		std::cerr << description << std::endl;
 		return -1;
 	}
