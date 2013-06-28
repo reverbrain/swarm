@@ -10,7 +10,7 @@ Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  libxml2-devel libev-devel
-BuildRequires:	boost-devel
+BuildRequires:	boost-devel, boost-iostreams, boost-thread, boost-system
 BuildRequires:	elliptics-devel
 BuildRequires:  curl-devel
 BuildRequires:	cmake28 uriparser-devel
