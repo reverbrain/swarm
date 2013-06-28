@@ -2,6 +2,7 @@
 #include "server_p.hpp"
 #include "monitor_connection_p.hpp"
 #include <boost/bind.hpp>
+#include <iostream>
 
 namespace ioremap { namespace thevoid {
 
