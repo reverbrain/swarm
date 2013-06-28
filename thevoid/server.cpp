@@ -271,7 +271,7 @@ std::shared_ptr<base_stream_factory> base_server::get_factory(const std::string 
 	url_parser.set_base(url);
 	const std::string path = url_parser.path();
 
-	auto it = m_data->handlers.find(url);
+	auto it = m_data->handlers.find(path);
 
 	if (it != m_data->handlers.end())
 		return it->second;
