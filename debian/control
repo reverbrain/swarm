@@ -1,8 +1,8 @@
 Source: swarm
 Priority: extra
 Maintainer: Ruslan Nigmatullin <euroelessar@yandex.ru>
-Build-Depends: debhelper (>= 8.0.0), cmake, liburiparser-dev, libcurl4-openssl-dev, libxml2-dev,
-  libev-dev, libboost-system-dev, libboost-thread-dev
+Build-Depends: debhelper (>= 7), cmake, liburiparser-dev, libcurl4-openssl-dev, libxml2-dev,
+  libev-dev, libboost-system-dev, libboost-thread-dev, libboost-program-options-dev, elliptics-dev
 Standards-Version: 3.9.3
 Section: libs
 Homepage: https://github.com/reverbrain/swarm
