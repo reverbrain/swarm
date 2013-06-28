@@ -1,3 +1,9 @@
+swarm (0.5.1.1) unstable; urgency=low
+
+  * Fixed handling of exact-match handlers
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 28 Jun 2013 21:06:33 +0400
+
 swarm (0.5.1.0) unstable; urgency=low
 
   * Added server::on_prefix method
