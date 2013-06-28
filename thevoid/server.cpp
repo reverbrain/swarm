@@ -241,14 +241,23 @@ int base_server::run(int argc, char **argv)
 
 void base_server::on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
 {
-	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
+	if (m_data->handlers.find(url) != m_data->handlers.end()) {
+		throw std::logic_error("Handler \"" + url + "\" is already registered");
+	}
+
+	m_data->handlers[url] = factory;
+}
+
+void base_server::on_prefix(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
+{
+	for (auto it = m_data->prefix_handlers.begin(); it != m_data->prefix_handlers.end(); ++it) {
 		if (it->first == url) {
-			throw std::logic_error("Handler \"" + url + "\" is already registered");
+			throw std::logic_error("Prefix handler \"" + url + "\" is already registered");
 		} else if (url.compare(0, it->first.size(), it->first) == 0) {
-			throw std::logic_error("Handler \"" + url + "\" is not accessable because \"" + it->first + "\" already registered");
+			throw std::logic_error("Prefix handler \"" + url + "\" is not accessable because \"" + it->first + "\" already registered");
 		}
 	}
-	m_data->handlers.emplace_back(url, factory);
+	m_data->prefix_handlers.emplace_back(url, factory);
 }
 
 void base_server::set_server(const std::weak_ptr<base_server> &server)
@@ -262,9 +271,14 @@ std::shared_ptr<base_stream_factory> base_server::get_factory(const std::string 
 	url_parser.set_base(url);
 	const std::string path = url_parser.path();
 
-	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
-		if (it->first.compare(0, url.size(), path) == 0) {
-			return it->second;
+	auto it = m_data->handlers.find(url);
+
+	if (it != m_data->handlers.end())
+		return it->second;
+
+	for (auto jt = m_data->prefix_handlers.begin(); jt != m_data->prefix_handlers.end(); ++jt) {
+		if (jt->first.compare(0, url.size(), path) == 0) {
+			return jt->second;
 		}
 	}
 

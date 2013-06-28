@@ -69,6 +69,7 @@ public:
 
 protected:
 	void on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory);
+	void on_prefix(const std::string &url, const std::shared_ptr<base_stream_factory> &factory);
 
 private:
 	template <typename Server, typename... Args>
@@ -94,10 +95,21 @@ protected:
 		base_server::on(url, factory);
 	}
 
+	void on_prefix(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
+	{
+		base_server::on_prefix(url, factory);
+	}
+
 	template <typename T>
 	void on(const std::string &url)
 	{
 		on(url, std::make_shared<stream_factory<Server, T>>(this->shared_from_this()));
+	}
+
+	template <typename T>
+	void on_prefix(const std::string &url)
+	{
+		on_prefix(url, std::make_shared<stream_factory<Server, T>>(this->shared_from_this()));
 	}
 };
 

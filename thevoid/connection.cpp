@@ -178,11 +178,14 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 template <typename T>
 void connection<T>::process_data(char *begin, char *end)
 {
-//	debug("data: \"" << std::string(begin, end - begin) << "\"");
+	debug("data: \"" << std::string(begin, end - begin) << "\"");
 	if (m_state & read_headers) {
 		boost::tribool result;
 		char *new_begin = NULL;
 		boost::tie(result, new_begin) = m_request_parser.parse(m_request, begin, end);
+
+		debug("parsed: \"" << std::string(begin, new_begin) << '"');
+		debug("parse result: " << (result ? "true" : (!result ? "false" : "unknown_state")));
 
 		if (!result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;

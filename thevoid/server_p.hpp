@@ -40,6 +40,8 @@ public:
 	std::set<server_data*> all_servers;
 };
 
+typedef std::shared_ptr<base_stream_factory> factory_ptr;
+
 class server_data
 {
 public:
@@ -63,7 +65,8 @@ public:
 	//! The signal_set is used to register for process termination notifications.
 	std::shared_ptr<signal_handler> signal_set;
 	//! User handlers for urls
-	std::vector<std::pair<std::string, std::shared_ptr<base_stream_factory>>> handlers;
+	std::vector<std::pair<std::string, factory_ptr>> prefix_handlers;
+    std::map<std::string, factory_ptr> handlers;
 };
 
 }}
