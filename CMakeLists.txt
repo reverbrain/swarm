@@ -17,7 +17,19 @@ locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
 find_package(Boost COMPONENTS system thread program_options REQUIRED)
 
 include_directories(
+    ${LIBEV_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIRS}
+    ${URIPARSER_INCLUDE_DIRS}
+    ${LIBXML2_INCLUDE_DIRS}
     "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+link_directories(
+    ${LIBEV_LIBRARY_DIRS}
+    ${CURL_LIBRARY_DIRS}
+    ${URIPARSER_LIBRARY_DIRS}
+    ${LIBXML2_LIBRARY_DIRS}
+    ${Boost_INCLUDE_DIRS}
 )
 
 add_subdirectory(swarm)

@@ -1,7 +1,3 @@
-include_directories(
-    ${Boost_INCLUDE_DIRS}
-)
-
 aux_source_directory(. THEVOID_SRC_LIST)
 add_library(thevoid SHARED ${THEVOID_SRC_LIST})
 target_link_libraries(thevoid ${Boost_LIBRARIES} pthread swarm)
