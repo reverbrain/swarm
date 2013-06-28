@@ -1,3 +1,10 @@
+swarm (0.5.1.0) unstable; urgency=low
+
+  * Added server::on_prefix method
+  * Behaviour of server::on was returned to perfect-match
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 28 Jun 2013 20:35:02 +0400
+
 swarm (0.5.0.0) unstable; urgency=low
 
   * Added TheVoid - asynchronous HTTP backend
