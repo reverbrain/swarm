@@ -54,7 +54,7 @@ if(BUILD_EXAMPLES)
 	endif()
 
 	add_executable(elliptics-server example/elliptics-server.cpp)
-	target_link_libraries(elliptics-server thevoid ${elliptics_cpp_LIBRARY} pthread)
+	target_link_libraries(elliptics-server thevoid ${elliptics_cpp_LIBRARY} ${elliptics_client_LIBRARY} pthread)
 endif()
 
 install(DIRECTORY thevoid/rapidjson

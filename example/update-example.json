@@ -1,8 +1,8 @@
 {
     "id": "elliptics",
     "indexes": {
-        "fast": "1",
-        "distributed": "2",
-        "fault-tolerant": "3"
+        "fast": "this is some 'private' data only for key 'elliptics' and index/tag 'fast'",
+        "distributed": "data for tag 'distributed'",
+        "fault-tolerant": "and 'fault-tolerant'"
     }
 }

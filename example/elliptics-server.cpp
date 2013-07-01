@@ -270,19 +270,25 @@ void elliptics_server::on_get::on_request(const ioremap::swarm::network_request 
 	swarm::network_url url(req.get_url());
 	swarm::network_query_list query_list(url.query());
 
-	if (!query_list.has_item("name")) {
+	if (!query_list.has_item("name") && !query_list.has_item("id")) {
 		get_reply()->send_error(network_reply::bad_request);
 		return;
 	}
 
-	std::string name = query_list.item_value("name");
-
-	std::cerr << "name: \"" << name << "\"" << std::endl;
-
 	session sess = get_server()->create_session();
 
-	sess.read_data(name, 0, 0)
-			.connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
+	if (query_list.has_item("name")) {
+		std::string name = query_list.item_value("name");
+		sess.read_data(name, 0, 0).connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
+	} else {
+		std::string sid = query_list.item_value("id");
+
+		struct dnet_id id;
+		memset(&id, 0, sizeof(struct dnet_id));
+
+		dnet_parse_numeric_id(sid.c_str(), id.id);
+		sess.read_data(id, 0, 0).connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
+	}
 }
 
 void elliptics_server::on_get::on_read_finished(const sync_read_result &result, const error_info &error)
