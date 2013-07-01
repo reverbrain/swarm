@@ -86,7 +86,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/*swarpm*.so*
+%{_libdir}/*swarm*.so*
 
 %files devel
 %defattr(-,root,root,-)
