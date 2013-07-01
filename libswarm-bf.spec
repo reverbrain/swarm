@@ -10,7 +10,12 @@ Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  libxml2-devel libev-devel
-BuildRequires:	boost-devel, boost-iostreams, boost-thread, boost-system
+%if %{defined rhel} && 0%{?rhel} < 6
+%define boost_ver 141
+%else
+%define boost_ver %{nil}
+%endif
+BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread
 BuildRequires:	elliptics-client-devel
 BuildRequires:  curl-devel
 BuildRequires:	cmake uriparser-devel
@@ -55,7 +60,11 @@ libthevoid devel
 %setup -q
 
 %build
+%if %{defined rhel} && 0%{?rhel} < 6
+CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake} -DBoost_LIB_DIR=/usr/lib64/boost141 -DBoost_INCLUDE_DIR=/usr/include/boost141 -DBoost_LIBRARYDIR=/usr/lib64/boost141 -DBOOST_LIBRARYDIR=/usr/lib64/boost141 .
+%else
 %{cmake} .
+%endif
 
 make %{?_smp_mflags}
 
