@@ -13,7 +13,7 @@ BuildRequires:  libxml2-devel libev-devel
 BuildRequires:	boost-devel, boost-iostreams, boost-thread, boost-system
 BuildRequires:	elliptics-devel
 BuildRequires:  curl-devel
-BuildRequires:	cmake28 uriparser-devel
+BuildRequires:	cmake uriparser-devel
 
 Obsoletes: srw
 
@@ -55,7 +55,7 @@ libthevoid devel
 %setup -q
 
 %build
-%{cmake28} .
+%{cmake} .
 
 make %{?_smp_mflags}
 
