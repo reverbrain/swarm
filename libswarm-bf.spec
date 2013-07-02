@@ -41,6 +41,7 @@ needed for developing software which uses the cairo graphics library.
 %package -n libthevoid
 Summary:	libthevoid
 Group:		Development/Libraries
+Requires:	libswarm = %{version}-%{release}
 
 
 %description -n libthevoid
@@ -51,7 +52,7 @@ libthevoid
 Summary:	TheVoid devel
 Group:		Development/Libraries
 Requires:	%{name} = %{version}-%{release}
-Requires:	libthevoid = %{version}-%{release}
+Requires:	libthevoid = %{version}-%{release}, libswarm-devel = %{version}-%{release}
 
 %description -n libthevoid-devel
 libthevoid devel
