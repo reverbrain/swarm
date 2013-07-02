@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.1.1-2
+Version:	0.5.1.2
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,7 +106,7 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Tue Jul 02 2013 Kirill Smorodinnikov <shaitan@yandex-team.ru> - 0.5.1.1-2
+* Tue Jul 02 2013 Kirill Smorodinnikov <shaitan@yandex-team.ru> - 0.5.1.2
 - Aligned version in spec and debian/control.
 - Fixed handling of exact-match handlers
 - Added server::on_prefix method
