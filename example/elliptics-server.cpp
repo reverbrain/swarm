@@ -121,7 +121,7 @@ void elliptics_server::on_update::on_request(const swarm::network_request &req, 
 		indexes_entries.push_back(entry);
 	}
 
-	sess.update_indexes(id, indexes_entries)
+	sess.set_indexes(id, indexes_entries)
 			.connect(std::bind(&on_update::on_update_finished, shared_from_this(), _2));
 }
 
@@ -234,9 +234,9 @@ void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result 
 		indexes.SetObject();
 
 		for (auto it = entry.indexes.begin(); it != entry.indexes.end(); ++it) {
-			const std::string data = it->second.to_string();
+			const std::string data = it->data.to_string();
 			rapidjson::Value value(data.c_str(), data.size(), result_object.GetAllocator());
-			indexes.AddMember(m_map[it->first].c_str(), value, result_object.GetAllocator());
+			indexes.AddMember(m_map[it->index].c_str(), value, result_object.GetAllocator());
 		}
 
 		dnet_dump_id_len_raw(entry.id.id, DNET_ID_SIZE, id_str);
