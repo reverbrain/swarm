@@ -129,7 +129,8 @@ void connection<T>::close_impl()
 	}
 
 	if (!m_request.is_keep_alive()) {
-		m_socket.shutdown(boost::asio::socket_base::shutdown_both);
+		boost::system::error_code ignored_ec;
+		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
 		return;
 	}
 
@@ -257,9 +258,9 @@ void connection<T>::async_read()
 template <typename T>
 void connection<T>::send_error(swarm::network_reply::status_type type)
 {
-	m_reply = stock_replies::stock_reply(type);
-	send_headers(m_reply, stock_replies::status_content(type),
-		     std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
+	send_headers(stock_replies::stock_reply(type),
+		stock_replies::status_content(type),
+		std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
 }
 
 template <typename T>

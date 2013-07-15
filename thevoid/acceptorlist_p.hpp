@@ -2,7 +2,7 @@
 #define IOREMAP_THEVOID_ACCEPTORLIST_P_HPP
 
 #include "server.hpp"
-#include <thread>
+#include <boost/thread.hpp>
 
 namespace ioremap {
 namespace thevoid {
@@ -28,7 +28,7 @@ public:
 	void start_acceptor(size_t index);
 	void handle_accept(size_t index, const connection_ptr_type &conn, const boost::system::error_code &err);
 
-	void start_threads(int thread_count, std::vector<std::thread> &threads);
+	void start_threads(int thread_count, std::vector<boost::thread> &threads);
 
 	void handle_stop();
 

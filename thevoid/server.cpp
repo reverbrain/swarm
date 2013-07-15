@@ -19,7 +19,7 @@
 #include <boost/program_options.hpp>
 
 #include <vector>
-#include <thread>
+#include <boost/thread.hpp>
 #include <functional>
 #include <iostream>
 
@@ -81,7 +81,7 @@ void signal_handler::handler(int)
 
 base_server::base_server() : m_data(new server_data)
 {
-	m_data->threads_count = std::thread::hardware_concurrency();
+	m_data->threads_count = 2;
 }
 
 base_server::~base_server()
@@ -226,7 +226,7 @@ int base_server::run(int argc, char **argv)
 		return -7;
 	}
 
-	std::vector<std::thread> threads;
+	std::vector<boost::thread> threads;
 
 	m_data->local_acceptors.start_threads(m_data->threads_count, threads);
 	m_data->tcp_acceptors.start_threads(m_data->threads_count, threads);

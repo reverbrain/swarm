@@ -72,7 +72,7 @@ void acceptors_list<Connection>::handle_accept(size_t index, const connection_pt
 }
 
 template <typename Connection>
-void acceptors_list<Connection>::start_threads(int thread_count, std::vector<std::thread> &threads)
+void acceptors_list<Connection>::start_threads(int thread_count, std::vector<boost::thread> &threads)
 {
 	for (size_t i = 0; i < io_services.size(); ++i) {
 		auto functor = boost::bind(&boost::asio::io_service::run, io_services[i].get());
