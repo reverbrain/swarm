@@ -277,7 +277,7 @@ std::shared_ptr<base_stream_factory> base_server::get_factory(const std::string 
 		return it->second;
 
 	for (auto jt = m_data->prefix_handlers.begin(); jt != m_data->prefix_handlers.end(); ++jt) {
-		if (jt->first.compare(0, url.size(), path) == 0) {
+		if (path.compare(0, jt->first.size(), jt->first) == 0) {
 			return jt->second;
 		}
 	}
