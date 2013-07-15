@@ -226,7 +226,7 @@ int base_server::run(int argc, char **argv)
 		return -7;
 	}
 
-	std::vector<boost::thread> threads;
+	std::vector<std::shared_ptr<boost::thread> > threads;
 
 	m_data->local_acceptors.start_threads(m_data->threads_count, threads);
 	m_data->tcp_acceptors.start_threads(m_data->threads_count, threads);
@@ -234,7 +234,7 @@ int base_server::run(int argc, char **argv)
 
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)
-		threads[i].join();
+		threads[i]->join();
 
 	return 0;
 }
