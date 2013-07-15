@@ -105,15 +105,21 @@ public:
         m_data.emplace_back(name, value);
     }
 
-    void set_header(const std::string &name, const std::string &value)
-    {
-        auto it = find_header(name.c_str(), name.size());
-
-        if (it == m_data.end())
-            m_data.emplace_back(name, value);
-        else
-            it->second = value;
-    }
+	void set_header(const std::string &name, const std::string &value)
+	{
+		bool found = false;
+		for (auto it = m_data.begin(); it != m_data.end(); ++it) {
+			while (are_case_insensitive_equal(it->first, name.c_str(), name.size())) {
+				if (found) {
+					it->second = value;
+					found = true;
+					break;
+				} else {
+					it = m_data.erase(it);
+				}
+			}
+		}
+	}
 
     std::vector<headers_entry>::iterator find_header(const char *name, size_t name_size)
     {
