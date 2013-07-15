@@ -188,7 +188,9 @@ std::string network_url::path()
 		path += "/";
 	}
 
-	for (auto it = p->uri.pathTail; it; it = it->next) {
+	for (auto it = p->uri.pathHead; it != p->uri.pathTail->next; it = it->next) {
+		if (it != p->uri.pathHead)
+			path += "/";
 		path += to_string(it->text);
 	}
 
