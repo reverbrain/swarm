@@ -1,3 +1,10 @@
+swarm (0.5.2.0) unstable; urgency=low
+
+  * Fixed swarm freezing on high rps or low-latency
+  * Added non-virtual reply methods to request_stream
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 17 Jul 2013 21:32:44 +0400
+
 swarm (0.5.1.2) unstable; urgency=low
 
   * Fixed getting path component from url
