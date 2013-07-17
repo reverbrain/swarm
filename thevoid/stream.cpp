@@ -26,5 +26,18 @@ reply_stream::~reply_stream()
 {
 }
 
+base_request_stream::base_request_stream()
+{
+}
+
+base_request_stream::~base_request_stream()
+{
+}
+
+void base_request_stream::initialize(const std::shared_ptr<reply_stream> &reply)
+{
+	m_reply = reply;
+}
+
 } // namespace thevoid
 } // namespace ioremap

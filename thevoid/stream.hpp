@@ -19,6 +19,28 @@
 #include <boost/asio.hpp>
 #include <swarm/networkrequest.h>
 
+namespace ioremap { namespace thevoid { namespace detail {
+struct network_reply_wrapper
+{
+	const swarm::network_reply reply;
+
+	network_reply_wrapper(const swarm::network_reply &reply) : reply(reply)
+	{
+	}
+};
+}
+
+} } // namespace ioremap::thevoid::detail
+
+namespace boost { namespace asio {
+
+inline const_buffer buffer(const ioremap::thevoid::detail::network_reply_wrapper &wrapper)
+{
+	return buffer(wrapper.reply.get_data());
+}
+
+} } // namespace boost::asio
+
 namespace ioremap {
 namespace thevoid {
 
@@ -41,13 +63,14 @@ public:
 class base_request_stream
 {
 public:
-	virtual ~base_request_stream() {}
+	base_request_stream();
+	virtual ~base_request_stream();
 
 	virtual void on_headers(const swarm::network_request &req) = 0;
 	virtual void on_data(const boost::asio::const_buffer &buffer) = 0;
 	virtual void on_close(const boost::system::error_code &err) { (void) err; }
 
-	void initialize(const std::shared_ptr<reply_stream> &reply) { m_reply = reply; }
+	void initialize(const std::shared_ptr<reply_stream> &reply);
 
 protected:
 	std::shared_ptr<reply_stream> get_reply()
@@ -82,7 +105,81 @@ protected:
 		return m_server;
 	}
 
+	void send_reply(const swarm::network_reply &rep)
+	{
+		send_reply(rep, detail::network_reply_wrapper(rep));
+	}
+
+	template <typename T>
+	void send_reply(const swarm::network_reply &rep, T &&data)
+	{
+		get_reply()->send_headers(rep, boost::asio::buffer(data),
+					  make_wrapper(std::move(data), make_close_handler()));
+	}
+
+	void send_reply(int code)
+	{
+		get_reply()->send_error(static_cast<swarm::network_reply::status_type>(code));
+	}
+
+	void send_headers(const swarm::network_reply &rep,
+			  const std::function<void (const boost::system::error_code &err)> &handler)
+	{
+		get_reply()->send_headers(rep, detail::network_reply_wrapper(rep), handler);
+	}
+
+	template <typename T>
+	void send_headers(const swarm::network_reply &rep,
+			  T &&data,
+			  const std::function<void (const boost::system::error_code &err)> &handler)
+	{
+		get_reply()->send_headers(rep, boost::asio::buffer(data),
+					  make_wrapper(std::move(data), handler));
+	}
+
+	void send_data(const boost::asio::const_buffer &data,
+		       const std::function<void (const boost::system::error_code &err)> &handler)
+	{
+		get_reply()->send_data(data, handler);
+	}
+
+	template <typename T>
+	void send_data(T &&data,
+		       const std::function<void (const boost::system::error_code &err)> &handler)
+	{
+		get_reply()->send_data(boost::asio::buffer(data),
+				       make_wrapper(std::move(data), handler));
+	}
+
 private:
+	template <typename T>
+	struct functor_wrapper
+	{
+		std::shared_ptr<T> m_data;
+		std::function<void (const boost::system::error_code &err)> m_handler;
+
+		functor_wrapper(T &&data, const std::function<void (const boost::system::error_code &err)> &handler)
+			: m_data(std::make_shared<T>(std::move(data))), m_handler(handler)
+		{
+		}
+
+		void operator() (const boost::system::error_code &err) const
+		{
+			m_handler(err);
+		}
+	};
+
+	template <typename T>
+	std::function<void (const boost::system::error_code &err)> make_wrapper(T &&data, const std::function<void (const boost::system::error_code &err)> &handler)
+	{
+		return functor_wrapper<T>(std::move(data), handler);
+	}
+
+	std::function<void (const boost::system::error_code &err)> make_close_handler()
+	{
+		return std::bind(&reply_stream::close, get_reply(), std::placeholders::_1);
+	}
+
 	std::shared_ptr<Server> m_server;
 };
 

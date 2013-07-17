@@ -38,15 +38,12 @@ public:
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 		virtual void on_update_finished(const ioremap::elliptics::error_info &error);
-		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
 	struct on_find : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_find>
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 		virtual void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result, const ioremap::elliptics::error_info &error);
-		virtual void on_send_finished(const std::string &);
-		virtual void on_close(const boost::system::error_code &err) /*override*/;
 
 		std::map<dnet_raw_id, std::string, id_comparator> m_map;
 	};
@@ -55,21 +52,17 @@ public:
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 		virtual void on_read_finished(const ioremap::elliptics::sync_read_result &result, const ioremap::elliptics::error_info &error);
-		virtual void on_send_finished(const ioremap::elliptics::data_pointer &);
-		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
 	struct on_upload : public simple_request_stream<elliptics_server>, public std::enable_shared_from_this<on_upload>
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 		virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error);
-		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
 	struct on_ping : public simple_request_stream<elliptics_server>
 	{
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
-		virtual void on_close(const boost::system::error_code &err) /*override*/;
 	};
 
 protected:

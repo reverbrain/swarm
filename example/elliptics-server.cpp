@@ -13,6 +13,18 @@
  * GNU General Public License for more details.
  */
 
+#include <boost/asio.hpp>
+#include <elliptics/utils.hpp>
+
+namespace boost { namespace asio {
+
+const_buffer buffer(const ioremap::elliptics::data_pointer &data)
+{
+	return buffer(data.data(), data.size());
+}
+
+} }
+
 #include "elliptics-server.hpp"
 #include <iostream>
 
@@ -128,16 +140,11 @@ void elliptics_server::on_update::on_request(const swarm::network_request &req, 
 void elliptics_server::on_update::on_update_finished(const error_info &error)
 {
 	if (error) {
-		get_reply()->send_error(swarm::network_reply::service_unavailable);
+		send_reply(swarm::network_reply::service_unavailable);
 		return;
 	}
 
-	get_reply()->send_error(swarm::network_reply::ok);
-}
-
-void elliptics_server::on_update::on_close(const boost::system::error_code &err)
-{
-	std::cerr << "closed" << std::endl;
+	send_reply(swarm::network_reply::ok);
 }
 
 void elliptics_server::on_find::on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer)
@@ -243,24 +250,13 @@ void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result 
 		result_object.AddMember(id_str, indexes, result_object.GetAllocator());
 	}
 
-	const std::string result_str = result_object.ToString();
-
 	swarm::network_reply reply;
 	reply.set_code(swarm::network_reply::ok);
-	reply.set_content_length(result_str.size());
 	reply.set_content_type("text/json");
-	get_reply()->send_headers(reply, boost::asio::buffer(result_str),
-				  std::bind(&on_find::on_send_finished, shared_from_this(), result_str));
-}
+	reply.set_data(result_object.ToString());
+	reply.set_content_length(reply.get_data().size());
 
-void elliptics_server::on_find::on_send_finished(const std::string &)
-{
-	get_reply()->close(boost::system::error_code());
-}
-
-void elliptics_server::on_find::on_close(const boost::system::error_code &err)
-{
-	(void) err;
+	send_reply(reply);
 }
 
 void elliptics_server::on_get::on_request(const ioremap::swarm::network_request &req, const boost::asio::const_buffer &buffer)
@@ -320,20 +316,9 @@ void elliptics_server::on_get::on_read_finished(const sync_read_result &result, 
 	reply.set_content_length(file.size());
 	reply.set_content_type("text/plain");
 	reply.set_last_modified(ts.tsec);
-	get_reply()->send_headers(reply, boost::asio::buffer(file.data(), file.size()),
-				  std::bind(&on_get::on_send_finished, shared_from_this(), file));
-}
 
-void elliptics_server::on_get::on_send_finished(const data_pointer &)
-{
-	get_reply()->close(boost::system::error_code());
+	send_reply(reply, std::move(file));
 }
-
-void elliptics_server::on_get::on_close(const boost::system::error_code &err)
-{
-	(void) err;
-}
-
 
 void elliptics_server::on_upload::on_request(const ioremap::swarm::network_request &req, const boost::asio::const_buffer &buffer)
 {
@@ -366,31 +351,18 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 	reply.set_code(swarm::network_reply::ok);
 	reply.set_content_length(0);
 	reply.set_content_type("text/html");
-	get_reply()->send_headers(reply, boost::asio::buffer("", 0),
-				  std::bind(&reply_stream::close, get_reply(), std::placeholders::_1));
-}
 
-void elliptics_server::on_upload::on_close(const boost::system::error_code &err)
-{
-	(void) err;
+	send_reply(reply);
 }
 
 void elliptics_server::on_ping::on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer)
 {
-	auto conn = get_reply();
-
 	swarm::network_reply reply;
 	reply.set_code(swarm::network_reply::ok);
 	reply.set_content_length(0);
 	reply.set_content_type("text/html");
 
-	conn->send_headers(reply, boost::asio::buffer("", 0),
-			   std::bind(&reply_stream::close, conn, std::placeholders::_1));
-}
-
-void elliptics_server::on_ping::on_close(const boost::system::error_code &err)
-{
-	(void) err;
+	send_reply(reply);
 }
 
 

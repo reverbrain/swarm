@@ -87,7 +87,7 @@ void connection<T>::send_headers(const swarm::network_reply &rep,
 {
 	m_reply = rep;
 	if (m_request.is_keep_alive()) {
-        m_reply.set_header("Connection", "Keep-Alive");
+		m_reply.set_header("Connection", "Keep-Alive");
 		debug("Added Keep-Alive");
 	}
 
