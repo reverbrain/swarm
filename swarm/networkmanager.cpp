@@ -39,6 +39,8 @@ enum http_command {
     POST
 };
 
+std::atomic_int alive(0);
+
 class network_connection_info
 {
 public:
@@ -76,7 +78,7 @@ public:
 
     void on_socket_event(ev::io &io, int revent)
     {
-        debug() << std::endl;
+        debug() << "revent: " << revent << std::endl;
         int action = 0;
         if (revent & EV_READ)
             action |= CURL_CSELECT_IN;
@@ -157,7 +159,7 @@ public:
 
             curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
-            //    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
+//	    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
             curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.get_request().get_url().c_str());
             curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.get_request().get_timeout());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
@@ -199,7 +201,7 @@ public:
     void check_run_count()
     {
         debug() << prev_running << " " << still_running << std::endl;
-        if (prev_running > still_running) {
+//        if (prev_running > still_running) {
             char *effective_url = NULL;
             CURLMsg *msg;
             int messsages_left;
@@ -258,13 +260,13 @@ public:
             } while (easy);
 
             next_connections();
-        }
+//        }
         prev_running = still_running;
     }
 
     static int socket_callback(CURL *e, curl_socket_t s, int what, network_manager *manager, ev::io *io)
     {
-        debug() << std::endl;
+        debug() << "s: " << s << ", what: " << what << ", io: " << io << std::endl;
         (void) e;
 
         if (what == CURL_POLL_REMOVE) {
@@ -304,7 +306,7 @@ public:
 
     static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
     {
-        debug() << std::endl;
+        debug() << "size: " << size << ", nmemb: " << nmemb << std::endl;
         const size_t real_size = size * nmemb;
         info->data.write(data, real_size);
         return real_size;
