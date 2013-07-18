@@ -1,3 +1,9 @@
+swarm (0.5.3.0) unstable; urgency=low
+
+  * Added try_* API
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 21:38:08 +0400
+
 swarm (0.5.2.3) unstable; urgency=low
 
   * Moved send_headers implementation to boost-thread
