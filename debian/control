@@ -22,6 +22,13 @@ Depends: libswarm1 (= ${binary:Version}), libev-dev
 Description: Swarm is aiming at your web (devel)
  Development files
 
+Package: libswarm-dbg
+Architecture: any
+Section: debug
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm1 (= ${binary:Version})
+Description: Swarm is aiming at your web (debug)
+ Debug files and symbols.
+
 Package: libthevoid1
 Section: libs
 Architecture: any

@@ -357,12 +357,14 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 
 void elliptics_server::on_ping::on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer)
 {
-	swarm::network_reply reply;
-	reply.set_code(swarm::network_reply::ok);
-	reply.set_content_length(0);
-	reply.set_content_type("text/html");
+		get_reply()->send_error(ioremap::swarm::network_reply::internal_server_error);
+//	send_reply(200);
+//	swarm::network_reply reply;
+//	reply.set_code(swarm::network_reply::ok);
+//	reply.set_content_length(0);
+//	reply.set_content_type("text/html");
 
-	send_reply(reply);
+//	send_reply(reply);
 }
 
 
