@@ -35,10 +35,16 @@ namespace thevoid {
 #define debug(arg) do {} while (0)
 
 static std::atomic_int connections_counter(0);
+static std::atomic_int active_connections_counter(0);
 
 int get_connections_counter()
 {
 	return connections_counter;
+}
+
+int get_active_connections_counter()
+{
+	return active_connections_counter;
 }
 
 template <typename T>
@@ -105,22 +111,24 @@ void connection<T>::send_data(const boost::asio::const_buffer &buffer,
 template <typename T>
 void connection<T>::close(const boost::system::error_code &err)
 {
-	boost::system::error_code ignored_ec;
-	if (err) {
-		m_handler.reset();
-		// If there was any error - close the connection, it's broken
-		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
-	} else {
-		// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
-		m_strand.post(std::bind(&connection::close_impl, this->shared_from_this()));
-	}
+	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
+	m_strand.post(std::bind(&connection::close_impl, this->shared_from_this(), err));
 }
 
 template <typename T>
-void connection<T>::close_impl()
+void connection<T>::close_impl(const boost::system::error_code &err)
 {
 	debug(m_state);
+	if (m_handler)
+		--active_connections_counter;
 	m_handler.reset();
+
+	if (err) {
+		boost::system::error_code ignored_ec;
+		// If there was any error - close the connection, it's broken
+		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+		return;
+	}
 
 	// Is request data is not fully received yet - receive it
 	if (m_state != processing_request) {
@@ -162,8 +170,10 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 {
 	debug("error: " << err.message());
 	if (err) {
-		if (m_handler)
+		if (m_handler) {
 			m_handler->on_close(err);
+			--active_connections_counter;
+		}
 		m_handler.reset();
 		return;
 	}
@@ -204,6 +214,7 @@ void connection<T>::process_data(char *begin, char *end)
 
 			m_content_length = m_request.get_content_length();
 
+			++active_connections_counter;
 			m_handler = factory->create();
 			m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
 			m_handler->on_headers(m_request);

@@ -62,7 +62,7 @@ public:
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
-	void close_impl();
+	void close_impl(const boost::system::error_code &err);
 	void process_next();
 
 	//! Handle completion of a read operation.

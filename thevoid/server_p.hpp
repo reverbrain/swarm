@@ -14,6 +14,7 @@ namespace ioremap {
 namespace thevoid {
 
 int get_connections_counter();
+int get_active_connections_counter();
 
 //! This handler is created to resolve creation of several servers in one process,
 //! all of them must be stopped on SIGINT/SIGTERM signal

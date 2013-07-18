@@ -35,7 +35,8 @@ std::string monitor_connection::get_information()
 	rapidjson::Value information;
 	information.SetObject();
 
-	information.AddMember("active-connections", get_connections_counter(), allocator);
+	information.AddMember("connections", get_connections_counter(), allocator);
+	information.AddMember("active-connections", get_active_connections_counter(), allocator);
 
 	rapidjson::StringBuffer buffer;
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
