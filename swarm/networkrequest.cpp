@@ -119,6 +119,10 @@ public:
 				}
 			}
 		}
+
+		if (!found) {
+			m_data.emplace_back(name, value);
+		}
 	}
 
     std::vector<headers_entry>::iterator find_header(const char *name, size_t name_size)
