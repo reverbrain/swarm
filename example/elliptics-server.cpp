@@ -109,12 +109,12 @@ void elliptics_server::on_update::on_request(const swarm::network_request &req, 
 	doc.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
 
 	if (doc.HasParseError()) {
-		get_reply()->send_error(swarm::network_reply::bad_request);
+		send_reply(swarm::network_reply::bad_request);
 		return;
 	}
 
 	if (!doc.HasMember("id") || !doc.HasMember("indexes")) {
-		get_reply()->send_error(swarm::network_reply::bad_request);
+		send_reply(swarm::network_reply::bad_request);
 		return;
 	}
 
@@ -157,12 +157,12 @@ void elliptics_server::on_find::on_request(const swarm::network_request &req, co
 	data.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
 
 	if (data.HasParseError()) {
-		get_reply()->send_error(swarm::network_reply::bad_request);
+		send_reply(swarm::network_reply::bad_request);
 		return;
 	}
 
 	if (!data.HasMember("type") || !data.HasMember("indexes")) {
-		get_reply()->send_error(swarm::network_reply::bad_request);
+		send_reply(swarm::network_reply::bad_request);
 		return;
 	}
 
@@ -183,7 +183,7 @@ void elliptics_server::on_find::on_request(const swarm::network_request &req, co
 	}
 
 	if (type != "and" && type != "or") {
-		get_reply()->send_error(swarm::network_reply::bad_request);
+		send_reply(swarm::network_reply::bad_request);
 		return;
 	}
 
@@ -226,7 +226,7 @@ private:
 void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result &result, const error_info &error)
 {
 	if (error) {
-		get_reply()->send_error(swarm::network_reply::service_unavailable);
+		send_reply(swarm::network_reply::service_unavailable);
 		return;
 	}
 
@@ -266,34 +266,28 @@ void elliptics_server::on_get::on_request(const ioremap::swarm::network_request 
 	swarm::network_url url(req.get_url());
 	swarm::network_query_list query_list(url.query());
 
-	if (!query_list.has_item("name") && !query_list.has_item("id")) {
-		get_reply()->send_error(network_reply::bad_request);
-		return;
-	}
-
 	session sess = get_server()->create_session();
 
-	if (query_list.has_item("name")) {
-		std::string name = query_list.item_value("name");
-		sess.read_data(name, 0, 0).connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
-	} else {
-		std::string sid = query_list.item_value("id");
-
+	if (auto name = query_list.try_item("name")) {
+		sess.read_data(*name, 0, 0).connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
+	} else if (auto sid = query_list.try_item("id")) {
 		struct dnet_id id;
 		memset(&id, 0, sizeof(struct dnet_id));
 
-		dnet_parse_numeric_id(sid.c_str(), id.id);
+		dnet_parse_numeric_id(sid->c_str(), id.id);
 		sess.read_data(id, 0, 0).connect(std::bind(&on_get::on_read_finished, shared_from_this(), _1, _2));
+	} else {
+		send_reply(network_reply::bad_request);
 	}
 }
 
 void elliptics_server::on_get::on_read_finished(const sync_read_result &result, const error_info &error)
 {
 	if (error.code() == -ENOENT) {
-		get_reply()->send_error(swarm::network_reply::not_found);
+		send_reply(swarm::network_reply::not_found);
 		return;
 	} else if (error) {
-		get_reply()->send_error(swarm::network_reply::service_unavailable);
+		send_reply(swarm::network_reply::service_unavailable);
 		return;
 	}
 
@@ -306,7 +300,7 @@ void elliptics_server::on_get::on_read_finished(const sync_read_result &result, 
 
 	if (request.has_if_modified_since()) {
 		if (ts.tsec <= request.get_if_modified_since()) {
-			get_reply()->send_error(swarm::network_reply::not_modified);
+			send_reply(swarm::network_reply::not_modified);
 			return;
 		}
 	}
@@ -341,7 +335,7 @@ void elliptics_server::on_upload::on_request(const ioremap::swarm::network_reque
 void elliptics_server::on_upload::on_write_finished(const sync_write_result &result, const error_info &error)
 {
 	if (error) {
-		get_reply()->send_error(swarm::network_reply::service_unavailable);
+		send_reply(swarm::network_reply::service_unavailable);
 		return;
 	}
 
@@ -357,14 +351,7 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 
 void elliptics_server::on_ping::on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer)
 {
-		get_reply()->send_error(ioremap::swarm::network_reply::internal_server_error);
-//	send_reply(200);
-//	swarm::network_reply reply;
-//	reply.set_code(swarm::network_reply::ok);
-//	reply.set_content_length(0);
-//	reply.set_content_type("text/html");
-
-//	send_reply(reply);
+	send_reply(swarm::network_reply::ok);
 }
 
 

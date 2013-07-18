@@ -114,5 +114,26 @@ std::string network_query_list::item_value(const std::string &key) const
 	return std::string();
 }
 
+boost::optional<std::string> network_query_list::try_item(const std::string &key) const
+{
+	for (size_t i = 0; i < p->items.size(); ++i) {
+		if (p->items[i].first == key)
+			return p->items[i].second;
+	}
+	return boost::none;
+}
+
+boost::optional<std::string> network_query_list::try_item(const char *key) const
+{
+	const size_t key_size = strlen(key);
+
+	for (size_t i = 0; i < p->items.size(); ++i) {
+		const auto &item = p->items[i];
+		if (item.first.compare(0, item.first.size(), key, key_size))
+			return item.second;
+	}
+	return boost::none;
+}
+
 } // namespace swarm
 } // namespace ioremap

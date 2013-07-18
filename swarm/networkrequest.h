@@ -20,6 +20,8 @@
 #include <string>
 #include <utility>
 
+#include <boost/optional.hpp>
+
 namespace ioremap {
 namespace swarm {
 
@@ -98,6 +100,8 @@ public:
     bool has_header(const std::string &name) const;
     std::string get_header(const std::string &name) const;
     std::string get_header(const char *name) const;
+    boost::optional<std::string> try_header(const std::string &name) const;
+    boost::optional<std::string> try_header(const char *name) const;
     void set_headers(const std::vector<headers_entry> &headers);
     void set_header(const headers_entry &header);
     void set_header(const std::string &name, const std::string &value);
@@ -177,6 +181,8 @@ public:
     bool has_header(const std::string &name) const;
     std::string get_header(const std::string &name) const;
     std::string get_header(const char *name) const;
+    boost::optional<std::string> try_header(const std::string &name) const;
+    boost::optional<std::string> try_header(const char *name) const;
     void set_headers(const std::vector<headers_entry> &headers);
     void set_header(const headers_entry &header);
     void set_header(const std::string &name, const std::string &value);

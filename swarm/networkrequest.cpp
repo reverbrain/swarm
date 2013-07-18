@@ -167,10 +167,35 @@ public:
         return get_header(name.c_str(), name.size());
     }
 
+    std::string get_header(const char *name) const
+    {
+	    return get_header(name, strlen(name));
+    }
+
     template <size_t N>
     std::string get_header(const char (&name)[N]) const
     {
         return get_header(name, N - 1);
+    }
+
+    boost::optional<std::string> try_header(const char *name, size_t name_size) const
+    {
+	    auto it = find_header(name, name_size);
+
+            if (it != m_data.end())
+                return it->second;
+
+            return boost::none;
+    }
+
+    boost::optional<std::string> try_header(const std::string &name) const
+    {
+	    return try_header(name.c_str(), name.size());
+    }
+
+    boost::optional<std::string> try_header(const char *name) const
+    {
+	    return try_header(name, strlen(name));
     }
 
     std::vector<headers_entry>::const_iterator end()
@@ -297,7 +322,17 @@ std::string network_request::get_header(const std::string &name) const
 
 std::string network_request::get_header(const char *name) const
 {
-    return m_data->headers.get_header(name);
+	return m_data->headers.get_header(name);
+}
+
+boost::optional<std::string> network_request::try_header(const std::string &name) const
+{
+	return m_data->headers.try_header(name);
+}
+
+boost::optional<std::string> network_request::try_header(const char *name) const
+{
+	return m_data->headers.try_header(name);
 }
 
 void network_request::set_headers(const std::vector<headers_entry> &headers)
@@ -521,7 +556,17 @@ std::string network_reply::get_header(const std::string &name) const
 
 std::string network_reply::get_header(const char *name) const
 {
-    return m_data->headers.get_header(name);
+	return m_data->headers.get_header(name);
+}
+
+boost::optional<std::string> network_reply::try_header(const std::string &name) const
+{
+	return m_data->headers.try_header(name);
+}
+
+boost::optional<std::string> network_reply::try_header(const char *name) const
+{
+	return m_data->headers.try_header(name);
 }
 
 void network_reply::set_headers(const std::vector<headers_entry> &headers)

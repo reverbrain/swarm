@@ -5,6 +5,8 @@
 #include <utility>
 #include <string>
 
+#include <boost/optional.hpp>
+
 namespace ioremap {
 namespace swarm {
 
@@ -28,6 +30,8 @@ public:
 
 	bool has_item(const std::string &key) const;
 	std::string item_value(const std::string &key) const;
+	boost::optional<std::string> try_item(const std::string &key) const;
+	boost::optional<std::string> try_item(const char *key) const;
 
 private:
 	network_query_list(const network_query_list &other);
