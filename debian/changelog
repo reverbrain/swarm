@@ -1,3 +1,9 @@
+swarm (0.5.2.3) unstable; urgency=low
+
+  * Moved send_headers implementation to boost-thread
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 20:06:27 +0400
+
 swarm (0.5.2.2) unstable; urgency=low
 
   * Added libswarm-dbg package
