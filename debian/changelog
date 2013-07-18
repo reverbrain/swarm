@@ -1,3 +1,9 @@
+swarm (0.5.2.2) unstable; urgency=low
+
+  * Added libswarm-dbg package
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 18:32:31 +0400
+
 swarm (0.5.2.1) unstable; urgency=low
 
   * Fixed network_request::set_header implementation
