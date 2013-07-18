@@ -62,8 +62,11 @@ public:
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
-	void close_impl(const boost::system::error_code &err);
-	void process_next();
+    void send_headers_impl(const swarm::network_reply &rep,
+                           const boost::asio::const_buffer &content,
+                           const std::function<void (const boost::system::error_code &err)> &handler);
+    void close_impl(const boost::system::error_code &err);
+    void process_next();
 
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);

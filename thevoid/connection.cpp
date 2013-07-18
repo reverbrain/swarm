@@ -91,14 +91,8 @@ void connection<T>::send_headers(const swarm::network_reply &rep,
 	const boost::asio::const_buffer &content,
 	const std::function<void (const boost::system::error_code &err)> &handler)
 {
-	m_reply = rep;
-	if (m_request.is_keep_alive()) {
-		m_reply.set_header("Connection", "Keep-Alive");
-		debug("Added Keep-Alive");
-	}
-
-	boost::asio::async_write(m_socket, stock_replies::to_buffers(m_reply, content),
-                             m_strand.wrap(boost::bind(handler, _1)));
+	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
+	m_strand.post(std::bind(&connection::send_headers_impl, this->shared_from_this(), rep, content, handler));
 }
 
 template <typename T>
@@ -113,6 +107,21 @@ void connection<T>::close(const boost::system::error_code &err)
 {
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
 	m_strand.post(std::bind(&connection::close_impl, this->shared_from_this(), err));
+}
+
+template <typename T>
+void connection<T>::send_headers_impl(const swarm::network_reply &rep,
+	const boost::asio::const_buffer &content,
+	const std::function<void (const boost::system::error_code &)> &handler)
+{
+	m_reply = rep;
+	if (m_request.is_keep_alive()) {
+		m_reply.set_header("Connection", "Keep-Alive");
+		debug("Added Keep-Alive");
+	}
+
+	boost::asio::async_write(m_socket, stock_replies::to_buffers(m_reply, content),
+                             m_strand.wrap(boost::bind(handler, _1)));
 }
 
 template <typename T>
