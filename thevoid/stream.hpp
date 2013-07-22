@@ -113,8 +113,8 @@ protected:
 	template <typename T>
 	void send_reply(const swarm::network_reply &rep, T &&data)
 	{
-		get_reply()->send_headers(rep, boost::asio::buffer(data),
-					  make_wrapper(std::move(data), make_close_handler()));
+		auto wrapper = make_wrapper(std::move(data), make_close_handler());
+		get_reply()->send_headers(rep, boost::asio::buffer(wrapper.data()), wrapper);
 	}
 
 	void send_reply(int code)
@@ -133,8 +133,8 @@ protected:
 			  T &&data,
 			  const std::function<void (const boost::system::error_code &err)> &handler)
 	{
-		get_reply()->send_headers(rep, boost::asio::buffer(data),
-					  make_wrapper(std::move(data), handler));
+		auto wrapper = make_wrapper(std::move(data), handler);
+		get_reply()->send_headers(rep, boost::asio::buffer(wrapper.data()), wrapper);
 	}
 
 	void send_data(const boost::asio::const_buffer &data,
@@ -147,8 +147,8 @@ protected:
 	void send_data(T &&data,
 		       const std::function<void (const boost::system::error_code &err)> &handler)
 	{
-		get_reply()->send_data(boost::asio::buffer(data),
-				       make_wrapper(std::move(data), handler));
+		auto wrapper = make_wrapper(std::move(data), handler);
+		get_reply()->send_data(boost::asio::buffer(wrapper.data()), wrapper);
 	}
 
 private:
@@ -167,10 +167,15 @@ private:
 		{
 			m_handler(err);
 		}
+
+		T &data()
+		{
+			return *m_data;
+		}
 	};
 
 	template <typename T>
-	std::function<void (const boost::system::error_code &err)> make_wrapper(T &&data, const std::function<void (const boost::system::error_code &err)> &handler)
+	functor_wrapper<T> make_wrapper(T &&data, const std::function<void (const boost::system::error_code &err)> &handler)
 	{
 		return functor_wrapper<T>(std::move(data), handler);
 	}
