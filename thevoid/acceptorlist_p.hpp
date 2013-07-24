@@ -35,8 +35,8 @@ public:
 	endpoint_type create_endpoint(acceptor_type &acc, const std::string &host);
 
 	server_data &data;
+    std::vector<std::unique_ptr<boost::asio::io_service>> io_services;
 	std::vector<std::unique_ptr<acceptor_type>> acceptors;
-	std::vector<std::unique_ptr<boost::asio::io_service>> io_services;
 };
 
 } }
