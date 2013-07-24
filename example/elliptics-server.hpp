@@ -65,6 +65,11 @@ public:
 		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
 	};
 
+	struct on_echo : public simple_request_stream<elliptics_server>
+	{
+		virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /*override*/;
+	};
+
 protected:
 	ioremap::elliptics::session create_session();
 

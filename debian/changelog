@@ -1,3 +1,9 @@
+swarm (0.5.3.1) unstable; urgency=low
+
+  * Fixed exceptions at server exit
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 24 Jul 2013 22:48:35 +0400
+
 swarm (0.5.3.0) unstable; urgency=low
 
   * Added try_* API

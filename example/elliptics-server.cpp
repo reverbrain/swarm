@@ -90,6 +90,7 @@ bool elliptics_server::initialize(const rapidjson::Value &config)
 	on<on_get>("/get");
 	on<on_upload>("/upload");
 	on<on_ping>("/ping");
+	on<on_echo>("/echo");
 
 	return true;
 }
@@ -354,7 +355,18 @@ void elliptics_server::on_ping::on_request(const swarm::network_request &req, co
 	send_reply(swarm::network_reply::ok);
 }
 
+void elliptics_server::on_echo::on_request(const network_request &req, const boost::asio::const_buffer &buffer)
+{
+	auto data = boost::asio::buffer_cast<const char*>(buffer);
+	auto size = boost::asio::buffer_size(buffer);
 
+	swarm::network_reply reply;
+	reply.set_code(swarm::network_reply::ok);
+	reply.set_headers(req.get_headers());
+	reply.set_content_length(size);
+
+	send_reply(reply, std::string(data, size));
+}
 
 int main(int argc, char **argv)
 {
