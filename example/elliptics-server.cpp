@@ -16,6 +16,31 @@
 #include <boost/asio.hpp>
 #include <elliptics/utils.hpp>
 
+namespace {
+	static std::string lexical_cast(size_t value) {
+		if (value == 0) {
+			return std::string("0");
+		}
+
+		std::string result;
+		size_t length = 0;
+		size_t calculated = value;
+		while (calculated) {
+			calculated /= 10;
+			++length;
+		}
+
+		result.resize(length);
+		while (value) {
+			--length;
+			result[length] = '0' + (value % 10);
+			value /= 10;
+		}
+
+		return result;
+	}
+}
+
 namespace boost { namespace asio {
 
 const_buffer buffer(const ioremap::elliptics::data_pointer &data)
@@ -233,7 +258,7 @@ void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result 
 
 	JsonValue result_object;
 
-	static char id_str[2 * DNET_ID_SIZE + 1];
+	char id_str[2 * DNET_ID_SIZE + 1];
 
 	for (size_t i = 0; i < result.size(); ++i) {
 		const find_indexes_result_entry &entry = result[i];
@@ -342,10 +367,47 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 
 	const write_result_entry &entry = result[0];
 
+	JsonValue result_object;
+
+	char id_str[2 * DNET_ID_SIZE + 1];
+	dnet_dump_id_len_raw(entry.command()->id.id, DNET_ID_SIZE, id_str);
+	rapidjson::Value id_str_value(id_str, 2 * DNET_ID_SIZE, result_object.GetAllocator());
+	result_object.AddMember("id", id_str_value, result_object.GetAllocator());
+
+	char csum_str[2 * DNET_ID_SIZE + 1];
+	dnet_dump_id_len_raw(entry.file_info()->checksum, DNET_ID_SIZE, csum_str);
+	rapidjson::Value csum_str_value(csum_str, 2 * DNET_ID_SIZE, result_object.GetAllocator());
+	result_object.AddMember("csum", csum_str_value, result_object.GetAllocator());
+
+	if (entry.file_path())
+		result_object.AddMember("filename", entry.file_path(), result_object.GetAllocator());
+
+	result_object.AddMember("size", entry.file_info()->size, result_object.GetAllocator());
+	result_object.AddMember("offset-within-data-file", entry.file_info()->offset, result_object.GetAllocator());
+
+	char str[64];
+	struct tm tm;
+	struct timeval tv;
+
+	localtime_r((time_t *)&entry.file_info()->mtime.tsec, &tm);
+	strftime(str, sizeof(str), "%F %Z %R:%S", &tm);
+
+	char time_str[128];
+	snprintf(time_str, sizeof(time_str), "%s.%06lu", str, entry.file_info()->mtime.tnsec / 1000);
+
+	result_object.AddMember("mtime", time_str, result_object.GetAllocator());
+	std::string raw_time = lexical_cast(entry.file_info()->mtime.tsec) + "." + lexical_cast(entry.file_info()->mtime.tnsec / 1000);
+	result_object.AddMember("mtime-raw", raw_time.c_str(), result_object.GetAllocator());
+	
+	char addr_str[128];
+	result_object.AddMember("server", dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str)),
+				result_object.GetAllocator());
+
 	swarm::network_reply reply;
 	reply.set_code(swarm::network_reply::ok);
-	reply.set_content_length(0);
-	reply.set_content_type("text/html");
+	reply.set_content_type("text/json");
+	reply.set_data(result_object.ToString());
+	reply.set_content_length(reply.get_data().size());
 
 	send_reply(reply);
 }
