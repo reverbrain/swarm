@@ -278,7 +278,7 @@ void elliptics_server::on_find::on_ready_to_parse_indexes(const ioremap::ellipti
 {
 	ioremap::elliptics::sync_read_result tmp;
 
-	if (error && !data.size()) {
+	if (error) {
 		send_indexes_reply(tmp, m_result);
 	} else {
 		tmp = data;
