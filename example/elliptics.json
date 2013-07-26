@@ -1,7 +1,7 @@
 {
     "endpoints": [
         "0.0.0.0:8080",
-		"unix:test.sock"
+	"unix:test.sock"
     ],
     "daemon": {
         "monitor-port": 20000
@@ -9,7 +9,8 @@
     "backlog": 128,
     "threads": 2,
     "application": {
-        "loglevel": 0,
+	"log": "/dev/stderr",
+        "loglevel": 4,
         "remotes": [
             "localhost:1025:2"
         ],

@@ -1,5 +1,6 @@
 {
-    "type": "or",
+    "type": "and",
+    "view": "extended",
     "indexes": [
         "fast",
         "distributed"

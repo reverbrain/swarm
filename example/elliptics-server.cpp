@@ -192,6 +192,10 @@ void elliptics_server::on_find::on_request(const swarm::network_request &req, co
 		return;
 	}
 
+	m_view = "id-only";
+	if (data.HasMember("view"))
+		m_view = data["view"].GetString();
+
 	session sess = get_server()->create_session();
 
 	const std::string type = data["type"].GetString();
@@ -256,12 +260,43 @@ void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result 
 		return;
 	}
 
-	JsonValue result_object;
+	if (m_view == "extended") {
+		std::vector<key> ids;
+		std::transform(result.begin(), result.end(), std::back_inserter(ids), m_rrcmp);
 
-	char id_str[2 * DNET_ID_SIZE + 1];
+		m_result = result;
+
+		session sess = get_server()->create_session();
+		sess.bulk_read(ids).connect(std::bind(&on_find::on_ready_to_parse_indexes, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+	} else {
+		ioremap::elliptics::sync_read_result data;
+		send_indexes_reply(data, result);
+	}
+}
+
+void elliptics_server::on_find::on_ready_to_parse_indexes(const ioremap::elliptics::sync_read_result &data, const ioremap::elliptics::error_info &error)
+{
+	ioremap::elliptics::sync_read_result tmp;
+
+	std::cout << "error: " << error.code() << ", data-size: " << data.size() << std::endl;	
+	if (error && !data.size()) {
+		send_indexes_reply(tmp, m_result);
+	} else {
+		tmp = data;
+		std::sort(tmp.begin(), tmp.end(), m_rrcmp);
+		send_indexes_reply(tmp, m_result);
+	}
+}
+
+void elliptics_server::on_find::send_indexes_reply(ioremap::elliptics::sync_read_result &data, const ioremap::elliptics::sync_find_indexes_result &result)
+{
+	JsonValue result_object;
 
 	for (size_t i = 0; i < result.size(); ++i) {
 		const find_indexes_result_entry &entry = result[i];
+
+		rapidjson::Value val;
+		val.SetObject();
 
 		rapidjson::Value indexes;
 		indexes.SetObject();
@@ -272,8 +307,19 @@ void elliptics_server::on_find::on_find_finished(const sync_find_indexes_result 
 			indexes.AddMember(m_map[it->index].c_str(), value, result_object.GetAllocator());
 		}
 
+		if (data.size()) {
+			auto it = std::lower_bound(data.begin(), data.end(), entry.id, m_rrcmp);
+			std::cout << "searched for id: " << dnet_dump_id_str(entry.id.id) << ", found: " << (it != data.end()) << std::endl;
+			if (it != data.end()) {
+				val.AddMember("data", reinterpret_cast<char *>(it->file().data()), result_object.GetAllocator());
+			}
+		}
+
+		val.AddMember("indexes", result_object.GetAllocator(), indexes, result_object.GetAllocator());
+
+		char id_str[2 * DNET_ID_SIZE + 1];
 		dnet_dump_id_len_raw(entry.id.id, DNET_ID_SIZE, id_str);
-		result_object.AddMember(id_str, indexes, result_object.GetAllocator());
+		result_object.AddMember(id_str, result_object.GetAllocator(), val, result_object.GetAllocator());
 	}
 
 	swarm::network_reply reply;
