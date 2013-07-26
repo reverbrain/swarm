@@ -46,7 +46,7 @@ public:
 	{
 		struct read_result_cmp {
 			bool operator ()(const ioremap::elliptics::read_result_entry &e1, const ioremap::elliptics::read_result_entry &e2) const {
-				return dnet_id_cmp(&e1.command()->id, &e2.command()->id) <= 0;
+				return dnet_id_cmp(&e1.command()->id, &e2.command()->id) < 0;
 			}
 
 			const dnet_raw_id &operator()(const ioremap::elliptics::find_indexes_result_entry &e) const {
@@ -54,7 +54,7 @@ public:
 			}
 
 			bool operator ()(const ioremap::elliptics::read_result_entry &e1, const dnet_raw_id &id) const {
-				return dnet_id_cmp_str((const unsigned char *)&e1.command()->id.id, id.id) <= 0;
+				return dnet_id_cmp_str((const unsigned char *)e1.command()->id.id, id.id) < 0;
 			}
 		} m_rrcmp;
 
