@@ -278,7 +278,6 @@ void elliptics_server::on_find::on_ready_to_parse_indexes(const ioremap::ellipti
 {
 	ioremap::elliptics::sync_read_result tmp;
 
-	std::cout << "error: " << error.code() << ", data-size: " << data.size() << std::endl;	
 	if (error && !data.size()) {
 		send_indexes_reply(tmp, m_result);
 	} else {
@@ -309,7 +308,6 @@ void elliptics_server::on_find::send_indexes_reply(ioremap::elliptics::sync_read
 
 		if (data.size()) {
 			auto it = std::lower_bound(data.begin(), data.end(), entry.id, m_rrcmp);
-			std::cout << "searched for id: " << dnet_dump_id_str(entry.id.id) << ", found: " << (it != data.end()) << std::endl;
 			if (it != data.end()) {
 				val.AddMember("data", reinterpret_cast<char *>(it->file().data()), result_object.GetAllocator());
 			}
