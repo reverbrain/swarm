@@ -1,3 +1,15 @@
+swarm (0.5.3.3) unstable; urgency=low
+
+  * Completed elliptics server split: added asio, jsonvalue, commaon and io headers
+  * Added -W -Wall compile flags. Fixed (or worked around) compile warnings.
+  * Added ugly pragma hack to disable compilation warnings within libev
+  * Added ugly pragma hack to disable compilation warnings within rapidjson
+  * Split elliptics example server to common library and example main() function
+  * Install elliptics-thevoid library and includes in libthevoid package
+  * Fixed network_query_list::try_item
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 28 Jul 2013 02:04:25 +0400
+
 swarm (0.5.3.2) unstable; urgency=low
 
   * Split elliptics server to IO and index parts. Move to separate directory.
