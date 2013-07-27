@@ -271,8 +271,3 @@ void elliptics_server::on_echo::on_request(const network_request &req, const boo
 
 	send_reply(reply, std::string(data, size));
 }
-
-int main(int argc, char **argv)
-{
-	return run_server<elliptics_server>(argc, argv);
-}
