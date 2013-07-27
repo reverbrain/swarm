@@ -3,6 +3,10 @@ link_directories(${ELLIPTICS_LIBRARY_DIRS})
 
 add_library(elliptics-thevoid SHARED server.cpp)
 target_link_libraries(elliptics-thevoid thevoid ${elliptics_cpp_LIBRARY} ${elliptics_client_LIBRARY} pthread)
+set_target_properties(elliptics-thevoid PROPERTIES
+	VERSION ${DEBFULLVERSION}
+	SOVERSION ${SWARM_VERSION_ABI}
+)
 
 add_executable(elliptics-server main.cpp)
 target_link_libraries(elliptics-server elliptics-thevoid)
