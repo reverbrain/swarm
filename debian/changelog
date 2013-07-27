@@ -1,3 +1,12 @@
+swarm (0.5.3.2) unstable; urgency=low
+
+  * Split elliptics server to IO and index parts. Move to separate directory.
+  * Install elliptics header-only index implementation into include/thevoid/elliptics
+  * Added 'extended' elliptics find-indexes view - return not only IDs, but also their data.
+  * Return file-info json in example /upload response
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sat, 27 Jul 2013 21:50:20 +0400
+
 swarm (0.5.3.1) unstable; urgency=low
 
   * Fixed exceptions at server exit
