@@ -43,18 +43,7 @@ add_subdirectory(thevoid)
 option(BUILD_EXAMPLES "Build examples" ON)
 
 if(BUILD_EXAMPLES)
-	include_directories(${elliptics_INCLUDE_DIRS})
-	link_directories(${ELLIPTICS_LIBRARY_DIRS})
-
-	if(BUILD_NETWORK_MANAGER)
-		add_executable(crawler example/crawler.cpp)
-		target_link_libraries(crawler swarm ev)
-		add_executable(download example/download.cpp)
-		target_link_libraries(download swarm ev)
-	endif()
-
-	add_executable(elliptics-server example/elliptics-server.cpp)
-	target_link_libraries(elliptics-server thevoid ${elliptics_cpp_LIBRARY} ${elliptics_client_LIBRARY} pthread)
+	add_subdirectory(example)
 endif()
 
 install(DIRECTORY thevoid/rapidjson
