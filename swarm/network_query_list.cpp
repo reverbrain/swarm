@@ -129,7 +129,7 @@ boost::optional<std::string> network_query_list::try_item(const char *key) const
 
 	for (size_t i = 0; i < p->items.size(); ++i) {
 		const auto &item = p->items[i];
-		if (item.first.compare(0, item.first.size(), key, key_size))
+		if (item.first.compare(0, item.first.size(), key, key_size) == 0)
 			return item.second;
 	}
 	return boost::none;
