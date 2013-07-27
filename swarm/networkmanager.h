@@ -19,7 +19,13 @@
 #include "networkrequest.h"
 
 #define EV_MULTIPLICITY 1
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+
 #include <ev++.h>
+#pragma GCC diagnostic pop
+
 #include <memory>
 #include <functional>
 #include <map>
