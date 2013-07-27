@@ -21,9 +21,6 @@
 #include <swarm/network_url.h>
 #include <swarm/network_query_list.h>
 
-#include <thevoid/rapidjson/stringbuffer.h>
-#include <thevoid/rapidjson/prettywriter.h>
-
 namespace boost { namespace asio {
 
 const_buffer buffer(const ioremap::elliptics::data_pointer &data)
@@ -127,9 +124,12 @@ session elliptics_server::create_session()
 	return m_session->clone();
 }
 
-void elliptics_server::on_get::on_request(const ioremap::swarm::network_request &req, const boost::asio::const_buffer &buffer)
+void elliptics_server::on_get::on_request(const ioremap::swarm::network_request &req,
+		const boost::asio::const_buffer &buffer)
 {
 	using namespace std::placeholders;
+
+	(void) buffer;
 
 	swarm::network_url url(req.get_url());
 	swarm::network_query_list query_list(url.query());
@@ -167,7 +167,7 @@ void elliptics_server::on_get::on_read_finished(const sync_read_result &result, 
 	const network_request &request = get_request();
 
 	if (request.has_if_modified_since()) {
-		if (ts.tsec <= request.get_if_modified_since()) {
+		if ((time_t)ts.tsec <= request.get_if_modified_since()) {
 			send_reply(swarm::network_reply::not_modified);
 			return;
 		}
@@ -229,7 +229,6 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 
 	char str[64];
 	struct tm tm;
-	struct timeval tv;
 
 	localtime_r((time_t *)&entry.file_info()->mtime.tsec, &tm);
 	strftime(str, sizeof(str), "%F %Z %R:%S", &tm);
@@ -238,12 +237,14 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 	snprintf(time_str, sizeof(time_str), "%s.%06lu", str, entry.file_info()->mtime.tnsec / 1000);
 
 	result_object.AddMember("mtime", time_str, result_object.GetAllocator());
-	std::string raw_time = lexical_cast(entry.file_info()->mtime.tsec) + "." + lexical_cast(entry.file_info()->mtime.tnsec / 1000);
+	std::string raw_time = lexical_cast(entry.file_info()->mtime.tsec) + "." +
+		lexical_cast(entry.file_info()->mtime.tnsec / 1000);
 	result_object.AddMember("mtime-raw", raw_time.c_str(), result_object.GetAllocator());
 	
 	char addr_str[128];
-	result_object.AddMember("server", dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str)),
-				result_object.GetAllocator());
+	result_object.AddMember("server",
+		dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str)),
+			result_object.GetAllocator());
 
 	swarm::network_reply reply;
 	reply.set_code(swarm::network_reply::ok);
@@ -256,6 +257,9 @@ void elliptics_server::on_upload::on_write_finished(const sync_write_result &res
 
 void elliptics_server::on_ping::on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer)
 {
+	(void) buffer;
+	(void) req;
+
 	send_reply(swarm::network_reply::ok);
 }
 

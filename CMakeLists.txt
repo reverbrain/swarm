@@ -1,6 +1,6 @@
 project(swarm)
 cmake_minimum_required(VERSION 2.6)
-add_definitions(-std=c++0x)
+add_definitions(-std=c++0x -W -Wall)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
 

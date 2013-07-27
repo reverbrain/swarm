@@ -49,11 +49,6 @@ static bool are_case_insensitive_equal(const std::string &first, const char *sec
     return true;
 }
 
-static bool are_case_insensitive_equal(const std::string &first, const std::string &second)
-{
-    return are_case_insensitive_equal(first, second.c_str(), second.size());
-}
-
 static std::string convert_to_http_date(time_t time)
 {
     struct tm time_data;
@@ -242,7 +237,7 @@ public:
     {
     }
     network_request_data(const network_request_data &o)
-        : url(o.url), follow_location(o.follow_location),
+        : shared_data(o), url(o.url), follow_location(o.follow_location),
           timeout(o.timeout), headers(o.headers),
           major_version(o.major_version), minor_version(o.minor_version),
           method(o.method)
@@ -273,6 +268,7 @@ network_request::~network_request()
 network_request &network_request::operator =(const network_request &other)
 {
     m_data = other.m_data;
+    return *this;
 }
 
 const std::string &network_request::get_url() const
@@ -468,7 +464,7 @@ public:
     {
     }
     network_reply_data(const network_reply_data &o)
-        : request(o.request), code(o.code), error(o.error),
+        : shared_data(o), request(o.request), code(o.code), error(o.error),
           url(o.url), headers(o.headers), data(o.data)
     {
     }
@@ -497,6 +493,7 @@ network_reply::~network_reply()
 network_reply &network_reply::operator =(const network_reply &other)
 {
     m_data = other.m_data;
+    return *this;
 }
 
 network_request network_reply::get_request() const

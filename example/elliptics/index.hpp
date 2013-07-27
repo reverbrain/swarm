@@ -14,10 +14,18 @@
  * GNU General Public License for more details.
  */
 
+#ifndef __IOREMAP_THEVOID_ELLIPTICS_INDEX_HPP
+#define __IOREMAP_THEVOID_ELLIPTICS_INDEX_HPP
+
 #include <boost/asio.hpp>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 
 #include <thevoid/rapidjson/stringbuffer.h>
 #include <thevoid/rapidjson/prettywriter.h>
+#pragma GCC diagnostic pop
+
 #include <thevoid/server.hpp>
 
 #include <elliptics/session.hpp>
@@ -252,3 +260,5 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 };
 
 }}}} // namespace ioremap::thevoid::elliptics::index
+
+#endif /*__IOREMAP_THEVOID_ELLIPTICS_INDEX_HPP */

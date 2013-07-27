@@ -47,7 +47,7 @@ public:
 			|| (ch >= 'A' && ch <= 'F'));
 	}
 
-	char to_hex(char value)
+	char to_hex(int value)
 	{
 		static const char hex[] = "0123456789abcdef";
 		return hex[value];
@@ -93,7 +93,7 @@ public:
 		// Replace everything else with percent encoding
 		static const char doEncode[] = " \"<>[\\]^`{|}";
 		static const char doEncodeHost[] = " \"<>\\^`{|}";
-		for (int i = 0; i < tmp.size(); ++i) {
+		for (size_t i = 0; i < tmp.size(); ++i) {
 			unsigned char ch = static_cast<unsigned char>(tmp[i]);
 			if (ch < 32 || ch > 127 ||
 					strchr(hostStart <= i && i <= hostEnd ? doEncodeHost : doEncode, ch)) {

@@ -28,7 +28,11 @@
 #include <string>
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+
 #include <thevoid/rapidjson/document.h>
+#pragma GCC diagnostic pop
 
 namespace ioremap {
 namespace thevoid {

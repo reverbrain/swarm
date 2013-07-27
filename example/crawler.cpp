@@ -34,9 +34,6 @@
 #include <fcntl.h>
 #include <sys/prctl.h>
 
-#define EV_MULTIPLICITY 1
-#include <ev++.h>
-
 #include <swarm/networkmanager.h>
 #include <swarm/url_finder.h>
 #include <swarm/network_url.h>
@@ -271,7 +268,7 @@ struct fs_thread
             }
             ssize_t written = pwrite(fd, element.data.c_str(), element.data.size(), 0);
             close(fd);
-            if (written != element.data.size()) {
+            if (written != (ssize_t)element.data.size()) {
                 err = errno;
                 std::cerr << "Can not write data to : \"" << filepath << "\": " << strerror(err) << std::endl;
                 continue;
@@ -329,8 +326,8 @@ int main(int argc, char **argv)
         max_depth = std::numeric_limits<int>::max();
     }
     scope.base_directory = argv[4];
-    int thread_count = std::thread::hardware_concurrency();
-    int fs_thread_count = std::thread::hardware_concurrency();
+    size_t thread_count = std::thread::hardware_concurrency();
+    size_t fs_thread_count = std::thread::hardware_concurrency();
     if (argc > 5)
         thread_count = std::max(1, atoi(argv[5]));
     if (argc > 6)

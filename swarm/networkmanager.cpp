@@ -222,6 +222,7 @@ public:
                     if (msg->msg == CURLMSG_DONE) {
                         easy = msg->easy_handle;
                         res = msg->data.result;
+			(void) res;
                         break;
                     }
                 }

@@ -115,8 +115,10 @@ acceptors_list<unix_connection>::~acceptors_list()
 }
 
 template <>
-acceptors_list<unix_connection>::endpoint_type acceptors_list<unix_connection>::create_endpoint(acceptor_type &acc, const std::string &host)
+acceptors_list<unix_connection>::endpoint_type acceptors_list<unix_connection>::create_endpoint(acceptor_type &acc,
+		const std::string &host)
 {
+	(void) acc;
 	return boost::asio::local::stream_protocol::endpoint(host);
 }
 
