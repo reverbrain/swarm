@@ -13,10 +13,29 @@
  * GNU General Public License for more details.
  */
 
-#include <thevoid/server.hpp>
 #include "server.hpp"
+
+using namespace ioremap::thevoid;
+
+class example_server : public server<example_server>, public elliptics_server
+{
+public:
+
+	virtual bool initialize(const rapidjson::Value &config) {
+		elliptics_server::initialize(config);
+
+		on<elliptics::index::on_update<example_server>>("/update");
+		on<elliptics::index::on_find<example_server>>("/find");
+		on<elliptics::io::on_get<example_server>>("/get");
+		on<elliptics::io::on_upload<example_server>>("/upload");
+		on<elliptics::common::on_ping<example_server>>("/ping");
+		on<elliptics::common::on_echo<example_server>>("/echo");
+	
+		return true;
+	}
+};
 
 int main(int argc, char **argv)
 {
-	return ioremap::thevoid::run_server<ioremap::thevoid::elliptics_server>(argc, argv);
+	return run_server<example_server>(argc, argv);
 }

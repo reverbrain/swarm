@@ -17,19 +17,10 @@
 #ifndef __IOREMAP_THEVOID_ELLIPTICS_INDEX_HPP
 #define __IOREMAP_THEVOID_ELLIPTICS_INDEX_HPP
 
-#include <boost/asio.hpp>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-
-#include <thevoid/rapidjson/stringbuffer.h>
-#include <thevoid/rapidjson/prettywriter.h>
-#pragma GCC diagnostic pop
-
 #include <thevoid/server.hpp>
 
-#include <elliptics/session.hpp>
-
+#include "asio.hpp"
+#include "jsonvalue.hpp"
 
 namespace ioremap { namespace thevoid { namespace elliptics { namespace index { 
 
@@ -41,39 +32,11 @@ struct id_comparator
 	}
 };
 
-class JsonValue : public rapidjson::Value
-{
-public:
-	JsonValue() {
-		SetObject();
-	}
-
-	~JsonValue() {
-	}
-
-	std::string ToString() {
-		rapidjson::StringBuffer buffer;
-		rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-
-		Accept(writer);
-		buffer.Put('\n');
-
-		return std::string(buffer.GetString(), buffer.GetSize());
-	}
-
-	rapidjson::MemoryPoolAllocator<> &GetAllocator() {
-		return m_allocator;
-	}
-
-private:
-	rapidjson::MemoryPoolAllocator<> m_allocator;
-};
-
 // set indexes for given ID
 template <typename T>
 struct on_update : public simple_request_stream<T>, public std::enable_shared_from_this<on_update<T>>
 {
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /* override */ {
+	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
 		(void) req;
 
 		rapidjson::Document doc;
@@ -99,16 +62,18 @@ struct on_update : public simple_request_stream<T>, public std::enable_shared_fr
 		auto &indexes = doc["indexes"];
 		for (auto it = indexes.MemberBegin(); it != indexes.MemberEnd(); ++it) {
 			sess.transform(it->name.GetString(), entry.index);
-			entry.data = ioremap::elliptics::data_pointer::copy(it->value.GetString(), it->value.GetStringLength());
+			entry.data = ioremap::elliptics::data_pointer::copy(it->value.GetString(),
+					it->value.GetStringLength());
 
 			indexes_entries.push_back(entry);
 		}
 
 		sess.set_indexes(id, indexes_entries)
-				.connect(std::bind(&on_update::on_update_finished, this->shared_from_this(), std::placeholders::_2));
+				.connect(std::bind(&on_update::on_update_finished,
+							this->shared_from_this(), std::placeholders::_2));
 	}
 
-	virtual void on_update_finished(const ioremap::elliptics::error_info &error) {
+	void on_update_finished(const ioremap::elliptics::error_info &error) {
 		if (error) {
 			this->send_reply(swarm::network_reply::service_unavailable);
 			return;
@@ -123,7 +88,8 @@ template <typename T>
 struct on_find : public simple_request_stream<T>, public std::enable_shared_from_this<on_find<T>>
 {
 	struct read_result_cmp {
-		bool operator ()(const ioremap::elliptics::read_result_entry &e1, const ioremap::elliptics::read_result_entry &e2) const {
+		bool operator ()(const ioremap::elliptics::read_result_entry &e1,
+				const ioremap::elliptics::read_result_entry &e2) const {
 			return dnet_id_cmp(&e1.command()->id, &e2.command()->id) < 0;
 		}
 
@@ -136,7 +102,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		}
 	} m_rrcmp;
 
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) /* override */ {
+	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
 		(void) req;
 
 		rapidjson::Document data;
@@ -178,10 +144,12 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		}
 
 		(type == "and" ? sess.find_all_indexes(indexes) : sess.find_any_indexes(indexes))
-				.connect(std::bind(&on_find::on_find_finished, this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+				.connect(std::bind(&on_find::on_find_finished,
+					this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 	}
 
-	virtual void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result, const ioremap::elliptics::error_info &error) {
+	void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result,
+			const ioremap::elliptics::error_info &error) {
 		if (error) {
 			this->send_reply(swarm::network_reply::service_unavailable);
 			return;
@@ -194,14 +162,16 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 			m_result = result;
 
 			ioremap::elliptics::session sess = this->get_server()->create_session();
-			sess.bulk_read(ids).connect(std::bind(&on_find::on_ready_to_parse_indexes, this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+			sess.bulk_read(ids).connect(std::bind(&on_find::on_ready_to_parse_indexes,
+					this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 		} else {
 			ioremap::elliptics::sync_read_result data;
 			send_indexes_reply(data, result);
 		}
 	}
 
-	void on_ready_to_parse_indexes(const ioremap::elliptics::sync_read_result &data, const ioremap::elliptics::error_info &error) {
+	void on_ready_to_parse_indexes(const ioremap::elliptics::sync_read_result &data,
+			const ioremap::elliptics::error_info &error) {
 		ioremap::elliptics::sync_read_result tmp;
 
 		if (error) {
@@ -213,7 +183,8 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		}
 	}
 
-	void send_indexes_reply(ioremap::elliptics::sync_read_result &data, const ioremap::elliptics::sync_find_indexes_result &result) {
+	void send_indexes_reply(ioremap::elliptics::sync_read_result &data,
+			const ioremap::elliptics::sync_find_indexes_result &result) {
 		JsonValue result_object;
 
 		for (size_t i = 0; i < result.size(); ++i) {
@@ -234,7 +205,8 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 			if (data.size()) {
 				auto it = std::lower_bound(data.begin(), data.end(), entry.id, m_rrcmp);
 				if (it != data.end()) {
-					val.AddMember("data", reinterpret_cast<char *>(it->file().data()), result_object.GetAllocator());
+					val.AddMember("data", reinterpret_cast<char *>(it->file().data()),
+							result_object.GetAllocator());
 				}
 			}
 
