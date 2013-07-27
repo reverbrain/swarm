@@ -95,8 +95,6 @@ void base_server::listen(const std::string &host)
 		// Unix socket
 		std::string file = host.substr(UNIX_PREFIX_LEN);
 
-		std::cerr << file << std::endl;
-
 		m_data->local_acceptors.add_acceptor(file);
 	} else {
 		m_data->tcp_acceptors.add_acceptor(host);
