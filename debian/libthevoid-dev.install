@@ -1,2 +1,3 @@
 usr/include/thevoid/*
 usr/lib/libthevoid*.so
+usr/lib/libelliptics-thevoid*.so
