@@ -24,6 +24,7 @@
 
 #include <thevoid/rapidjson/stringbuffer.h>
 #include <thevoid/rapidjson/prettywriter.h>
+#include <thevoid/rapidjson/document.h>
 #pragma GCC diagnostic pop
 
 namespace {
