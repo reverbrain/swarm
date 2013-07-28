@@ -1,3 +1,11 @@
+swarm (0.5.3.4) unstable; urgency=low
+
+  * Factor out generic json time writer
+  * Made all callbacks virtual
+  * Added version/soversion properties to libelliptics-thevoid library
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 28 Jul 2013 23:42:11 +0400
+
 swarm (0.5.3.3) unstable; urgency=low
 
   * Completed elliptics server split: added asio, jsonvalue, commaon and io headers
