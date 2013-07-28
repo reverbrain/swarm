@@ -203,15 +203,26 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 			}
 
 			if (data.size()) {
+				rapidjson::Value obj;
+				obj.SetObject();
+
 				auto it = std::lower_bound(data.begin(), data.end(), entry.id, m_rrcmp);
 				if (it != data.end()) {
-					val.AddMember("data", reinterpret_cast<char *>(it->file().data()),
-							result_object.GetAllocator());
+					rapidjson::Value data_str(reinterpret_cast<char *>(it->file().data()),
+							it->file().size());
+					obj.AddMember("data", data_str, result_object.GetAllocator());
+
+					rapidjson::Value tobj;
+					JsonValue::set_time(tobj, result_object.GetAllocator(),
+							it->io_attribute()->timestamp.tsec,
+							it->io_attribute()->timestamp.tnsec / 1000);
+					obj.AddMember("mtime", tobj, result_object.GetAllocator());
 				}
+
+				val.AddMember("data-object", obj, result_object.GetAllocator());
 			}
 
-			val.AddMember("indexes", result_object.GetAllocator(),
-					indexes, result_object.GetAllocator());
+			val.AddMember("indexes", indexes, result_object.GetAllocator());
 
 			char id_str[2 * DNET_ID_SIZE + 1];
 			dnet_dump_id_len_raw(entry.id.id, DNET_ID_SIZE, id_str);

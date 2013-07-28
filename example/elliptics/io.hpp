@@ -28,31 +28,6 @@
 
 #include "jsonvalue.hpp"
 
-namespace {
-	static inline std::string lexical_cast(size_t value) {
-		if (value == 0) {
-			return std::string("0");
-		}
-
-		std::string result;
-		size_t length = 0;
-		size_t calculated = value;
-		while (calculated) {
-			calculated /= 10;
-			++length;
-		}
-
-		result.resize(length);
-		while (value) {
-			--length;
-			result[length] = '0' + (value % 10);
-			value /= 10;
-		}
-
-		return result;
-	}
-}
-
 namespace ioremap { namespace thevoid { namespace elliptics { namespace io {
 // read data object
 template <typename T>
@@ -165,20 +140,12 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		result_object.AddMember("offset-within-data-file", entry.file_info()->offset,
 				result_object.GetAllocator());
 
-		char str[64];
-		struct tm tm;
+		rapidjson::Value tobj;
+		JsonValue::set_time(tobj, result_object.GetAllocator(),
+				entry.file_info()->mtime.tsec,
+				entry.file_info()->mtime.tnsec / 1000);
+		result_object.AddMember("mtime", tobj, result_object.GetAllocator());
 
-		localtime_r((time_t *)&entry.file_info()->mtime.tsec, &tm);
-		strftime(str, sizeof(str), "%F %Z %R:%S", &tm);
-
-		char time_str[128];
-		snprintf(time_str, sizeof(time_str), "%s.%06lu", str, entry.file_info()->mtime.tnsec / 1000);
-
-		result_object.AddMember("mtime", time_str, result_object.GetAllocator());
-		std::string raw_time = lexical_cast(entry.file_info()->mtime.tsec) + "." +
-			lexical_cast(entry.file_info()->mtime.tnsec / 1000);
-		result_object.AddMember("mtime-raw", raw_time.c_str(), result_object.GetAllocator());
-		
 		char addr_str[128];
 		result_object.AddMember("server",
 			dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str)),
