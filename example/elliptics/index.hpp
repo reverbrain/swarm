@@ -73,7 +73,7 @@ struct on_update : public simple_request_stream<T>, public std::enable_shared_fr
 							this->shared_from_this(), std::placeholders::_2));
 	}
 
-	void on_update_finished(const ioremap::elliptics::error_info &error) {
+	virtual void on_update_finished(const ioremap::elliptics::error_info &error) {
 		if (error) {
 			this->send_reply(swarm::network_reply::service_unavailable);
 			return;
@@ -148,7 +148,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 					this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 	}
 
-	void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result,
+	virtual void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result,
 			const ioremap::elliptics::error_info &error) {
 		if (error) {
 			this->send_reply(swarm::network_reply::service_unavailable);
@@ -170,7 +170,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		}
 	}
 
-	void on_ready_to_parse_indexes(const ioremap::elliptics::sync_read_result &data,
+	virtual void on_ready_to_parse_indexes(const ioremap::elliptics::sync_read_result &data,
 			const ioremap::elliptics::error_info &error) {
 		ioremap::elliptics::sync_read_result tmp;
 
@@ -183,7 +183,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		}
 	}
 
-	void send_indexes_reply(ioremap::elliptics::sync_read_result &data,
+	virtual void send_indexes_reply(ioremap::elliptics::sync_read_result &data,
 			const ioremap::elliptics::sync_find_indexes_result &result) {
 		JsonValue result_object;
 
@@ -210,11 +210,13 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 				}
 			}
 
-			val.AddMember("indexes", result_object.GetAllocator(), indexes, result_object.GetAllocator());
+			val.AddMember("indexes", result_object.GetAllocator(),
+					indexes, result_object.GetAllocator());
 
 			char id_str[2 * DNET_ID_SIZE + 1];
 			dnet_dump_id_len_raw(entry.id.id, DNET_ID_SIZE, id_str);
-			result_object.AddMember(id_str, result_object.GetAllocator(), val, result_object.GetAllocator());
+			result_object.AddMember(id_str, result_object.GetAllocator(),
+					val, result_object.GetAllocator());
 		}
 
 		swarm::network_reply reply;

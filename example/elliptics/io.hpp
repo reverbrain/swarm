@@ -83,7 +83,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		}
 	}
 
-	void on_read_finished(const ioremap::elliptics::sync_read_result &result,
+	virtual void on_read_finished(const ioremap::elliptics::sync_read_result &result,
 			const ioremap::elliptics::error_info &error) {
 		if (error.code() == -ENOENT) {
 			this->send_reply(swarm::network_reply::not_found);
@@ -137,7 +137,7 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 							std::placeholders::_1, std::placeholders::_2));
 	}
 
-	void on_write_finished(const ioremap::elliptics::sync_write_result &result,
+	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result,
 			const ioremap::elliptics::error_info &error) {
 		if (error) {
 			this->send_reply(swarm::network_reply::service_unavailable);
