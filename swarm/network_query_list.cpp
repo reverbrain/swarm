@@ -39,7 +39,7 @@ void network_query_list::set_query(const std::string &query)
 	p->items.reserve(item_count);
 
 	for (auto it = query_list; it; it = it->next) {
-		p->items.emplace_back(it->key, it->value ? it->value : "");
+		p->items.emplace_back(it->key, it->value ? it->value : std::string());
 	}
 
 	uriFreeQueryListA(query_list);
