@@ -1,3 +1,12 @@
+swarm (0.5.3.5) unstable; urgency=low
+
+  * Fixed segfault in case of / request
+  * Added IPv6 support by removing dns one
+  * * Don't resolve address from the name by magic and DNS
+  * Fixed a bug that occurs when either argument of query list does not have a value or query list is empty
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 31 Jul 2013 17:51:17 +0400
+
 swarm (0.5.3.4) unstable; urgency=low
 
   * Factor out generic json time writer
