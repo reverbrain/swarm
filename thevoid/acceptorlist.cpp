@@ -2,6 +2,7 @@
 #include "server_p.hpp"
 #include "monitor_connection_p.hpp"
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <sys/stat.h>
 
@@ -93,13 +94,13 @@ void acceptors_list<Connection>::handle_stop()
 template <typename Connection>
 typename acceptors_list<Connection>::endpoint_type acceptors_list<Connection>::create_endpoint(acceptor_type &acc, const std::string &host)
 {
-	size_t delim = host.find(':');
-	std::string address = host.substr(0, delim);
-	std::string port = host.substr(delim + 1);
+	(void) acc;
 
-	boost::asio::ip::tcp::resolver resolver(acc.get_io_service());
-	boost::asio::ip::tcp::resolver::query query(address, port);
-	boost::asio::ip::tcp::endpoint endpoint = *resolver.resolve(query);
+	size_t delim = host.find_last_of(':');
+	auto address = boost::asio::ip::address::from_string(host.substr(0, delim));
+	auto port = boost::lexical_cast<unsigned short>(host.substr(delim + 1));
+
+	boost::asio::ip::tcp::endpoint endpoint(address, port);
 
 	return endpoint;
 }
