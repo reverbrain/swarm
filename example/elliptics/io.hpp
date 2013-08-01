@@ -112,16 +112,8 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 							std::placeholders::_1, std::placeholders::_2));
 	}
 
-	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result,
-			const ioremap::elliptics::error_info &error) {
-		if (error) {
-			this->send_reply(swarm::network_reply::service_unavailable);
-			return;
-		}
-
+	static void fill_upload_reply(const ioremap::elliptics::sync_write_result &result, elliptics::JsonValue &result_object) {
 		const ioremap::elliptics::write_result_entry &entry = result[0];
-
-		elliptics::JsonValue result_object;
 
 		char id_str[2 * DNET_ID_SIZE + 1];
 		dnet_dump_id_len_raw(entry.command()->id.id, DNET_ID_SIZE, id_str);
@@ -150,6 +142,17 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		result_object.AddMember("server",
 			dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str)),
 				result_object.GetAllocator());
+	}
+
+	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result,
+			const ioremap::elliptics::error_info &error) {
+		if (error) {
+			this->send_reply(swarm::network_reply::service_unavailable);
+			return;
+		}
+
+		elliptics::JsonValue result_object;
+		on_upload::fill_upload_reply(result, result_object);
 
 		swarm::network_reply reply;
 		reply.set_code(swarm::network_reply::ok);
