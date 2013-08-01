@@ -44,7 +44,8 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
 		if (auto name = query_list.try_item("name")) {
-            this->get_server()->get_logger().log(swarm::LOG_DEBUG, "GET request, name: \"%s\"", name->c_str());
+			this->get_server()->get_logger().log(swarm::LOG_DEBUG, "GET request, name: \"%s\"", name->c_str());
+
 			sess.read_data(*name, 0, 0).connect(
 					std::bind(&on_get::on_read_finished, this->shared_from_this(), _1, _2));
 		} else if (auto sid = query_list.try_item("id")) {
