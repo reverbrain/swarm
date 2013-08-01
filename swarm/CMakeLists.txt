@@ -1,4 +1,6 @@
 set(SWARM_SRC_LIST
+    logger.cpp
+    logger.h
     network_query_list.cpp
     network_query_list.h
     networkrequest.cpp

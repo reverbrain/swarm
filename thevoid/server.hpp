@@ -34,6 +34,8 @@
 #include <thevoid/rapidjson/document.h>
 #pragma GCC diagnostic pop
 
+#include <swarm/logger.h>
+
 namespace ioremap {
 namespace thevoid {
 
@@ -68,6 +70,14 @@ public:
 
 	void listen(const std::string &host);
 	int run(int argc, char **argv);
+
+	void set_logger(const swarm::logger &logger);
+	template <typename... Args>
+	void set_logger(Args &&...args)
+	{
+		set_logger(swarm::logger(args...));
+	}
+	swarm::logger get_logger() const;
 
 	virtual bool initialize(const rapidjson::Value &config) = 0;
 

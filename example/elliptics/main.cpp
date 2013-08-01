@@ -24,6 +24,8 @@ public:
 	virtual bool initialize(const rapidjson::Value &config) {
 		elliptics_server::initialize(config);
 
+		set_logger(get_logger_impl());
+
 		on<elliptics::index::on_update<example_server>>("/update");
 		on<elliptics::index::on_find<example_server>>("/find");
 		on<elliptics::io::on_get<example_server>>("/get");

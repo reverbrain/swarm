@@ -52,6 +52,8 @@ public:
 
 	void handle_stop();
 
+    //! Logger instance
+    swarm::logger logger;
 	//! Weak pointer to server itself
 	std::weak_ptr<base_server> server;
 	//! The io_service used to perform asynchronous operations.

@@ -14,6 +14,7 @@
  */
 
 #include <elliptics/utils.hpp>
+#include "elliptics_logger.hpp"
 
 #include <iostream>
 
@@ -29,18 +30,6 @@ elliptics_server::elliptics_server()
 
 bool elliptics_server::initialize(const rapidjson::Value &config)
 {
-	if (!config.HasMember("remotes")) {
-		std::cerr << "\"remotes\" field is missed" << std::endl;
-		return false;
-	}
-
-	if (!config.HasMember("groups")) {
-		std::cerr << "\"groups\" field is missed" << std::endl;
-		return false;
-	}
-
-	std::vector<std::string> remotes;
-	std::vector<int> groups;
 	std::string logfile = "/dev/stderr";
 	int loglevel = DNET_LOG_INFO;
 
@@ -50,8 +39,23 @@ bool elliptics_server::initialize(const rapidjson::Value &config)
 	if (config.HasMember("loglevel"))
 		loglevel = config["loglevel"].GetInt();
 
-	m_logger.reset(new file_logger(logfile.c_str(), loglevel));
-	m_node.reset(new node(*m_logger));
+	swarm::logger logger(logfile.c_str(), loglevel);
+
+	if (!config.HasMember("remotes")) {
+		logger.log(swarm::LOG_ERROR, "\"remotes\" field is missed");
+		return false;
+	}
+
+	if (!config.HasMember("groups")) {
+		logger.log(swarm::LOG_ERROR, "\"groups\" field is missed");
+		return false;
+	}
+
+	std::vector<std::string> remotes;
+	std::vector<int> groups;
+
+	m_logger.reset(new swarm::logger(logger));
+	m_node.reset(new node(swarm_logger(logger)));
 	m_session.reset(new session(*m_node));
 
 	auto &remotesArray = config["remotes"];
@@ -76,4 +80,9 @@ bool elliptics_server::initialize(const rapidjson::Value &config)
 session elliptics_server::create_session()
 {
 	return m_session->clone();
+}
+
+ioremap::swarm::logger elliptics_server::get_logger_impl()
+{
+	return *m_logger;
 }
