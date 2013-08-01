@@ -89,6 +89,16 @@ base_server::~base_server()
 	delete m_data;
 }
 
+void base_server::set_logger(const swarm::logger &logger)
+{
+	m_data->logger = logger;
+}
+
+swarm::logger base_server::get_logger() const
+{
+	return m_data->logger;
+}
+
 void base_server::listen(const std::string &host)
 {
 	if (host.compare(0, UNIX_PREFIX_LEN, UNIX_PREFIX) == 0) {

@@ -21,6 +21,7 @@
 #include "asio.hpp"
 
 #include <thevoid/server.hpp>
+#include <swarm/logger.h>
 
 #include "common.hpp"
 #include "io.hpp"
@@ -38,8 +39,11 @@ public:
 
 	ioremap::elliptics::session create_session();
 
+protected:
+	ioremap::swarm::logger get_logger_impl();
+
 private:
-	std::unique_ptr<ioremap::elliptics::logger> m_logger;
+	std::unique_ptr<ioremap::swarm::logger> m_logger;
 	std::unique_ptr<ioremap::elliptics::node> m_node;
 	std::unique_ptr<ioremap::elliptics::session> m_session;
 };
