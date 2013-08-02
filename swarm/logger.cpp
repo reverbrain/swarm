@@ -114,20 +114,25 @@ void logger::set_level(int level)
 
 void logger::log(int level, const char *format, ...)
 {
+	va_list args;
+	va_start(args, format);
+
+	vlog(level, format, args);
+
+	va_end(args);
+}
+
+void logger::vlog(int level, const char *format, va_list args)
+{
 	if (!m_data->impl || m_data->level < level)
 		return;
 
-	va_list args;
 	char buffer[1024];
 	const size_t buffer_size = sizeof(buffer);
-
-	va_start(args, format);
 
 	vsnprintf(buffer, buffer_size, format, args);
 	buffer[buffer_size - 1] = '\0';
 	m_data->impl->log(level, buffer);
-
-	va_end(args);
 }
 
 } // namespace swarm

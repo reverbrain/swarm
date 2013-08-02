@@ -35,6 +35,7 @@ public:
 	void set_level(int level);
 
 	void log(int level, const char *format, ...) __attribute__ ((format(printf, 3, 4)));
+	void vlog(int level, const char *format, va_list args);
 
 private:
 	std::shared_ptr<logger_data> m_data;

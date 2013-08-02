@@ -18,6 +18,8 @@
 
 #include <boost/asio.hpp>
 #include <swarm/networkrequest.h>
+#include <swarm/logger.h>
+#include <cstdarg>
 
 namespace ioremap { namespace thevoid { namespace detail {
 struct network_reply_wrapper
@@ -103,6 +105,21 @@ protected:
 		if (__builtin_expect(!m_server, false))
 			throw std::logic_error("request_stream::m_server must be initialized");
 		return m_server;
+	}
+
+	swarm::logger get_logger()
+	{
+		return get_server()->get_logger();
+	}
+
+	void log(int level, const char *format, ...) __attribute__ ((format(printf, 3, 4)))
+	{
+		va_list args;
+		va_start(args, format);
+
+		get_logger().vlog(level, format, args);
+
+		va_end(args);
 	}
 
 	void send_reply(const swarm::network_reply &rep)
