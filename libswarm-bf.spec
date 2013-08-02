@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.3.5
+Version:	0.5.3.6
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Aug 02 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.3.6
+- Fixed swarm/logger.h includes
+
 * Fri Aug 02 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.3.5
 - Fixed segfault in case of / request
 - Added IPv6 support by removing dns one
