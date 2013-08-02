@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.1.2
+Version:	0.5.3.5
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,12 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Aug 02 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.3.5
+- Fixed segfault in case of / request
+- Added IPv6 support by removing dns one
+- * Don't resolve address from the name by magic and DNS
+- Fixed a bug that occurs when either argument of query list does not have a value or query list is empty
+
 * Tue Jul 02 2013 Kirill Smorodinnikov <shaitan@yandex-team.ru> - 0.5.1.2
 - Aligned version in spec and debian/control.
 - Fixed handling of exact-match handlers
