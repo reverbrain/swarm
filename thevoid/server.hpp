@@ -34,9 +34,8 @@
 #include <thevoid/rapidjson/document.h>
 #pragma GCC diagnostic pop
 
-#include <swarm/logger.h>
-
 namespace ioremap {
+namespace swarm { class logger; }
 namespace thevoid {
 
 namespace detail {

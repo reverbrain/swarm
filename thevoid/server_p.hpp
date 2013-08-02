@@ -10,6 +10,8 @@
 #include <mutex>
 #include <set>
 
+#include <swarm/logger.h>
+
 namespace ioremap {
 namespace thevoid {
 

@@ -16,6 +16,7 @@ set(SWARM_HDR_LIST
 	network_query_list.h
 	networkrequest.h
 	url_finder.h
+	logger.h
     )
 
 if(BUILD_NETWORK_MANAGER)

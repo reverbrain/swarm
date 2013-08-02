@@ -26,6 +26,7 @@
 #include <signal.h>
 
 #include <swarm/network_url.h>
+#include <swarm/logger.h>
 #include <thevoid/rapidjson/filereadstream.h>
 
 #define UNIX_PREFIX "unix:"
