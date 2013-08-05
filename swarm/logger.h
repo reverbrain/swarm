@@ -2,6 +2,7 @@
 #define IOREMAP_SWARM_LOGGER_H
 
 #include <memory>
+#include <cstdarg>
 
 namespace ioremap {
 namespace swarm {

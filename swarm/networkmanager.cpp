@@ -29,8 +29,6 @@
 
 #include "networkmanager.h"
 
-#define debug() if (1) {} else std::cerr << __PRETTY_FUNCTION__ << ": " << __LINE__ << " "
-
 namespace ioremap {
 namespace swarm {
 
@@ -57,6 +55,7 @@ public:
     }
 
     CURL *easy;
+    swarm::logger logger;
     network_reply reply;
     std::function<void (const network_reply &reply)> handler;
     std::string body;
@@ -78,33 +77,33 @@ public:
 
     void on_socket_event(ev::io &io, int revent)
     {
-        debug() << "revent: " << revent << std::endl;
-        int action = 0;
-        if (revent & EV_READ)
-            action |= CURL_CSELECT_IN;
-        if (revent & EV_WRITE)
-            action |= CURL_CSELECT_OUT;
+	    logger.log(LOG_DEBUG, "on_socket_event, revent: %d", revent);
+	    int action = 0;
+	    if (revent & EV_READ)
+		    action |= CURL_CSELECT_IN;
+	    if (revent & EV_WRITE)
+		    action |= CURL_CSELECT_OUT;
 
-        CURLMcode rc;
-        do {
-            rc = curl_multi_socket_action(multi, io.fd, action, &still_running);
-        } while (rc == CURLM_CALL_MULTI_PERFORM);
-        debug() << " " << rc << std::endl;
+	    CURLMcode rc;
+	    do {
+		    rc = curl_multi_socket_action(multi, io.fd, action, &still_running);
+	    } while (rc == CURLM_CALL_MULTI_PERFORM);
+	    logger.log(LOG_DEBUG, "on_socket_event, rc: %d", int(rc));
 
-        check_run_count();
+	    check_run_count();
     }
 
     void on_timer(ev::timer &, int)
     {
-        debug() << std::endl;
-        CURLMcode rc;
-        do {
-            rc = curl_multi_socket_action(multi,
-                                          CURL_SOCKET_TIMEOUT, 0, &still_running);
-        } while (rc == CURLM_CALL_MULTI_PERFORM);
-        debug() << rc << std::endl;
+	    logger.log(LOG_DEBUG, "on_timer");
+	    CURLMcode rc;
+	    do {
+		    rc = curl_multi_socket_action(multi,
+						  CURL_SOCKET_TIMEOUT, 0, &still_running);
+	    } while (rc == CURLM_CALL_MULTI_PERFORM);
+	    logger.log(LOG_DEBUG, "on_timer, rc: %d", int(rc));
 
-        check_run_count();
+	    check_run_count();
     }
 
     void on_async(ev::async &, int)
@@ -132,6 +131,7 @@ public:
             info->reply.set_code(200);
             info->handler = request->handler;
             info->body = request->body;
+	    info->logger = logger;
             if (!info->easy) {
                 info->reply.set_code(650);
                 request->handler(info->reply);
@@ -200,117 +200,113 @@ public:
     /* Check for completed transfers, and remove their easy handles */
     void check_run_count()
     {
-        debug() << prev_running << " " << still_running << std::endl;
-//        if (prev_running > still_running) {
-            char *effective_url = NULL;
-            CURLMsg *msg;
-            int messsages_left;
-            network_connection_info *info = NULL;
-            CURL*easy;
-            CURLcode res;
+	    char *effective_url = NULL;
+	    CURLMsg *msg;
+	    int messsages_left;
+	    network_connection_info *info = NULL;
+	    CURL*easy;
+	    CURLcode res;
 
-            /*
-             * I am still uncertain whether it is safe to remove an easy handle
-             * from inside the curl_multi_info_read loop, so here I will search
-             * for completed transfers in the inner "while" loop, and then remove
-             * them in the outer "do-while" loop...
-             */
+	    /*
+	     * I am still uncertain whether it is safe to remove an easy handle
+	     * from inside the curl_multi_info_read loop, so here I will search
+	     * for completed transfers in the inner "while" loop, and then remove
+	     * them in the outer "do-while" loop...
+	     */
 
-            do {
-                easy = NULL;
-                while ((msg = curl_multi_info_read(multi, &messsages_left))) {
-                    if (msg->msg == CURLMSG_DONE) {
-                        easy = msg->easy_handle;
-                        res = msg->data.result;
-			(void) res;
-                        break;
-                    }
-                }
+	    do {
+		    easy = NULL;
+		    while ((msg = curl_multi_info_read(multi, &messsages_left))) {
+			    if (msg->msg == CURLMSG_DONE) {
+				    easy = msg->easy_handle;
+				    res = msg->data.result;
+				    (void) res;
+				    break;
+			    }
+		    }
 
-                if (!easy)
-                    break;
+		    if (!easy)
+			    break;
 
-                curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
-                curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
+		    curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
+		    curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 
-                try {
-                    --active_connections;
-                    if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-                        info->reply.set_code(0);
-                        info->reply.set_error(-ETIMEDOUT);
-                    } else {
-                        long code = 200;
-                        long err = 0;
-                        curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
-                        curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
-                        info->reply.set_code(code);
-                        info->reply.set_error(-err);
-                    }
-                    info->reply.set_url(effective_url);
-                    info->reply.set_data(info->data.str());
-                    info->handler(info->reply);
-                } catch (...) {
-                    curl_multi_remove_handle(multi, easy);
-                    delete info;
+		    try {
+			    --active_connections;
+			    if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
+				    info->reply.set_code(0);
+				    info->reply.set_error(-ETIMEDOUT);
+			    } else {
+				    long code = 200;
+				    long err = 0;
+				    curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
+				    curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
+				    info->reply.set_code(code);
+				    info->reply.set_error(-err);
+			    }
+			    info->reply.set_url(effective_url);
+			    info->reply.set_data(info->data.str());
+			    info->handler(info->reply);
+		    } catch (...) {
+			    curl_multi_remove_handle(multi, easy);
+			    delete info;
 
-                    throw;
-                }
+			    throw;
+		    }
 
-                curl_multi_remove_handle(multi, easy);
-                delete info;
-            } while (easy);
+		    curl_multi_remove_handle(multi, easy);
+		    delete info;
+	    } while (easy);
 
-            next_connections();
-//        }
-        prev_running = still_running;
+	    next_connections();
     }
 
     static int socket_callback(CURL *e, curl_socket_t s, int what, network_manager *manager, ev::io *io)
     {
-        debug() << "s: " << s << ", what: " << what << ", io: " << io << std::endl;
-        (void) e;
+	    (void) e;
 
-        if (what == CURL_POLL_REMOVE) {
-            delete io;
-            return 0;
-        }
+	    if (what == CURL_POLL_REMOVE) {
+		    manager->p->logger.log(LOG_DEBUG, "socket_callback, destroying io: %p, socket: %d, what: %d", io, int(s), what);
+		    delete io;
+		    return 0;
+	    }
 
-        if (!io) {
-            debug() << std::endl;
-            io = new ev::io(manager->p->loop);
-            curl_multi_assign(manager->p->multi, s, io);
-            io->set<network_manager_private, &network_manager_private::on_socket_event>(manager->p);
-        }
+	    if (!io) {
+		    io = new ev::io(manager->p->loop);
+		    manager->p->logger.log(LOG_DEBUG, "socket_callback, created io: %p, socket: %d, what: %d", io, int(s), what);
+		    curl_multi_assign(manager->p->multi, s, io);
+		    io->set<network_manager_private, &network_manager_private::on_socket_event>(manager->p);
+	    }
 
-        int events = 0;
-        if (what & CURL_POLL_IN)
-            events |= EV_READ;
-        if (what & CURL_POLL_OUT)
-            events |= EV_WRITE;
-        debug() << what << " -> " << events << std::endl;
-        bool active = io->is_active();
-        io->set(s, events);
-        if (!active)
-            io->start();
-        return 0;
+	    int events = 0;
+	    if (what & CURL_POLL_IN)
+		    events |= EV_READ;
+	    if (what & CURL_POLL_OUT)
+		    events |= EV_WRITE;
+	    manager->p->logger.log(LOG_DEBUG, "socket_callback, set io: %p, socket: %d, what: %d", io, int(s), what);
+	    bool active = io->is_active();
+	    io->set(s, events);
+	    if (!active)
+		    io->start();
+	    return 0;
     }
 
     static int timer_callback(CURLM *multi, long timeout_ms, network_manager *manager)
     {
-        debug() << std::endl;
-        (void) multi;
-        manager->p->timer.stop();
-        manager->p->timer.set(timeout_ms / 1000.);
-        manager->p->timer.start();
-        return 0;
+	    manager->p->logger.log(LOG_DEBUG, "timer_callback, timeout: %ld ms", timeout_ms);
+	    (void) multi;
+	    manager->p->timer.stop();
+	    manager->p->timer.set(timeout_ms / 1000.);
+	    manager->p->timer.start();
+	    return 0;
     }
 
     static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
     {
-        debug() << "size: " << size << ", nmemb: " << nmemb << std::endl;
-        const size_t real_size = size * nmemb;
-        info->data.write(data, real_size);
-        return real_size;
+//	    info->logger.log(LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
+	    const size_t real_size = size * nmemb;
+	    info->data.write(data, real_size);
+	    return real_size;
     }
 
     static std::string trimmed(const char *begin, const char *end)
@@ -372,6 +368,7 @@ public:
     int active_connections_limit;
     std::atomic_int active_connections;
     std::list<request_info::ptr> requests;
+    swarm::logger logger;
     std::mutex mutex;
     CURLM *multi;
 };
@@ -386,14 +383,37 @@ network_manager::network_manager(ev::loop_ref &loop)
     curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
 }
 
+network_manager::network_manager(ev::loop_ref &loop, const logger &log)
+	: p(new network_manager_private(loop))
+{
+	p->logger = log;
+	p->logger.log(LOG_INFO, "Creating network_manager: %p", this);
+	p->multi = curl_multi_init();
+        curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
+        curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
+        curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
+        curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
+}
+
 network_manager::~network_manager()
 {
-    delete p;
+	p->logger.log(LOG_INFO, "Destroying network_manager: %p", this);
+	delete p;
 }
 
 void network_manager::set_limit(int active_connections)
 {
-    p->active_connections_limit = active_connections;
+	p->active_connections_limit = active_connections;
+}
+
+void network_manager::set_logger(const logger &log)
+{
+	p->logger = log;
+}
+
+logger network_manager::get_logger() const
+{
+	return p->logger;
 }
 
 void network_manager::get(const std::function<void (const network_reply &reply)> &handler, const network_request &request)
