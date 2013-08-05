@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.4.0
+Version:	0.5.4.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Aug 05 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.1
+- Added more debug info to on_socket_event logs
+
 * Mon Aug 05 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.0
 - Added logger calls to most of methods
 - Added request_stream::log method	    

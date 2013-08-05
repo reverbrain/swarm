@@ -1,3 +1,9 @@
+swarm (0.5.4.1) unstable; urgency=low
+
+  * Added more debug info to on_socket_event logs
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 05 Aug 2013 17:51:50 +0400
+
 swarm (0.5.4.0) unstable; urgency=low
 
   * Added logger calls to most of methods
