@@ -1,3 +1,11 @@
+swarm (0.5.4.0) unstable; urgency=low
+
+  * Added logger calls to most of methods
+  * Added request_stream::log method	    
+  * * This method is shortcut for get_server()->get_logger().log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 05 Aug 2013 15:57:41 +0400
+
 swarm (0.5.3.6) unstable; urgency=low
 
   * Fixed swarm/logger.h includes

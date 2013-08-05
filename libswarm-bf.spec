@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.3.6
+Version:	0.5.4.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Aug 05 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.0
+- Added logger calls to most of methods
+- Added request_stream::log method	    
+- * This method is shortcut for get_server()->get_logger().log
+
 * Fri Aug 02 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.3.6
 - Fixed swarm/logger.h includes
 
