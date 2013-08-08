@@ -71,11 +71,6 @@ public:
 	int run(int argc, char **argv);
 
 	void set_logger(const swarm::logger &logger);
-	template <typename... Args>
-	void set_logger(Args &&...args)
-	{
-		set_logger(swarm::logger(args...));
-	}
 	swarm::logger get_logger() const;
 
 	virtual bool initialize(const rapidjson::Value &config) = 0;
