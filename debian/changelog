@@ -1,3 +1,9 @@
+swarm (0.5.4.3) unstable; urgency=low
+
+  * Added socket fd to socket io
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 08 Aug 2013 20:49:36 +0400
+
 swarm (0.5.4.2) unstable; urgency=low
 
   * Removed server::add_logger overload
