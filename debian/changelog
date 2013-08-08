@@ -1,3 +1,10 @@
+swarm (0.5.4.2) unstable; urgency=low
+
+  * Removed server::add_logger overload
+  * Added elliptics::server::get_node method
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 08 Aug 2013 18:39:55 +0400
+
 swarm (0.5.4.1) unstable; urgency=low
 
   * Added more debug info to on_socket_event logs
