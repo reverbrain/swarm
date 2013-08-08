@@ -77,7 +77,7 @@ public:
 
     void on_socket_event(ev::io &io, int revent)
     {
-	    logger.log(LOG_DEBUG, "on_socket_event, io: %p, revent: %d", &io, revent);
+	    logger.log(LOG_DEBUG, "on_socket_event, io: %p, socket: %d, revent: %d", &io, io.fd, revent);
 	    int action = 0;
 	    if (revent & EV_READ)
 		    action |= CURL_CSELECT_IN;
@@ -88,7 +88,7 @@ public:
 	    do {
 		    rc = curl_multi_socket_action(multi, io.fd, action, &still_running);
 	    } while (rc == CURLM_CALL_MULTI_PERFORM);
-	    logger.log(LOG_DEBUG, "on_socket_event, io: %p, rc: %d", &io, int(rc));
+	    logger.log(LOG_DEBUG, "on_socket_event, io: %p, socket: %d, rc: %d", &io, io.fd, int(rc));
 
 	    check_run_count();
     }
