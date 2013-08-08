@@ -17,6 +17,8 @@ install(FILES
 		jsonvalue.hpp
 		index.hpp
 		io.hpp
+		server.hpp
+		elliptics_logger.hpp
 	DESTINATION include/thevoid/elliptics)
 install(TARGETS elliptics-thevoid
 	LIBRARY DESTINATION lib${LIB_SUFFIX}

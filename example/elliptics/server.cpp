@@ -86,3 +86,8 @@ ioremap::swarm::logger elliptics_server::get_logger_impl()
 {
 	return *m_logger;
 }
+
+node elliptics_server::get_node()
+{
+	return *m_node;
+}
