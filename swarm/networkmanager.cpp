@@ -131,7 +131,7 @@ public:
             info->reply.set_code(200);
             info->handler = request->handler;
             info->body = request->body;
-	    info->logger = logger;
+            info->logger = logger;
             if (!info->easy) {
                 info->reply.set_code(650);
                 request->handler(info->reply);
@@ -153,8 +153,8 @@ public:
 
             if (request->command == POST) {
                 curl_easy_setopt(info->easy, CURLOPT_POST, true);
-                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, request->body.size());
-                curl_easy_setopt(info->easy, CURLOPT_COPYPOSTFIELDS, request->body.c_str());
+                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
+                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, info->body.size());
             }
 
             curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
