@@ -153,8 +153,8 @@ public:
 
             if (request->command == POST) {
                 curl_easy_setopt(info->easy, CURLOPT_POST, true);
-                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, request->body.c_str());
                 curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, request->body.size());
+                curl_easy_setopt(info->easy, CURLOPT_COPYPOSTFIELDS, request->body.c_str());
             }
 
             curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
