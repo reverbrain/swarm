@@ -1,3 +1,9 @@
+swarm (0.5.4.4) unstable; urgency=low
+
+  * Use body pointer from 'info' object, which is being held for the whole duration of request
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 15 Aug 2013 22:22:42 +0400
+
 swarm (0.5.4.3) unstable; urgency=low
 
   * Added socket fd to socket io
