@@ -1,3 +1,11 @@
+swarm (0.5.4.5) unstable; urgency=low
+
+  * Move json serializer into separate class
+  * Added index/data convert functions for generic serializer
+  * Depend on 2.24.13.33+ elliptics
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 18 Aug 2013 05:30:52 +0400
+
 swarm (0.5.4.4) unstable; urgency=low
 
   * Use body pointer from 'info' object, which is being held for the whole duration of request
