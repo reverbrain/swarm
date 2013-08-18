@@ -24,14 +24,6 @@
 
 namespace ioremap { namespace thevoid { namespace elliptics { namespace index { 
 
-struct id_comparator
-{
-	bool operator() (const dnet_raw_id &first, const dnet_raw_id &second) const
-	{
-		return memcmp(first.id, second.id, sizeof(first.id)) < 0;
-	}
-};
-
 // set indexes for given ID
 template <typename T>
 struct on_update : public simple_request_stream<T>, public std::enable_shared_from_this<on_update<T>>
@@ -98,13 +90,18 @@ struct read_result_cmp {
 	}
 };
 
-typedef std::map<dnet_raw_id, std::string, id_comparator> index_to_name_map_t;
-
 struct find_serializer {
+	static const std::string basic_convert(const ioremap::elliptics::data_pointer &data) {
+		std::string str(reinterpret_cast<const char *>(data.data()), data.size());
+		return str;
+	}
+
 	static void pack_indexes_json(JsonValue &result_object,
 			const ioremap::elliptics::sync_read_result &const_read_result,
+			const std::function<std::string (const ioremap::elliptics::data_pointer &)> read_convert,
 			const ioremap::elliptics::sync_find_indexes_result &find_result,
-			index_to_name_map_t &map) {
+			const std::function<std::string (const ioremap::elliptics::data_pointer &)> index_convert,
+			const ioremap::elliptics::id_to_name_map_t &map) {
 		for (size_t i = 0; i < find_result.size(); ++i) {
 			const ioremap::elliptics::find_indexes_result_entry &entry = find_result[i];
 
@@ -115,9 +112,12 @@ struct find_serializer {
 			indexes.SetObject();
 
 			for (auto it = entry.indexes.begin(); it != entry.indexes.end(); ++it) {
-				const std::string &data = it->data.to_string();
-				rapidjson::Value value(data.c_str(), data.size(), result_object.GetAllocator());
-				indexes.AddMember(map[it->index].c_str(), value, result_object.GetAllocator());
+				std::string index_data = index_convert(it->data);
+				rapidjson::Value value(index_data.c_str(), index_data.size(), result_object.GetAllocator());
+
+				auto name_it = map.find(it->index);
+				if (name_it != map.end())
+					indexes.AddMember(name_it->second.c_str(), value, result_object.GetAllocator());
 			}
 
 			if (const_read_result.size()) {
@@ -131,8 +131,8 @@ struct find_serializer {
 
 				auto it = std::lower_bound(read_result.begin(), read_result.end(), entry.id, cmp);
 				if (it != read_result.end()) {
-					rapidjson::Value data_str(reinterpret_cast<char *>(it->file().data()),
-							it->file().size());
+					std::string res = read_convert(it->file());
+					rapidjson::Value data_str(res.c_str(), res.size(), result_object.GetAllocator());
 					obj.AddMember("data", data_str, result_object.GetAllocator());
 
 					rapidjson::Value tobj;
@@ -243,7 +243,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 			const ioremap::elliptics::sync_find_indexes_result &find_result) {
 		JsonValue result_object;
 
-		find_serializer::pack_indexes_json(result_object, read_result, find_result, m_map);
+		find_serializer::pack_indexes_json(result_object, read_result, find_serializer::basic_convert, find_result, find_serializer::basic_convert, m_map);
 
 		swarm::network_reply reply;
 		reply.set_code(swarm::network_reply::ok);
@@ -254,7 +254,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		this->send_reply(reply);
 	}
 
-	index_to_name_map_t m_map;
+	ioremap::elliptics::id_to_name_map_t m_map;
 	std::string m_view;
 	ioremap::elliptics::sync_find_indexes_result m_result;
 };
