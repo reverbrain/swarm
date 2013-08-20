@@ -85,10 +85,11 @@ public:
 		    action |= CURL_CSELECT_OUT;
 
 	    CURLMcode rc;
+	    int fd = io.fd; // io may be destroyed in curl_multi_socket_action and must not be used
 	    do {
-		    rc = curl_multi_socket_action(multi, io.fd, action, &still_running);
+		    rc = curl_multi_socket_action(multi, fd, action, &still_running);
 	    } while (rc == CURLM_CALL_MULTI_PERFORM);
-	    logger.log(LOG_DEBUG, "on_socket_event, io: %p, socket: %d, rc: %d", &io, io.fd, int(rc));
+	    logger.log(LOG_DEBUG, "on_socket_event, io: %p, socket: %d, rc: %d", &io, fd, int(rc));
 
 	    check_run_count();
     }
