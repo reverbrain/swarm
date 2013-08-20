@@ -85,7 +85,7 @@ public:
 		    action |= CURL_CSELECT_OUT;
 
 	    CURLMcode rc;
-	    int fd = io.fd; // io may be destroyed in curl_multi_socket_action and must not be used
+	    int fd = io.fd; // io can be destroyed in curl_multi_socket_action and must not be used
 	    do {
 		    rc = curl_multi_socket_action(multi, fd, action, &still_running);
 	    } while (rc == CURLM_CALL_MULTI_PERFORM);
@@ -268,6 +268,7 @@ public:
 
 	    if (what == CURL_POLL_REMOVE) {
 		    manager->p->logger.log(LOG_DEBUG, "socket_callback, destroying io: %p, socket: %d, what: %d", io, int(s), what);
+
 		    delete io;
 		    return 0;
 	    }
@@ -275,8 +276,9 @@ public:
 	    if (!io) {
 		    io = new ev::io(manager->p->loop);
 		    manager->p->logger.log(LOG_DEBUG, "socket_callback, created io: %p, socket: %d, what: %d", io, int(s), what);
-		    curl_multi_assign(manager->p->multi, s, io);
 		    io->set<network_manager_private, &network_manager_private::on_socket_event>(manager->p);
+	    
+		    curl_multi_assign(manager->p->multi, s, io);
 	    }
 
 	    int events = 0;
