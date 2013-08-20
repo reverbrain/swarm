@@ -85,7 +85,14 @@ public:
 		    action |= CURL_CSELECT_OUT;
 
 	    CURLMcode rc;
-	    int fd = io.fd; // io can be destroyed in curl_multi_socket_action and must not be used
+	    // io can be destroyed in curl_multi_socket_action and must not be used
+	    //
+	    // logic here is rather subtle - we suppose curl_multi_socket_action() ends up
+	    // calling socket_callback() which will destroy 'io', thus its reference will
+	    // be invalid, which in turn looks like a bug
+	    //
+	    // XXX
+	    int fd = io.fd;
 	    do {
 		    rc = curl_multi_socket_action(multi, fd, action, &still_running);
 	    } while (rc == CURLM_CALL_MULTI_PERFORM);
