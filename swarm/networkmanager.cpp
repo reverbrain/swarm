@@ -99,8 +99,7 @@ public:
 	    logger.log(LOG_DEBUG, "on_timer");
 	    CURLMcode rc;
 	    do {
-		    rc = curl_multi_socket_action(multi,
-						  CURL_SOCKET_TIMEOUT, 0, &still_running);
+		    rc = curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
 	    } while (rc == CURLM_CALL_MULTI_PERFORM);
 	    logger.log(LOG_DEBUG, "on_timer, rc: %d", int(rc));
 
