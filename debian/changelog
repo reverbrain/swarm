@@ -1,3 +1,11 @@
+swarm (0.5.4.6) unstable; urgency=low
+
+  * Bugfix: SIGSEGV in on_socket_event
+  * Assign IO to curl-multi only after io->set() has been called
+  * Added comment about how IO can be destroyed while in curl_multi_socket_action()
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 22 Aug 2013 02:11:15 +0400
+
 swarm (0.5.4.5) unstable; urgency=low
 
   * Move json serializer into separate class
