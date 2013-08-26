@@ -141,9 +141,10 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		result_object.AddMember("mtime", tobj, result_object.GetAllocator());
 
 		char addr_str[128];
-		result_object.AddMember("server",
-			dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str)),
-				result_object.GetAllocator());
+		dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str));
+		
+		rapidjson::Value server_addr(addr_str, strlen(addr_str), result_object.GetAllocator());
+		result_object.AddMember("server", server_addr, result_object.GetAllocator());
 	}
 
 	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result,
