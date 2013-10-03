@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.4.3
+Version:	0.5.4.8
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Oct 03 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.8
+- Fixed connection counter in monitoring
+
 * Thu Aug 08 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.3
 - Added socket fd to socket io
 
