@@ -63,7 +63,8 @@ connection<T>::connection(boost::asio::io_service &service)
 template <typename T>
 connection<T>::~connection()
 {
-	--connections_counter;
+	if (m_server)
+		--connections_counter;
 
 	if (m_handler)
 		m_handler->on_close(boost::system::error_code());
