@@ -28,80 +28,84 @@ static boost::asio::const_buffer to_buffer(const char (&str)[N])
 
 namespace status_strings {
 
-const char ok[] =
-		"HTTP/1.1 200 OK\r\n";
-const char created[] =
-		"HTTP/1.1 201 Created\r\n";
-const char accepted[] =
-		"HTTP/1.1 202 Accepted\r\n";
-const char no_content[] =
-		"HTTP/1.1 204 No Content\r\n";
-const char multiple_choices[] =
-		"HTTP/1.1 300 Multiple Choices\r\n";
-const char moved_permanently[] =
-		"HTTP/1.1 301 Moved Permanently\r\n";
-const char moved_temporarily[] =
-		"HTTP/1.1 302 Moved Temporarily\r\n";
-const char not_modified[] =
-		"HTTP/1.1 304 Not Modified\r\n";
-const char bad_request[] =
-		"HTTP/1.1 400 Bad Request\r\n";
-const char unauthorized[] =
-		"HTTP/1.1 401 Unauthorized\r\n";
-const char forbidden[] =
-		"HTTP/1.1 403 Forbidden\r\n";
-const char not_found[] =
-		"HTTP/1.1 404 Not Found\r\n";
-const char internal_server_error[] =
-		"HTTP/1.1 500 Internal Server Error\r\n";
-const char not_implemented[] =
-		"HTTP/1.1 501 Not Implemented\r\n";
-const char bad_gateway[] =
-		"HTTP/1.1 502 Bad Gateway\r\n";
-const char service_unavailable[] =
-		"HTTP/1.1 503 Service Unavailable\r\n";
+#define CASE_CODE(code, message) case code: return stock_replies::to_buffer("HTTP/1.1 " #code " " message "\r\n")
 
 boost::asio::const_buffer to_buffer(int status)
 {
-	using ioremap::thevoid::stock_replies::to_buffer;
-
 	switch (status) {
-		case swarm::network_reply::ok:
-			return to_buffer(ok);
-		case swarm::network_reply::created:
-			return to_buffer(created);
-		case swarm::network_reply::accepted:
-			return to_buffer(accepted);
-		case swarm::network_reply::no_content:
-			return to_buffer(no_content);
-		case swarm::network_reply::multiple_choices:
-			return to_buffer(multiple_choices);
-		case swarm::network_reply::moved_permanently:
-			return to_buffer(moved_permanently);
-		case swarm::network_reply::moved_temporarily:
-			return to_buffer(moved_temporarily);
-		case swarm::network_reply::not_modified:
-			return to_buffer(not_modified);
-		case swarm::network_reply::bad_request:
-			return to_buffer(bad_request);
-		case swarm::network_reply::unauthorized:
-			return to_buffer(unauthorized);
-		case swarm::network_reply::forbidden:
-			return to_buffer(forbidden);
-		case swarm::network_reply::not_found:
-			return to_buffer(not_found);
-		case swarm::network_reply::internal_server_error:
-			return to_buffer(internal_server_error);
-		case swarm::network_reply::not_implemented:
-			return to_buffer(not_implemented);
-		case swarm::network_reply::bad_gateway:
-			return to_buffer(bad_gateway);
-		case swarm::network_reply::service_unavailable:
-			return to_buffer(service_unavailable);
+		CASE_CODE(100, "Continue");
+		CASE_CODE(101, "Switching Protocols");
+		CASE_CODE(102, "Processing");
+
+		CASE_CODE(200, "OK");
+	        CASE_CODE(201, "Created");
+		CASE_CODE(202, "Accepted");
+		CASE_CODE(203, "Non-Authoritative Information");
+		CASE_CODE(204, "No Content");
+		CASE_CODE(205, "Reset Content");
+		CASE_CODE(206, "Partial Content");
+		CASE_CODE(207, "Multi-Status");
+		CASE_CODE(208, "Already Reported");
+		CASE_CODE(209, "IM Used");
+
+	        CASE_CODE(300, "Multiple Choices");
+	        CASE_CODE(301, "Moved Permanently");
+	        CASE_CODE(302, "Moved Temporarily");
+		CASE_CODE(304, "Not Modified");
+		CASE_CODE(305, "Use Proxy");
+		CASE_CODE(306, "Switch Proxy");
+		CASE_CODE(307, "Temporary Redirect");
+		CASE_CODE(308, "Permanent Redirect");
+
+		CASE_CODE(400, "Bad Request");
+		CASE_CODE(401, "Unauthorized");
+		CASE_CODE(402, "Payment Required");
+		CASE_CODE(403, "Forbidden");
+		CASE_CODE(404, "Not Found");
+		CASE_CODE(405, "Method Not Allowed");
+		CASE_CODE(406, "Not Acceptable");
+		CASE_CODE(407, "Proxy Authentication Required");
+		CASE_CODE(408, "Request Timeout");
+		CASE_CODE(409, "Conflict");
+		CASE_CODE(410, "Gone");
+		CASE_CODE(411, "Length Required");
+		CASE_CODE(412, "Precondition Failed");
+		CASE_CODE(413, "Request Entity Too Large");
+		CASE_CODE(414, "Request-URI Too Long");
+		CASE_CODE(415, "Unsupported Media Type");
+		CASE_CODE(416, "Requested Range Not Satisfiable");
+		CASE_CODE(417, "Expectation Failed");
+		CASE_CODE(418, "I'm a teapot");
+		CASE_CODE(419, "Authentication Timeout");
+		CASE_CODE(422, "Unprocessable Entity");
+		CASE_CODE(423, "Locked");
+		CASE_CODE(424, "Failed Dependency");
+//		CASE_CODE(424, "Method Failure"); -- WebDav
+//		CASE_CODE(425, "Unordered Collection"); -- Internet draft
+		CASE_CODE(426, "Upgrade Required");
+		CASE_CODE(428, "Precondition Required");
+		CASE_CODE(429, "Too Many Requests");
+		CASE_CODE(431, "Request Header Fields Too Large");
+		CASE_CODE(444, "No Response");
+//		CASE_CODE(451, "Unavailable For Legal Reasons"); -- Internet draft
+
 		default:
-			return to_buffer(internal_server_error);
+		CASE_CODE(500, "Internal Server Error");
+		CASE_CODE(501, "Not Implemented");
+		CASE_CODE(502, "Bad Gateway");
+		CASE_CODE(503, "Service Unavailable");
+		CASE_CODE(504, "Gateway Timeout");
+		CASE_CODE(505, "HTTP Version Not Supported");
+		CASE_CODE(506, "Variant Also Negotiates");
+		CASE_CODE(507, "Insufficient Storage");
+		CASE_CODE(508, "Loop Detected");
+		CASE_CODE(510, "Not Extended");
+		CASE_CODE(511, "Network Authentication Required");
+		CASE_CODE(522, "Connection timed out");
 	}
 }
+
+#undef CASE_CODE
 
 } // namespace status_strings
 
