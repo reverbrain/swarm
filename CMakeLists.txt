@@ -17,7 +17,6 @@ locate_library(URIPARSER "Uri.h" "uriparser" "uriparser")
 locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
 
 find_package(Boost COMPONENTS system thread program_options REQUIRED)
-find_package(elliptics REQUIRED)
 
 option(BUILD_NETWORK_MANAGER "Build network manager" ON)
 
