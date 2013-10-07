@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.4.8
+Version:	0.5.4.9
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Oct 07 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.9
+- Fixed segfault in network_reply::set_header
+
 * Thu Oct 03 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.8
 - Fixed connection counter in monitoring
 
