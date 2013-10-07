@@ -26,7 +26,6 @@ namespace stock_replies
 {
 
 boost::asio::const_buffer status_to_buffer(swarm::network_reply::status_type status);
-boost::asio::const_buffer status_content(swarm::network_reply::status_type status);
 swarm::network_reply stock_reply(swarm::network_reply::status_type status);
 std::vector<boost::asio::const_buffer> to_buffers(const swarm::network_reply &reply, const boost::asio::const_buffer &content);
 

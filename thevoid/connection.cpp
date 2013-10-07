@@ -280,7 +280,7 @@ template <typename T>
 void connection<T>::send_error(swarm::network_reply::status_type type)
 {
 	send_headers(stock_replies::stock_reply(type),
-		stock_replies::status_content(type),
+		boost::asio::const_buffer(),
 		std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
 }
 
