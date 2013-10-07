@@ -100,24 +100,25 @@ public:
         m_data.emplace_back(name, value);
     }
 
+	struct name_checker
+	{
+		const char * const name;
+		const size_t name_size;
+
+		bool operator() (const headers_entry &value) const
+		{
+			return are_case_insensitive_equal(value.first, name, name_size);
+		}
+	};
+
 	void set_header(const std::string &name, const std::string &value)
 	{
-		bool found = false;
-		for (auto it = m_data.begin(); it != m_data.end(); ++it) {
-			while (are_case_insensitive_equal(it->first, name.c_str(), name.size())) {
-				if (found) {
-					it->second = value;
-					found = true;
-					break;
-				} else {
-					it = m_data.erase(it);
-				}
-			}
-		}
+		name_checker checker = { name.c_str(), name.size() };
 
-		if (!found) {
-			m_data.emplace_back(name, value);
-		}
+		auto position = std::find_if(m_data.begin(), m_data.end(), checker) - m_data.begin();
+		auto new_end = std::remove_if(m_data.begin(), m_data.end(), checker);
+		m_data.erase(new_end, m_data.end());
+		m_data.emplace(std::min(m_data.begin() + position, m_data.end()), name, value);
 	}
 
     std::vector<headers_entry>::iterator find_header(const char *name, size_t name_size)
