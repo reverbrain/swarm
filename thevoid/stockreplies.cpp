@@ -125,6 +125,7 @@ swarm::network_reply stock_reply(swarm::network_reply::status_type status)
 {
 	swarm::network_reply reply;
 	reply.set_code(status);
+	reply.set_content_length(0);
 	return reply;
 }
 
