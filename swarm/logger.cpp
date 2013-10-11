@@ -11,17 +11,16 @@
 /*
  * Supported in Linux only so far
  */
-#ifdef HAVE_SENDFILE4_SUPPORT
+#ifdef __linux__
 #include <sys/syscall.h>
 static long get_thread_id()
 {
 	return syscall(SYS_gettid);
 }
 #else
-#include <pthread.h>
 static long get_thread_id()
 {
-	return pthread_self();
+	return -1;
 }
 #endif
 
