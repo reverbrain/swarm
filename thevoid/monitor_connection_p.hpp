@@ -12,8 +12,9 @@ class monitor_connection : public std::enable_shared_from_this<monitor_connectio
 {
 public:
 	typedef boost::asio::ip::tcp::socket socket_type;
+    typedef typename socket_type::protocol_type protocol_type;
 
-	monitor_connection(boost::asio::io_service &io_service);
+	monitor_connection(boost::asio::io_service &io_service, size_t buffer_size);
 	~monitor_connection();
 
 	socket_type &socket();
@@ -31,7 +32,7 @@ protected:
 private:
 	boost::asio::io_service &m_io_service;
 	socket_type m_socket;
-	boost::array<char, 80> m_buffer;
+	boost::array<char, 64> m_buffer;
 	std::string m_storage;
 };
 

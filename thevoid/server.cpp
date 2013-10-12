@@ -29,6 +29,10 @@
 #include <swarm/logger.h>
 #include <thevoid/rapidjson/filereadstream.h>
 
+#ifdef __linux__
+# include <sys/prctl.h>
+#endif
+
 #define UNIX_PREFIX "unix:"
 #define UNIX_PREFIX_LEN (sizeof(UNIX_PREFIX) / sizeof(char) - 1)
 
@@ -40,8 +44,10 @@ class server_data;
 static std::weak_ptr<signal_handler> global_signal_set;
 
 server_data::server_data() :
+	threads_round_robin(0),
 	threads_count(2),
 	backlog_size(128),
+	buffer_size(8192),
 	local_acceptors(*this),
 	tcp_acceptors(*this),
 	monitor_acceptors(*this),
@@ -64,10 +70,18 @@ server_data::~server_data()
 
 void server_data::handle_stop()
 {
-	local_acceptors.handle_stop();
-	tcp_acceptors.handle_stop();
-	monitor_acceptors.handle_stop();
+	worker_works.clear();
 	io_service.stop();
+	for (auto it = worker_io_services.begin(); it != worker_io_services.end(); ++it) {
+		(*it)->stop();
+	}
+	monitor_io_service.stop();
+}
+
+boost::asio::io_service &server_data::get_worker_service()
+{
+	const uint id = (threads_round_robin++ % threads_count);
+	return *worker_io_services[id];
 }
 
 void signal_handler::handler(int)
@@ -139,6 +153,20 @@ static int read_config(rapidjson::Document &doc, const char *config_path)
 	return 0;
 }
 
+struct io_service_runner
+{
+	boost::asio::io_service *service;
+	const char *name;
+
+	void operator() () const
+	{
+#ifdef __linux__
+		prctl(PR_SET_NAME, name);
+#endif
+		service->run();
+	}
+};
+
 int base_server::run(int argc, char **argv)
 {
 	namespace po = boost::program_options;
@@ -203,6 +231,19 @@ int base_server::run(int argc, char **argv)
 		return -4;
 	}
 
+	if (config.HasMember("threads")) {
+		m_data->threads_count = config["threads"].GetUint();
+	}
+
+	if (config.HasMember("buffer_size")) {
+		m_data->buffer_size = config["buffer_size"].GetUint();
+	}
+
+	for (size_t i = 0; i < m_data->threads_count; ++i) {
+		m_data->worker_io_services.emplace_back(new boost::asio::io_service(1));
+		m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->worker_io_services[i]));
+	}
+
 	try {
 		for (auto it = endpoints->value.Begin(); it != endpoints->value.End(); ++it) {
 			listen(it->GetString());
@@ -224,9 +265,6 @@ int base_server::run(int argc, char **argv)
 	if (config.HasMember("backlog"))
 		m_data->backlog_size = config["backlog"].GetInt();
 
-	if (config.HasMember("threads"))
-		m_data->threads_count = config["threads"].GetInt();
-
 	try {
 		if (monitor_port != -1) {
 			m_data->monitor_acceptors.add_acceptor("0.0.0.0:" + boost::lexical_cast<std::string>(monitor_port));
@@ -235,15 +273,27 @@ int base_server::run(int argc, char **argv)
 		return -7;
 	}
 
-	std::vector<std::shared_ptr<boost::thread> > threads;
+	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->monitor_io_service));
 
-	m_data->local_acceptors.start_threads(m_data->threads_count, threads);
-	m_data->tcp_acceptors.start_threads(m_data->threads_count, threads);
-	m_data->monitor_acceptors.start_threads(1, threads);
+	std::vector<std::unique_ptr<boost::thread> > threads;
+	io_service_runner runner;
+	runner.name = "void_worker";
+
+	for (size_t i = 0; i < m_data->threads_count; ++i) {
+		runner.service = m_data->worker_io_services[i].get();
+		m_data->worker_threads.emplace_back(new boost::thread(runner));
+	}
+
+	runner.name = "void_monitor";
+	runner.service = &m_data->monitor_io_service;
+	boost::thread monitoring(runner);
+
+	m_data->io_service.run();
 
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)
 		threads[i]->join();
+	monitoring.join();
 
 	return 0;
 }

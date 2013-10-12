@@ -36,6 +36,7 @@ class connection : public std::enable_shared_from_this<connection<T>>, public re
 {
 public:
     typedef T socket_type;
+    typedef typename socket_type::protocol_type protocol_type;
 
 	enum state {
 		processing_request = 0x00,
@@ -45,7 +46,7 @@ public:
 	};
 
 	//! Construct a connection with the given io_service.
-	explicit connection(boost::asio::io_service &service);
+	explicit connection(boost::asio::io_service &service, size_t buffer_size);
 	~connection();
 
 	//! Get the socket associated with the connection.
@@ -62,9 +63,6 @@ public:
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
-    void send_headers_impl(const swarm::network_reply &rep,
-                           const boost::asio::const_buffer &content,
-                           const std::function<void (const boost::system::error_code &err)> &handler);
     void close_impl(const boost::system::error_code &err);
     void process_next();
 
@@ -76,29 +74,20 @@ private:
 
 	void send_error(swarm::network_reply::status_type type);
 
-	//! Handle completion of a write operation.
-	void handle_write(const boost::system::error_code &e);
-
 	//! Server reference for handler logic
 	std::shared_ptr<base_server> m_server;
-
-	//! Strand to ensure the connection's handlers are not called concurrently.
-	boost::asio::io_service::strand m_strand;
 
 	//! Socket for the connection.
 	T m_socket;
 
 	//! Buffer for incoming data.
-	boost::array<char, 8192> m_buffer;
+    std::vector<char> m_buffer;
 
 	//! The incoming request.
 	swarm::network_request m_request;
 
 	//! The parser for the incoming request.
 	request_parser m_request_parser;
-
-	//! The reply to be sent back to the client.
-	swarm::network_reply m_reply;
 
 	//! The estimated size of reply content-length which is not processed yet
 	size_t m_content_length;

@@ -24,8 +24,7 @@ static void complete_socket_creation(boost::asio::local::stream_protocol::endpoi
 template <typename Connection>
 void acceptors_list<Connection>::add_acceptor(const std::string &address)
 {
-	io_services.emplace_back(new boost::asio::io_service);
-	acceptors.emplace_back(new acceptor_type(*io_services.back()));
+	acceptors.emplace_back(new acceptor_type(get_acceptor_service()));
 
 	auto &acceptor = acceptors.back();
 
@@ -36,6 +35,8 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 		acceptor->set_option(boost::asio::socket_base::reuse_address(true));
 		acceptor->bind(endpoint);
 		acceptor->listen(data.backlog_size);
+
+		protocols.push_back(endpoint.protocol());
 
 		complete_socket_creation(endpoint);
 	} catch (boost::system::system_error &error) {
@@ -52,14 +53,14 @@ void acceptors_list<Connection>::start_acceptor(size_t index)
 {
 	acceptor_type &acc = *acceptors[index];
 
-	auto conn = std::make_shared<connection_type>(acc.get_io_service());
+	auto conn = std::make_shared<connection_type>(get_connection_service(), data.buffer_size);
 
 	acc.async_accept(conn->socket(), boost::bind(
 				 &acceptors_list::handle_accept, this, index, conn, _1));
 }
 
 template <typename Connection>
-void acceptors_list<Connection>::handle_accept(size_t index, const connection_ptr_type &conn, const boost::system::error_code &err)
+void acceptors_list<Connection>::handle_accept(size_t index, connection_ptr_type conn, const boost::system::error_code &err)
 {
 	if (!err) {
 		if (auto server = data.server.lock()) {
@@ -73,22 +74,27 @@ void acceptors_list<Connection>::handle_accept(size_t index, const connection_pt
 }
 
 template <typename Connection>
-void acceptors_list<Connection>::start_threads(int thread_count, std::vector<std::shared_ptr<boost::thread> > &threads)
+boost::asio::io_service &acceptors_list<Connection>::get_acceptor_service()
 {
-	for (size_t i = 0; i < io_services.size(); ++i) {
-		auto functor = boost::bind(&boost::asio::io_service::run, io_services[i].get());
-		for (int j = 0; j < thread_count; ++j) {
-			threads.emplace_back(std::make_shared<boost::thread>(functor));
-		}
-	}
+	return data.io_service;
 }
 
 template <typename Connection>
-void acceptors_list<Connection>::handle_stop()
+boost::asio::io_service &acceptors_list<Connection>::get_connection_service()
 {
-	for (size_t i = 0; i < io_services.size(); ++i) {
-		io_services[i]->stop();
-	}
+	return data.get_worker_service();
+}
+
+template <>
+boost::asio::io_service &acceptors_list<monitor_connection>::get_acceptor_service()
+{
+	return data.monitor_io_service;
+}
+
+template <>
+boost::asio::io_service &acceptors_list<monitor_connection>::get_connection_service()
+{
+	return data.monitor_io_service;
 }
 
 template <typename Connection>

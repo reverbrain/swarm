@@ -48,16 +48,16 @@ int get_active_connections_counter()
 }
 
 template <typename T>
-connection<T>::connection(boost::asio::io_service &service)
-	: m_strand(service),
-	  m_socket(service),
-	  m_content_length(0),
-	  m_state(read_headers)
+connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
+	m_socket(service),
+	m_buffer(buffer_size),
+	m_content_length(0),
+	m_state(read_headers)
 {
-	m_unprocessed_begin = m_buffer.end();
-	m_unprocessed_end = m_buffer.end();
+	m_unprocessed_begin = m_buffer.data();
+	m_unprocessed_end = m_buffer.data();
 
-	debug("");
+	debug(&service);
 }
 
 template <typename T>
@@ -87,42 +87,48 @@ void connection<T>::start(const std::shared_ptr<base_server> &server)
 	async_read();
 }
 
+struct send_headers_guard
+{
+	std::function<void (const boost::system::error_code &)> handler;
+	std::shared_ptr<swarm::network_reply> reply;
+
+	template <typename T>
+	void operator() (const boost::system::error_code &err, const T &)
+	{
+		handler(err);
+	}
+};
+
 template <typename T>
 void connection<T>::send_headers(const swarm::network_reply &rep,
 	const boost::asio::const_buffer &content,
 	const std::function<void (const boost::system::error_code &err)> &handler)
 {
-	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
-	m_strand.post(std::bind(&connection::send_headers_impl, this->shared_from_this(), rep, content, handler));
+	send_headers_guard guard = {
+		handler,
+		std::make_shared<swarm::network_reply>(rep)
+	};
+
+	if (m_request.is_keep_alive()) {
+		guard.reply->set_header("Connection", "Keep-Alive");
+		debug("Added Keep-Alive");
+	}
+
+	boost::asio::async_write(m_socket, stock_replies::to_buffers(*guard.reply, content), guard);
 }
 
 template <typename T>
 void connection<T>::send_data(const boost::asio::const_buffer &buffer,
 	const std::function<void (const boost::system::error_code &)> &handler)
 {
-	boost::asio::async_write(m_socket, boost::asio::buffer(buffer), m_strand.wrap(boost::bind(handler, _1)));
+	boost::asio::async_write(m_socket, boost::asio::buffer(buffer), boost::bind(handler, _1));
 }
 
 template <typename T>
 void connection<T>::close(const boost::system::error_code &err)
 {
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
-	m_strand.post(std::bind(&connection::close_impl, this->shared_from_this(), err));
-}
-
-template <typename T>
-void connection<T>::send_headers_impl(const swarm::network_reply &rep,
-	const boost::asio::const_buffer &content,
-	const std::function<void (const boost::system::error_code &)> &handler)
-{
-	m_reply = rep;
-	if (m_request.is_keep_alive()) {
-		m_reply.set_header("Connection", "Keep-Alive");
-		debug("Added Keep-Alive");
-	}
-
-	boost::asio::async_write(m_socket, stock_replies::to_buffers(m_reply, content),
-                             m_strand.wrap(boost::bind(handler, _1)));
+	m_socket.get_io_service().post(std::bind(&connection::close_impl, this->shared_from_this(), err));
 }
 
 template <typename T>
@@ -163,10 +169,6 @@ void connection<T>::process_next()
 	m_request_parser.reset();
 
 	m_request = swarm::network_request();
-
-//	m_request.method.resize(0);
-//	m_request.uri.resize(0);
-//	m_request.headers.resize(0);
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
@@ -270,10 +272,9 @@ void connection<T>::async_read()
 {
 	debug("");
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
-				 m_strand.wrap(
 					 std::bind(&connection::handle_read, this->shared_from_this(),
 						   std::placeholders::_1,
-						   std::placeholders::_2)));
+						   std::placeholders::_2));
 }
 
 template <typename T>
@@ -281,23 +282,7 @@ void connection<T>::send_error(swarm::network_reply::status_type type)
 {
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),
-		std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
-}
-
-template <typename T>
-void connection<T>::handle_write(const boost::system::error_code &e)
-{
-	if (!e)
-	{
-		// Initiate graceful connection closure.
-		boost::system::error_code ignored_ec;
-		m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
-	}
-
-	// No new asynchronous operations are started. This means that all shared_ptr
-	// references to the connection object will disappear and the object will be
-	// destroyed automatically after this handler returns. The connection class's
-	// destructor closes the socket.
+		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
 }
 
 template class connection<boost::asio::local::stream_protocol::socket>;

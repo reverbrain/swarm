@@ -9,10 +9,11 @@
 namespace ioremap {
 namespace thevoid {
 
-monitor_connection::monitor_connection(boost::asio::io_service &io_service)
+monitor_connection::monitor_connection(boost::asio::io_service &io_service, size_t buffer_size)
 	: m_io_service(io_service),
 	  m_socket(io_service)
 {
+	(void) buffer_size;
 }
 
 monitor_connection::~monitor_connection()

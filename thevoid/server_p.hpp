@@ -12,6 +12,12 @@
 
 #include <swarm/logger.h>
 
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#  include <cstdatomic>
+#else
+#  include <atomic>
+#endif
+
 namespace ioremap {
 namespace thevoid {
 
@@ -53,16 +59,26 @@ public:
 	~server_data();
 
 	void handle_stop();
+    
+    boost::asio::io_service &get_worker_service();
 
     //! Logger instance
     swarm::logger logger;
 	//! Weak pointer to server itself
 	std::weak_ptr<base_server> server;
-	//! The io_service used to perform asynchronous operations.
+	//! The io_service used to handle new sockets.
 	boost::asio::io_service io_service;
-	//! Size of thread pool per socket
+    //! The io_service used to process monitoring connection.
+	boost::asio::io_service monitor_io_service;
+    //! List of io_services to process connections.
+    std::vector<std::unique_ptr<boost::asio::io_service>> worker_io_services;
+    std::vector<std::unique_ptr<boost::asio::io_service::work>> worker_works;
+    std::vector<std::unique_ptr<boost::thread>> worker_threads;
+	//! Size of workers thread pool
+    std::atomic_uint threads_round_robin;
 	unsigned int threads_count;
 	unsigned int backlog_size;
+    size_t buffer_size;
 	//! List of activated acceptors
 	acceptors_list<unix_connection> local_acceptors;
 	acceptors_list<tcp_connection> tcp_acceptors;
