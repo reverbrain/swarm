@@ -36,7 +36,6 @@ class connection : public std::enable_shared_from_this<connection<T>>, public re
 {
 public:
     typedef T socket_type;
-    typedef typename socket_type::protocol_type protocol_type;
 
 	enum state {
 		processing_request = 0x00,
