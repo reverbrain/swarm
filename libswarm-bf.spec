@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.4.9
+Version:	0.5.5.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,12 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Oct 13 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.5.0
+- Removed default html data for error replies
+- Added a lot more http codes
+- Changed way of using io_service
+- Reimplemented http parsing engine
+
 * Mon Oct 07 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.4.9
 - Fixed segfault in network_reply::set_header
 
