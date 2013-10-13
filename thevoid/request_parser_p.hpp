@@ -28,6 +28,11 @@ public:
 	//! Reset to initial parser state.
 	void reset();
 
+	boost::tuple<boost::tribool, const char *> parse_new(
+		swarm::network_request &req, const char *begin, const char *end);
+
+    boost::tribool parse_line(swarm::network_request &request, const std::string &line);
+
 	//! Parse some data. The tribool return value is true when a complete request
 	//! has been parsed, false if the data is invalid, indeterminate when more
 	//! data is required. The InputIterator return value indicates how much of the
@@ -295,8 +300,15 @@ private:
 		expecting_newline_3
 	} m_state;
 
+	enum state_new
+	{
+		request_line,
+		header_line
+	} m_state_new;
+
     std::string m_method;
     std::string m_uri;
+    std::string m_line;
     swarm::headers_entry m_header;
     int m_http_version_major;
 	int m_http_version_minor;

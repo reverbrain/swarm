@@ -68,7 +68,7 @@ private:
 
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
-	void process_data(char *begin, char *end);
+	void process_data(const char *begin, const char *end);
 
 	void async_read();
 
@@ -99,8 +99,8 @@ private:
 	uint32_t m_state;
 
 	//! Uprocessed data
-	char *m_unprocessed_begin;
-	char *m_unprocessed_end;
+	const char *m_unprocessed_begin;
+	const char *m_unprocessed_end;
 };
 
 typedef connection<boost::asio::ip::tcp::socket> tcp_connection;
