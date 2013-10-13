@@ -205,7 +205,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 	if (m_state & read_headers) {
 		boost::tribool result;
 		const char *new_begin = NULL;
-		boost::tie(result, new_begin) = m_request_parser.parse_new(m_request, begin, end);
+		boost::tie(result, new_begin) = m_request_parser.parse(m_request, begin, end);
 
 		debug("parsed: \"" << std::string(begin, new_begin) << '"');
 		debug("parse result: " << (result ? "true" : (!result ? "false" : "unknown_state")));

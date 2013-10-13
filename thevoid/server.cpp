@@ -274,6 +274,7 @@ int base_server::run(int argc, char **argv)
 	}
 
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->monitor_io_service));
+	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->io_service));
 
 	std::vector<std::unique_ptr<boost::thread> > threads;
 	io_service_runner runner;

@@ -1,23 +1,25 @@
-//
-// request_parser.cpp
-// ~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2012 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
+/*
+ * 2013+ Copyright (c) Ruslan Nigatullin <euroelessar@yandex.ru>
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 
 #include "request_parser_p.hpp"
 
 namespace ioremap {
 namespace thevoid {
 
-request_parser::request_parser()
-	: m_state(method_start)
+request_parser::request_parser() : m_state_new(request_line)
 {
-	m_uri.reserve(32);
-	m_method.reserve(32);
 	m_header.first.reserve(32);
 	m_header.second.reserve(32);
 	m_line.reserve(32);
@@ -25,16 +27,13 @@ request_parser::request_parser()
 
 void request_parser::reset()
 {
-	m_state = method_start;
 	m_state_new = request_line;
 	m_header.first.resize(0);
 	m_header.second.resize(0);
-	m_method.resize(0);
-	m_uri.resize(0);
 	m_line.resize(0);
 }
 
-boost::tuple<boost::tribool, const char *> request_parser::parse_new(
+boost::tuple<boost::tribool, const char *> request_parser::parse(
 	swarm::network_request &request, const char *begin, const char *end)
 {
 	while (begin != end) {
