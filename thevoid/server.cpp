@@ -286,14 +286,17 @@ int base_server::run(int argc, char **argv)
 
 	runner.name = "void_monitor";
 	runner.service = &m_data->monitor_io_service;
-	boost::thread monitoring(runner);
+	threads.emplace_back(new boost::thread(runner));
 
-	m_data->io_service.run();
+	runner.name = "void_acceptor";
+	runner.service = &m_data->io_service;
+	threads.emplace_back(new boost::thread(runner));
 
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)
 		threads[i]->join();
-	monitoring.join();
+	for (std::size_t i = 0; i < m_data->worker_threads.size(); ++i)
+		m_data->worker_threads[i]->join();
 
 	return 0;
 }
