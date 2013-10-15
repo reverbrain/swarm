@@ -68,6 +68,8 @@ void acceptors_list<Connection>::handle_accept(size_t index, connection_ptr_type
 		} else {
 			throw std::logic_error("server::m_data->server is null");
 		}
+	} else {
+		data.logger.log(swarm::LOG_ERROR, "Failed to accept connection: %s", err.message().c_str());
 	}
 
 	start_acceptor(index);
