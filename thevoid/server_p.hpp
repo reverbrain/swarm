@@ -21,9 +21,6 @@
 namespace ioremap {
 namespace thevoid {
 
-int get_connections_counter();
-int get_active_connections_counter();
-
 //! This handler is created to resolve creation of several servers in one process,
 //! all of them must be stopped on SIGINT/SIGTERM signal
 class signal_handler
@@ -64,6 +61,10 @@ public:
 
     //! Logger instance
     swarm::logger logger;
+    //! Statistics
+    statistics_fuction statistics_handler;
+    std::atomic_int connections_counter;
+    std::atomic_int active_connections_counter;
 	//! Weak pointer to server itself
 	std::weak_ptr<base_server> server;
 	//! The io_service used to handle new sockets.

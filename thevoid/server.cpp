@@ -44,6 +44,8 @@ class server_data;
 static std::weak_ptr<signal_handler> global_signal_set;
 
 server_data::server_data() :
+	connections_counter(0),
+	active_connections_counter(0),
 	threads_round_robin(0),
 	threads_count(2),
 	backlog_size(128),
@@ -112,6 +114,18 @@ void base_server::set_logger(const swarm::logger &logger)
 swarm::logger base_server::get_logger() const
 {
 	return m_data->logger;
+}
+
+void base_server::set_statisitcs_handler(const statistics_fuction &handler)
+{
+	m_data->statistics_handler = handler;
+}
+
+std::map<std::string, std::string> base_server::get_statistics()
+{
+	if (m_data->statistics_handler)
+		return m_data->statistics_handler();
+	return std::map<std::string, std::string>();
 }
 
 unsigned int base_server::get_threads_count() const

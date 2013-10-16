@@ -30,6 +30,7 @@ protected:
 
 private:
 	boost::asio::io_service &m_io_service;
+    std::shared_ptr<base_server> m_server;
 	socket_type m_socket;
 	boost::array<char, 64> m_buffer;
 	std::string m_storage;

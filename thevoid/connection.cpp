@@ -24,7 +24,7 @@
 #  include <atomic>
 #endif
 
-#include "server.hpp"
+#include "server_p.hpp"
 #include "stockreplies_p.hpp"
 
 namespace ioremap {
@@ -33,19 +33,6 @@ namespace thevoid {
 //#define debug(arg) do { std::cerr << __PRETTY_FUNCTION__ << " (" << __LINE__ << ") " << arg << std::endl; std::cerr.flush(); } while (0)
 
 #define debug(arg) do {} while (0)
-
-static std::atomic_int connections_counter(0);
-static std::atomic_int active_connections_counter(0);
-
-int get_connections_counter()
-{
-	return connections_counter;
-}
-
-int get_active_connections_counter()
-{
-	return active_connections_counter;
-}
 
 template <typename T>
 connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
@@ -64,7 +51,7 @@ template <typename T>
 connection<T>::~connection()
 {
 	if (m_server)
-		--connections_counter;
+		--m_server->m_data->connections_counter;
 
 	if (m_handler)
 		m_handler->on_close(boost::system::error_code());
@@ -81,9 +68,8 @@ T &connection<T>::socket()
 template <typename T>
 void connection<T>::start(const std::shared_ptr<base_server> &server)
 {
-	++connections_counter;
-
 	m_server = server;
+	++m_server->m_data->connections_counter;
 	async_read();
 }
 
@@ -136,7 +122,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 {
 	debug(m_state);
 	if (m_handler)
-		--active_connections_counter;
+		--m_server->m_data->active_connections_counter;
 	m_handler.reset();
 
 	if (err) {
@@ -184,7 +170,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 	if (err) {
 		if (m_handler) {
 			m_handler->on_close(err);
-			--active_connections_counter;
+			--m_server->m_data->active_connections_counter;
 		}
 		m_handler.reset();
 		return;
@@ -226,7 +212,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			m_content_length = m_request.get_content_length();
 
-			++active_connections_counter;
+			++m_server->m_data->active_connections_counter;
 			m_handler = factory->create();
 			m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
 			m_handler->on_headers(m_request);

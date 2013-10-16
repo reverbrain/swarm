@@ -25,19 +25,31 @@ monitor_connection::socket_type &monitor_connection::socket()
 	return m_socket;
 }
 
-void monitor_connection::start(const std::shared_ptr<base_server> &)
+void monitor_connection::start(const std::shared_ptr<base_server> &server)
 {
+	m_server = server;
 	async_read();
 }
 
 std::string monitor_connection::get_information()
 {
+	auto server_statistics = m_server->get_statistics();
+
 	rapidjson::MemoryPoolAllocator<> allocator;
 	rapidjson::Value information;
 	information.SetObject();
 
-	information.AddMember("connections", get_connections_counter(), allocator);
-	information.AddMember("active-connections", get_active_connections_counter(), allocator);
+	information.AddMember("connections", int(m_server->m_data->connections_counter), allocator);
+	information.AddMember("active-connections", int(m_server->m_data->active_connections_counter), allocator);
+
+	rapidjson::Value application;
+	application.SetObject();
+
+	for (auto it = server_statistics.begin(); it != server_statistics.end(); ++it) {
+		application.AddMember(it->first.c_str(), it->second.c_str(), allocator);
+	}
+
+	information.AddMember("application", application, allocator);
 
 	rapidjson::StringBuffer buffer;
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
@@ -67,9 +79,15 @@ void monitor_connection::handle_read(const boost::system::error_code &err, std::
 		case 'i': case 'I':
 			async_write(get_information());
 			break;
-		case 's': case 'S':
-			async_write("not supported yet\n");
+		case 's': case 'S': {
+			const char result[] = "Stopping...\n";
+			boost::system::error_code ec;
+			boost::asio::write(m_socket, boost::asio::buffer(result, sizeof(result) - 1), ec);
+			close();
+			m_server->m_data->handle_stop();
 			break;
+		}
+		default:
 		case 'h': case 'H':
 			async_write("i - statistics information\n"
 				    "s - stop server\n"
