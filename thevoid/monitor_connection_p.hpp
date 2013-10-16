@@ -26,6 +26,7 @@ protected:
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
 	void async_write(const std::string &data);
 	void handle_write(const boost::system::error_code &err, size_t);
+    void handle_stop_write(const boost::system::error_code &err, size_t);
 	void close();
 
 private:

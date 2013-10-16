@@ -80,11 +80,10 @@ void monitor_connection::handle_read(const boost::system::error_code &err, std::
 			async_write(get_information());
 			break;
 		case 's': case 'S': {
-			const char result[] = "Stopping...\n";
-			boost::system::error_code ec;
-			boost::asio::write(m_socket, boost::asio::buffer(result, sizeof(result) - 1), ec);
-			close();
-			m_server->m_data->handle_stop();
+			const char *result = "Stopping...\n";
+			boost::asio::async_write(m_socket, boost::asio::buffer(result, strlen(result)),
+				std::bind(&monitor_connection::handle_stop_write, shared_from_this(),
+					std::placeholders::_1, std::placeholders::_2));
 			break;
 		}
 		default:
@@ -108,6 +107,12 @@ void monitor_connection::async_write(const std::string &data)
 void monitor_connection::handle_write(const boost::system::error_code &, size_t)
 {
 	close();
+}
+
+void monitor_connection::handle_stop_write(const boost::system::error_code &err, size_t)
+{
+	close();
+	m_server->m_data->handle_stop();
 }
 
 void monitor_connection::close()
