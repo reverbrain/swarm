@@ -114,6 +114,11 @@ swarm::logger base_server::get_logger() const
 	return m_data->logger;
 }
 
+unsigned int base_server::get_threads_count() const
+{
+	return m_data->threads_count;
+}
+
 void base_server::listen(const std::string &host)
 {
 	if (host.compare(0, UNIX_PREFIX_LEN, UNIX_PREFIX) == 0) {
@@ -209,6 +214,10 @@ int base_server::run(int argc, char **argv)
 		return -5;
 	}
 
+	if (config.HasMember("threads")) {
+		m_data->threads_count = config["threads"].GetUint();
+	}
+
 	try {
 		if (!initialize(config.FindMember("application")->value)) {
 			std::cerr << "Failed to initialize application" << std::endl;
@@ -229,10 +238,6 @@ int base_server::run(int argc, char **argv)
 	if (!endpoints->value.IsArray()) {
 		std::cerr << "\"endpoints\" field is not an array" << std::endl;
 		return -4;
-	}
-
-	if (config.HasMember("threads")) {
-		m_data->threads_count = config["threads"].GetUint();
 	}
 
 	if (config.HasMember("buffer_size")) {

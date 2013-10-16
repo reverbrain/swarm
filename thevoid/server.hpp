@@ -73,6 +73,8 @@ public:
 	void set_logger(const swarm::logger &logger);
 	swarm::logger get_logger() const;
 
+	unsigned int get_threads_count() const;
+
 	virtual bool initialize(const rapidjson::Value &config) = 0;
 
 protected:
