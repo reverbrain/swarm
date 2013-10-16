@@ -116,7 +116,7 @@ swarm::logger base_server::get_logger() const
 	return m_data->logger;
 }
 
-void base_server::set_statisitcs_handler(const statistics_fuction &handler)
+void base_server::set_statisitcs_handler(const statistics_function &handler)
 {
 	m_data->statistics_handler = handler;
 }

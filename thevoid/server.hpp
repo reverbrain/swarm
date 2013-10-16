@@ -62,7 +62,7 @@ class server_data;
 template <typename T> class connection;
 class monitor_connection;
 
-typedef std::function<std::map<std::string, std::string> ()> statistics_fuction;
+typedef std::function<std::map<std::string, std::string> ()> statistics_function;
 
 class base_server : private boost::noncopyable
 {
@@ -76,7 +76,7 @@ public:
 	void set_logger(const swarm::logger &logger);
 	swarm::logger get_logger() const;
 
-	void set_statisitcs_handler(const statistics_fuction &handler);
+	void set_statisitcs_handler(const statistics_function &handler);
 	std::map<std::string, std::string> get_statistics();
 
 	unsigned int get_threads_count() const;
