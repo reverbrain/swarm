@@ -109,7 +109,7 @@ void monitor_connection::handle_write(const boost::system::error_code &, size_t)
 	close();
 }
 
-void monitor_connection::handle_stop_write(const boost::system::error_code &err, size_t)
+void monitor_connection::handle_stop_write(const boost::system::error_code &, size_t)
 {
 	close();
 	m_server->m_data->handle_stop();
