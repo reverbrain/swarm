@@ -71,7 +71,7 @@ public:
 
 	virtual void on_headers(swarm::http_request &&req) = 0;
 	virtual void on_data(const boost::asio::const_buffer &buffer) = 0;
-	virtual void on_close(const boost::system::error_code &err) { (void) err; }
+	virtual void on_close(const boost::system::error_code &err) = 0;
 
 	void initialize(const std::shared_ptr<reply_stream> &reply);
 
@@ -222,14 +222,8 @@ private:
 	void on_headers(swarm::http_request &&req)
 	{
 		m_request = std::move(req);
-
-		if (auto tmp = req.headers().content_length()) {
-			m_content_length = *tmp;
-			m_data.reserve(m_content_length);
-		} else {
-			m_content_length = 0;
-			on_request(m_request, boost::asio::buffer("", 0));
-		}
+		if (auto tmp = req.headers().content_length())
+			m_data.reserve(*tmp);
 	}
 
 	void on_data(const boost::asio::const_buffer &buffer)
@@ -237,17 +231,93 @@ private:
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
 		m_data.insert(m_data.end(), begin, begin + size);
+	}
 
-		if (m_data.size() == m_content_length) {
-			on_request(m_request, boost::asio::buffer(m_data.c_str(), m_data.size()));
-		} else if (m_data.size() > m_content_length) {
-			this->get_reply()->send_error(swarm::http_response::bad_request);
+	void on_close(const boost::system::error_code &err)
+	{
+		if (!err) {
+			on_request(m_request, boost::asio::buffer(m_data.data(), m_data.size()));
 		}
 	}
 
 	swarm::http_request m_request;
-	std::string m_data;
-	size_t m_content_length;
+	std::vector<char> m_data;
+};
+
+template <typename Server>
+class buffered_request_stream : public request_stream<Server>
+{
+public:
+	enum chunk_flags {
+		first_chunk = 0x01,
+		last_chunk = 0x02,
+		single_chunk = first_chunk | last_chunk
+	};
+
+	buffered_request_stream() : m_chunk_size(10 * 1024), m_first_chunk(true)
+	{
+	}
+
+	virtual void on_request(const swarm::http_request &req) = 0;
+	virtual void on_chunk(const boost::asio::const_buffer &buffer, unsigned int flags) = 0;
+	virtual void on_error(const boost::system::error_code &err) = 0;
+
+protected:
+	const swarm::http_request &get_request()
+	{
+		return m_request;
+	}
+
+	void set_chunk_size(size_t chunk_size)
+	{
+		m_chunk_size = chunk_size;
+	}
+
+	size_t get_chunk_size() const
+	{
+		return m_chunk_size;
+	}
+
+private:
+	void on_headers(const swarm::http_request &req)
+	{
+		m_request = req;
+
+		on_request(m_request);
+
+		m_data.reserve(m_chunk_size);
+	}
+
+	void on_data(const boost::asio::const_buffer &buffer)
+	{
+		auto begin = boost::asio::buffer_cast<const char *>(buffer);
+		auto size = boost::asio::buffer_size(buffer);
+
+		while (size > 0) {
+			const auto delta = std::min(size, m_chunk_size - m_data.size());
+			m_data.insert(m_data.end(), begin, begin + delta);
+			begin += delta;
+			size -= delta;
+
+			on_chunk(boost::asio::buffer(m_data), m_first_chunk ? first_chunk : 0);
+			m_first_chunk = false;
+			m_data.resize(0);
+		}
+	}
+
+	void on_close(const boost::system::error_code &err)
+	{
+		if (err) {
+			on_error(err);
+		} else {
+			on_chunk(boost::asio::buffer(m_data), last_chunk | (m_first_chunk ? first_chunk : 0));
+		}
+	}
+
+	swarm::http_request m_request;
+	std::vector<char> m_data;
+	size_t m_chunk_size;
+	bool m_first_chunk;
 };
 
 }} // namespace ioremap::thevoid
