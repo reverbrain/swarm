@@ -33,11 +33,23 @@ void request_parser::reset()
 	m_line.resize(0);
 }
 
+template <typename Iterator>
+Iterator find_crlf(Iterator begin, Iterator end)
+{
+	while (begin != end) {
+		auto current = begin;
+		auto next = ++begin;
+		if (*current == '\r' && *next == '\n')
+			return next;
+	}
+	return end;
+}
+
 boost::tuple<boost::tribool, const char *> request_parser::parse(
 	swarm::network_request &request, const char *begin, const char *end)
 {
 	while (begin != end) {
-		auto line_end = std::find(begin, end, '\n');
+		auto line_end = find_crlf(begin, end);
 		m_line.append(begin, line_end);
 
 		if (line_end == end)
