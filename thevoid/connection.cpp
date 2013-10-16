@@ -259,6 +259,9 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_unprocessed_begin = begin + data_from_body;
 			m_unprocessed_end = end;
 
+			if (m_handler)
+				m_handler->on_close(boost::system::error_code());
+
 			if (m_state & request_processed) {
 				debug("");
 				process_next();
