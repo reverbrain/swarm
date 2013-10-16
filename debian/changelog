@@ -1,3 +1,12 @@
+swarm (0.5.5.1) unstable; urgency=low
+
+  * Added error message on acceptor fail
+  * Added call on_close at end of stream
+  * Added server::get_threads_count() method
+  * Use only CRLF as end of the line, don't stop on single LF
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 16 Oct 2013 17:12:18 +0400
+
 swarm (0.5.5.0) unstable; urgency=low
 
   * Removed default html data for error replies

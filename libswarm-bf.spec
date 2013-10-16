@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.5.0
+Version:	0.5.5.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,12 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed Oct 16 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.5.1
+- Added error message on acceptor fail
+- Added call on_close at end of stream
+- Added server::get_threads_count() method
+- Use only CRLF as end of the line, don't stop on single LF
+
 * Sun Oct 13 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.5.0
 - Removed default html data for error replies
 - Added a lot more http codes
