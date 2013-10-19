@@ -28,19 +28,19 @@ namespace ioremap { namespace thevoid { namespace elliptics { namespace index {
 template <typename T>
 struct on_update : public simple_request_stream<T>, public std::enable_shared_from_this<on_update<T>>
 {
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
 		(void) req;
 
 		rapidjson::Document doc;
 		doc.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
 
 		if (doc.HasParseError()) {
-			this->send_reply(swarm::network_reply::bad_request);
+			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
 		if (!doc.HasMember("id") || !doc.HasMember("indexes")) {
-			this->send_reply(swarm::network_reply::bad_request);
+			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
@@ -67,11 +67,11 @@ struct on_update : public simple_request_stream<T>, public std::enable_shared_fr
 
 	virtual void on_update_finished(const ioremap::elliptics::error_info &error) {
 		if (error) {
-			this->send_reply(swarm::network_reply::service_unavailable);
+			this->send_reply(swarm::http_response::service_unavailable);
 			return;
 		}
 
-		this->send_reply(swarm::network_reply::ok);
+		this->send_reply(swarm::http_response::ok);
 	}
 };
 
@@ -160,19 +160,19 @@ template <typename T>
 struct on_find : public simple_request_stream<T>, public std::enable_shared_from_this<on_find<T>>
 {
 
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
 		(void) req;
 
 		rapidjson::Document data;
 		data.Parse<0>(boost::asio::buffer_cast<const char*>(buffer));
 
 		if (data.HasParseError()) {
-			this->send_reply(swarm::network_reply::bad_request);
+			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
 		if (!data.HasMember("type") || !data.HasMember("indexes")) {
-			this->send_reply(swarm::network_reply::bad_request);
+			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
@@ -197,7 +197,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		}
 
 		if (type != "and" && type != "or") {
-			this->send_reply(swarm::network_reply::bad_request);
+			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
@@ -209,7 +209,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 	virtual void on_find_finished(const ioremap::elliptics::sync_find_indexes_result &result,
 			const ioremap::elliptics::error_info &error) {
 		if (error) {
-			this->send_reply(swarm::network_reply::service_unavailable);
+			this->send_reply(swarm::http_response::service_unavailable);
 			return;
 		}
 
@@ -232,7 +232,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 	virtual void on_ready_to_parse_indexes(const ioremap::elliptics::sync_read_result &data,
 			const ioremap::elliptics::error_info &error) {
 		if (error) {
-			this->send_reply(swarm::network_reply::service_unavailable);
+			this->send_reply(swarm::http_response::service_unavailable);
 			return;
 		}
 
@@ -245,11 +245,11 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 
 		find_serializer::pack_indexes_json(result_object, read_result, find_serializer::basic_convert, find_result, find_serializer::basic_convert, m_map);
 
-		swarm::network_reply reply;
-		reply.set_code(swarm::network_reply::ok);
+		swarm::http_response reply;
+		reply.set_code(swarm::http_response::ok);
 		reply.set_content_type("text/json");
 		reply.set_data(result_object.ToString());
-		reply.set_content_length(reply.get_data().size());
+		reply.set_content_length(reply.data().size());
 
 		this->send_reply(reply);
 	}

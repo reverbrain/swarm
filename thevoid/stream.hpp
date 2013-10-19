@@ -24,9 +24,9 @@
 namespace ioremap { namespace thevoid { namespace detail {
 struct network_reply_wrapper
 {
-	const swarm::network_reply reply;
+	const swarm::http_response reply;
 
-	network_reply_wrapper(const swarm::network_reply &reply) : reply(reply)
+	network_reply_wrapper(const swarm::http_response &reply) : reply(reply)
 	{
 	}
 };
@@ -38,7 +38,7 @@ namespace boost { namespace asio {
 
 inline const_buffer buffer(const ioremap::thevoid::detail::network_reply_wrapper &wrapper)
 {
-	return buffer(wrapper.reply.get_data());
+	return buffer(wrapper.reply.data());
 }
 
 } } // namespace boost::asio
@@ -52,14 +52,14 @@ public:
 	reply_stream();
 	virtual ~reply_stream();
 
-	virtual void send_headers(const swarm::network_reply &rep,
+	virtual void send_headers(const swarm::http_response &rep,
 				  const boost::asio::const_buffer &content,
 				  const std::function<void (const boost::system::error_code &err)> &handler) = 0;
 	virtual void send_data(const boost::asio::const_buffer &buffer,
 			       const std::function<void (const boost::system::error_code &err)> &handler) = 0;
 	virtual void close(const boost::system::error_code &err) = 0;
 
-	virtual void send_error(swarm::network_reply::status_type type) = 0;
+	virtual void send_error(swarm::http_response::status_type type) = 0;
 };
 
 class base_request_stream
@@ -68,7 +68,7 @@ public:
 	base_request_stream();
 	virtual ~base_request_stream();
 
-	virtual void on_headers(const swarm::network_request &req) = 0;
+	virtual void on_headers(const swarm::http_request &req) = 0;
 	virtual void on_data(const boost::asio::const_buffer &buffer) = 0;
 	virtual void on_close(const boost::system::error_code &err) { (void) err; }
 
@@ -122,13 +122,13 @@ protected:
 		va_end(args);
 	}
 
-	void send_reply(const swarm::network_reply &rep)
+	void send_reply(const swarm::http_response &rep)
 	{
 		send_reply(rep, detail::network_reply_wrapper(rep));
 	}
 
 	template <typename T>
-	void send_reply(const swarm::network_reply &rep, T &&data)
+	void send_reply(const swarm::http_response &rep, T &&data)
 	{
 		auto wrapper = make_wrapper(std::move(data), make_close_handler());
 		get_reply()->send_headers(rep, boost::asio::buffer(wrapper.data()), wrapper);
@@ -136,17 +136,17 @@ protected:
 
 	void send_reply(int code)
 	{
-		get_reply()->send_error(static_cast<swarm::network_reply::status_type>(code));
+		get_reply()->send_error(static_cast<swarm::http_response::status_type>(code));
 	}
 
-	void send_headers(const swarm::network_reply &rep,
+	void send_headers(const swarm::http_response &rep,
 			  const std::function<void (const boost::system::error_code &err)> &handler)
 	{
 		get_reply()->send_headers(rep, detail::network_reply_wrapper(rep), handler);
 	}
 
 	template <typename T>
-	void send_headers(const swarm::network_reply &rep,
+	void send_headers(const swarm::http_response &rep,
 			  T &&data,
 			  const std::function<void (const boost::system::error_code &err)> &handler)
 	{
@@ -209,16 +209,16 @@ template <typename Server>
 class simple_request_stream : public request_stream<Server>
 {
 public:
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) = 0;
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) = 0;
 
 protected:
-	const swarm::network_request &get_request()
+	const swarm::http_request &get_request()
 	{
 		return m_request;
 	}
 
 private:
-	void on_headers(const swarm::network_request &req)
+	void on_headers(const swarm::http_request &req)
 	{
 		m_request = req;
 		m_content_length = req.get_content_length();
@@ -239,11 +239,11 @@ private:
 		if (m_data.size() == m_content_length) {
 			on_request(m_request, boost::asio::buffer(m_data.c_str(), m_data.size()));
 		} else if (m_data.size() > m_content_length) {
-			this->get_reply()->send_error(swarm::network_reply::bad_request);
+			this->get_reply()->send_error(swarm::http_response::bad_request);
 		}
 	}
 
-	swarm::network_request m_request;
+	swarm::http_request m_request;
 	std::string m_data;
 	size_t m_content_length;
 };

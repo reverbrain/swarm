@@ -38,9 +38,9 @@ public:
 	//! data is required. The InputIterator return value indicates how much of the
 	//! input has been consumed.
 	boost::tuple<boost::tribool, const char *> parse(
-		swarm::network_request &req, const char *begin, const char *end);
+		swarm::http_request &req, const char *begin, const char *end);
 
-    boost::tribool parse_line(swarm::network_request &request, const std::string &line);
+    boost::tribool parse_line(swarm::http_request &request, const std::string &line);
 
 
 	enum state_new

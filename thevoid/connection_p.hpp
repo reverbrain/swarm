@@ -54,7 +54,7 @@ public:
 	//! Start the first asynchronous operation for the connection.
 	void start(const std::shared_ptr<base_server> &server);
 
-	virtual void send_headers(const swarm::network_reply &rep,
+	virtual void send_headers(const swarm::http_response &rep,
 		const boost::asio::const_buffer &content,
 		const std::function<void (const boost::system::error_code &err)> &handler) /*override*/;
 	virtual void send_data(const boost::asio::const_buffer &buffer,
@@ -71,7 +71,7 @@ private:
 
 	void async_read();
 
-	void send_error(swarm::network_reply::status_type type);
+	void send_error(swarm::http_response::status_type type);
 
 	//! Server reference for handler logic
 	std::shared_ptr<base_server> m_server;
@@ -83,7 +83,7 @@ private:
     std::vector<char> m_buffer;
 
 	//! The incoming request.
-	swarm::network_request m_request;
+	swarm::http_request m_request;
 
 	//! The parser for the incoming request.
 	request_parser m_request_parser;

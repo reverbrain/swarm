@@ -27,6 +27,7 @@
 #pragma GCC diagnostic pop
 
 #include "logger.h"
+#include "event_loop.h"
 #include <memory>
 #include <functional>
 #include <map>
@@ -41,14 +42,15 @@ class network_manager
 public:
     network_manager(ev::loop_ref &loop);
     network_manager(ev::loop_ref &loop, const ioremap::swarm::logger &logger);
+    network_manager(event_loop &loop, const ioremap::swarm::logger &logger);
     ~network_manager();
 
     void set_limit(int active_connections);
     void set_logger(const logger &log);
     logger get_logger() const;
 
-    void get(const std::function<void (const network_reply &reply)> &handler, const network_request &request);
-    void post(const std::function<void (const network_reply &reply)> &handler, const network_request &request, const std::string &body);
+    void get(const std::function<void (const http_response &reply)> &handler, const http_request &request);
+    void post(const std::function<void (const http_response &reply)> &handler, const http_request &request, const std::string &body);
 
 private:
     network_manager(const network_manager &other);

@@ -1,4 +1,10 @@
 set(SWARM_SRC_LIST
+    event_loop.cpp
+    event_loop.h
+    ev_event_loop.cpp
+    ev_event_loop.h
+    boost_event_loop.cpp
+    boost_event_loop.h
     logger.cpp
     logger.h
     network_query_list.cpp
@@ -30,7 +36,7 @@ if(BUILD_NETWORK_MANAGER)
 endif()
 
 add_library(swarm SHARED ${SWARM_SRC_LIST})
-target_link_libraries(swarm curl ev xml2 uriparser)
+target_link_libraries(swarm curl ev xml2 uriparser ${Boost_LIBRARIES})
 set_target_properties(swarm PROPERTIES
     VERSION ${DEBFULLVERSION}
     SOVERSION ${SWARM_VERSION_ABI}

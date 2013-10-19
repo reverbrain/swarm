@@ -12,13 +12,13 @@ namespace swarm {
 
 class network_query_list_private;
 
-class network_query_list
+class url_query
 {
 public:
-	network_query_list();
-	network_query_list(const std::string &query);
+	url_query();
+	url_query(const std::string &query);
 
-	~network_query_list();
+	~url_query();
 
 	void set_query(const std::string &query);
 	std::string to_string() const;
@@ -29,13 +29,12 @@ public:
 	void remove_item(size_t index);
 
 	bool has_item(const std::string &key) const;
-	std::string item_value(const std::string &key) const;
-	boost::optional<std::string> try_item(const std::string &key) const;
-	boost::optional<std::string> try_item(const char *key) const;
+	boost::optional<std::string> item_value(const std::string &key) const;
+	boost::optional<std::string> item_value(const char *key) const;
 
 private:
-	network_query_list(const network_query_list &other);
-	network_query_list &operator =(const network_query_list &other);
+	url_query(const url_query &other);
+	url_query &operator =(const url_query &other);
 
 	std::unique_ptr<network_query_list_private> p;
 };

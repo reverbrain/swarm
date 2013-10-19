@@ -76,7 +76,7 @@ void connection<T>::start(const std::shared_ptr<base_server> &server)
 struct send_headers_guard
 {
 	std::function<void (const boost::system::error_code &)> handler;
-	std::shared_ptr<swarm::network_reply> reply;
+	std::shared_ptr<swarm::http_response> reply;
 
 	template <typename T>
 	void operator() (const boost::system::error_code &err, const T &)
@@ -86,13 +86,13 @@ struct send_headers_guard
 };
 
 template <typename T>
-void connection<T>::send_headers(const swarm::network_reply &rep,
+void connection<T>::send_headers(const swarm::http_response &rep,
 	const boost::asio::const_buffer &content,
 	const std::function<void (const boost::system::error_code &err)> &handler)
 {
 	send_headers_guard guard = {
 		handler,
-		std::make_shared<swarm::network_reply>(rep)
+		std::make_shared<swarm::http_response>(rep)
 	};
 
 	if (m_request.is_keep_alive()) {
@@ -154,7 +154,7 @@ void connection<T>::process_next()
 	m_state = read_headers;
 	m_request_parser.reset();
 
-	m_request = swarm::network_request();
+	m_request = swarm::http_request();
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
@@ -199,14 +199,14 @@ void connection<T>::process_data(const char *begin, const char *end)
 		if (!result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
-			send_error(swarm::network_reply::bad_request);
+			send_error(swarm::http_response::bad_request);
 			return;
 		} else if (result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
-			auto factory = m_server->get_factory(m_request.get_url());
+			auto factory = m_server->get_factory(m_request.url());
 			if (!factory) {
-				send_error(swarm::network_reply::not_found);
+				send_error(swarm::http_response::not_found);
 				return;
 			}
 
@@ -267,7 +267,7 @@ void connection<T>::async_read()
 }
 
 template <typename T>
-void connection<T>::send_error(swarm::network_reply::status_type type)
+void connection<T>::send_error(swarm::http_response::status_type type)
 {
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),

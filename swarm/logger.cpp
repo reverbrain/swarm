@@ -101,7 +101,7 @@ logger::~logger()
 {
 }
 
-int logger::get_level() const
+int logger::level() const
 {
 	return m_data->level;
 }

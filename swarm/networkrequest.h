@@ -19,6 +19,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include "network_url.h"
 
 #include <boost/optional.hpp>
 
@@ -32,113 +33,116 @@ template <typename T>
 class shared_data_ptr
 {
 public:
-    explicit shared_data_ptr(T *data) : m_data(data)
-    {
-        if (m_data)
-            ++m_data->refcnt;
-    }
-    shared_data_ptr() : m_data(NULL) {}
-    shared_data_ptr(const shared_data_ptr &other) : m_data(other.m_data)
-    {
-        if (m_data)
-            ++m_data->refcnt;
-    }
-    ~shared_data_ptr()
-    {
-        if (m_data && --m_data->refcnt == 0)
-            delete m_data;
-    }
-    shared_data_ptr &operator =(const shared_data_ptr &other)
-    {
-        shared_data_ptr tmp(other);
-        std::swap(tmp.m_data, m_data);
-        return *this;
-    }
+	explicit shared_data_ptr(T *data) : m_data(data)
+	{
+		if (m_data)
+			++m_data->refcnt;
+	}
+	shared_data_ptr() : m_data(NULL) {}
+	shared_data_ptr(const shared_data_ptr &other) : m_data(other.m_data)
+	{
+		if (m_data)
+			++m_data->refcnt;
+	}
+	~shared_data_ptr()
+	{
+		if (m_data && --m_data->refcnt == 0)
+			delete m_data;
+	}
+	shared_data_ptr &operator =(const shared_data_ptr &other)
+	{
+		shared_data_ptr tmp(other);
+		std::swap(tmp.m_data, m_data);
+		return *this;
+	}
 
-    T *operator ->() { detach(); return m_data; }
-    const T *operator ->() const { return m_data; }
-    T &operator *() { detach(); return *m_data; }
-    const T &operator *() const { return *m_data; }
-    T *data() { detach(); return m_data; }
-    T *data() const { return m_data; }
-    T *constData() { return m_data; }
+	T *operator ->() { detach(); return m_data; }
+	const T *operator ->() const { return m_data; }
+	T &operator *() { detach(); return *m_data; }
+	const T &operator *() const { return *m_data; }
+	T *data() { detach(); return m_data; }
+	T *data() const { return m_data; }
+	T *constData() { return m_data; }
 
 private:
-    void detach()
-    {
-        if (m_data && m_data->refcnt != 1) {
-            shared_data_ptr tmp(new T(*m_data));
-            std::swap(tmp.m_data, m_data);
-        }
-    }
+	void detach()
+	{
+		if (m_data && m_data->refcnt != 1) {
+			shared_data_ptr tmp(new T(*m_data));
+			std::swap(tmp.m_data, m_data);
+		}
+	}
 
-    T *m_data;
+	T *m_data;
 };
 
 typedef std::pair<std::string, std::string> headers_entry;
 
-class network_request
+class http_request
 {
 public:
-    network_request();
-    network_request(const network_request &other);
-    ~network_request();
+	http_request();
+	http_request(const http_request &other);
+	~http_request();
 
-    network_request &operator =(const network_request &other);
+	http_request &operator =(const http_request &other);
 
-    // Request URL
-    const std::string &get_url() const;
-    void set_url(const std::string &url);
-    // Follow Location from 302 HTTP replies
-    bool get_follow_location() const;
-    void set_follow_location(bool follow_location);
-    // Timeout in ms
-    long get_timeout() const;
-    void set_timeout(long timeout);
-    // List of headers
-    const std::vector<headers_entry> &get_headers() const;
-    bool has_header(const std::string &name) const;
-    std::string get_header(const std::string &name) const;
-    std::string get_header(const char *name) const;
-    boost::optional<std::string> try_header(const std::string &name) const;
-    boost::optional<std::string> try_header(const char *name) const;
-    void set_headers(const std::vector<headers_entry> &headers);
-    void set_header(const headers_entry &header);
-    void set_header(const std::string &name, const std::string &value);
-    void add_header(const headers_entry &header);
-    void add_header(const std::string &name, const std::string &value);
-    // If-Modified-Since, UTC
-    bool has_if_modified_since() const;
-    time_t get_if_modified_since() const;
-    std::string get_if_modified_since_string() const;
-    void set_if_modified_since(const std::string &time);
-    void set_if_modified_since(time_t time);
-    // TheVoid specific arguments
-    void set_http_version(int major_version, int minor_version);
-    int get_http_major_version() const;
-    int get_http_minor_version() const;
-
-    void set_method(const std::string &method);
-    std::string get_method() const;
-
-    void set_content_length(size_t length);
-    bool has_content_length() const;
-	size_t get_content_length() const;
-
-    void set_content_type(const std::string &type);
-    bool has_content_type() const;
-	std::string get_content_type() const;
+	// Request URL
+	const std::string &url() const;
+	void set_url(const std::string &url);
 
 	bool is_keep_alive() const;
 
+	// Follow Location from 302 HTTP replies
+	bool follow_location() const;
+	void set_follow_location(bool follow_location);
+
+	// Timeout in ms
+	long timeout() const;
+	void set_timeout(long timeout);
+
+	// List of headers
+	const std::vector<headers_entry> &get_headers() const;
+	bool has_header(const std::string &name) const;
+	std::string get_header(const std::string &name) const;
+	std::string get_header(const char *name) const;
+	boost::optional<std::string> try_header(const std::string &name) const;
+	boost::optional<std::string> try_header(const char *name) const;
+	void set_headers(const std::vector<headers_entry> &headers);
+	void set_header(const headers_entry &header);
+	void set_header(const std::string &name, const std::string &value);
+	void add_header(const headers_entry &header);
+	void add_header(const std::string &name, const std::string &value);
+	// If-Modified-Since, UTC
+	bool has_if_modified_since() const;
+	time_t get_if_modified_since() const;
+	std::string get_if_modified_since_string() const;
+	void set_if_modified_since(const std::string &time);
+	void set_if_modified_since(time_t time);
+	// TheVoid specific arguments
+	void set_http_version(int major_version, int minor_version);
+	int get_http_major_version() const;
+	int get_http_minor_version() const;
+
+	void set_method(const std::string &method);
+	std::string get_method() const;
+
+	void set_content_length(size_t length);
+	bool has_content_length() const;
+	size_t get_content_length() const;
+
+	void set_content_type(const std::string &type);
+	bool has_content_type() const;
+	std::string get_content_type() const;
+
 private:
-    shared_data_ptr<network_request_data> m_data;
+	shared_data_ptr<network_request_data> m_data;
 };
 
-class network_reply
+class http_response
 {
 public:
-    enum status_type {
+	enum status_type {
 		continue_code = 100,
 		switching_protocols = 101,
 		processing = 102,
@@ -202,59 +206,59 @@ public:
 		connection_timed_out = 522
 	};
 
-    network_reply();
-    network_reply(const network_reply &other);
-    ~network_reply();
+	http_response();
+	http_response(const http_response &other);
+	~http_response();
 
-    network_reply &operator =(const network_reply &other);
+	http_response &operator =(const http_response &other);
 
-     // Original request
-    network_request get_request() const;
-    void set_request(const network_request &request);
+	// Original request
+	http_request request() const;
+	void set_request(const http_request &request);
 
-    // HTTP code
-    int get_code() const;
-    void set_code(int code);
-    // Errno
-    int get_error() const;
-    void set_error(int error);
-    // Final URL from HTTP reply
-    const std::string &get_url() const;
-    void set_url(const std::string &url);
-    // List of headers
-    const std::vector<headers_entry> &get_headers() const;
-    bool has_header(const std::string &name) const;
-    std::string get_header(const std::string &name) const;
-    std::string get_header(const char *name) const;
-    boost::optional<std::string> try_header(const std::string &name) const;
-    boost::optional<std::string> try_header(const char *name) const;
-    void set_headers(const std::vector<headers_entry> &headers);
-    void set_header(const headers_entry &header);
-    void set_header(const std::string &name, const std::string &value);
-    void add_header(const headers_entry &header);
-    void add_header(const std::string &name, const std::string &value);
-    // Reply data
-    const std::string &get_data() const;
-    void set_data(const std::string &data);
-    // Last-Modified, UTC
-    bool has_last_modified() const;
-    time_t get_last_modified() const;
-    std::string get_last_modified_string() const;
-    void set_last_modified(const std::string &last_modified);
-    void set_last_modified(time_t last_modified);
+	// HTTP code
+	int code() const;
+	void set_code(int code);
+	// Errno
+	int error() const;
+	void set_error(int error);
+	// Final URL from HTTP reply
+	const std::string &url() const;
+	void set_url(const std::string &url);
+	// List of headers
+	const std::vector<headers_entry> &get_headers() const;
+	bool has_header(const std::string &name) const;
+	std::string get_header(const std::string &name) const;
+	std::string get_header(const char *name) const;
+	boost::optional<std::string> try_header(const std::string &name) const;
+	boost::optional<std::string> try_header(const char *name) const;
+	void set_headers(const std::vector<headers_entry> &headers);
+	void set_header(const headers_entry &header);
+	void set_header(const std::string &name, const std::string &value);
+	void add_header(const headers_entry &header);
+	void add_header(const std::string &name, const std::string &value);
+	// Reply data
+	const std::string &data() const;
+	void set_data(const std::string &data);
+	// Last-Modified, UTC
+	bool has_last_modified() const;
+	time_t get_last_modified() const;
+	std::string get_last_modified_string() const;
+	void set_last_modified(const std::string &last_modified);
+	void set_last_modified(time_t last_modified);
 
-    // Content length
-    void set_content_length(size_t length);
-    bool has_content_length() const;
+	// Content length
+	void set_content_length(size_t length);
+	bool has_content_length() const;
 	size_t get_content_length() const;
 
-    // Content type
-    void set_content_type(const std::string &type);
-    bool has_content_type() const;
+	// Content type
+	void set_content_type(const std::string &type);
+	bool has_content_type() const;
 	std::string get_content_type() const;
 
 private:
-    shared_data_ptr<network_reply_data> m_data;
+	shared_data_ptr<network_reply_data> m_data;
 };
 
 }

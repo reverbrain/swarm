@@ -254,115 +254,115 @@ public:
     std::string method;
 };
 
-network_request::network_request() : m_data(new network_request_data)
+http_request::http_request() : m_data(new network_request_data)
 {
 }
 
-network_request::network_request(const network_request &other) : m_data(other.m_data)
+http_request::http_request(const http_request &other) : m_data(other.m_data)
 {
 }
 
-network_request::~network_request()
+http_request::~http_request()
 {
 }
 
-network_request &network_request::operator =(const network_request &other)
+http_request &http_request::operator =(const http_request &other)
 {
     m_data = other.m_data;
     return *this;
 }
 
-const std::string &network_request::get_url() const
+const std::string &http_request::url() const
 {
     return m_data->url;
 }
 
-void network_request::set_url(const std::string &url)
+void http_request::set_url(const std::string &url)
 {
     m_data->url = url;
 }
 
-bool network_request::get_follow_location() const
+bool http_request::follow_location() const
 {
     return m_data->follow_location;
 }
 
-void network_request::set_follow_location(bool follow_location)
+void http_request::set_follow_location(bool follow_location)
 {
     m_data->follow_location = follow_location;
 }
 
-long network_request::get_timeout() const
+long http_request::timeout() const
 {
     return m_data->timeout;
 }
 
-void network_request::set_timeout(long timeout)
+void http_request::set_timeout(long timeout)
 {
     m_data->timeout = timeout;
 }
 
-const std::vector<headers_entry> &network_request::get_headers() const
+const std::vector<headers_entry> &http_request::get_headers() const
 {
     return m_data->headers.get_headers();
 }
 
-bool network_request::has_header(const std::string &name) const
+bool http_request::has_header(const std::string &name) const
 {
     return m_data->headers.has_header(name);
 }
 
-std::string network_request::get_header(const std::string &name) const
+std::string http_request::get_header(const std::string &name) const
 {
     return m_data->headers.get_header(name);
 }
 
-std::string network_request::get_header(const char *name) const
+std::string http_request::get_header(const char *name) const
 {
 	return m_data->headers.get_header(name);
 }
 
-boost::optional<std::string> network_request::try_header(const std::string &name) const
+boost::optional<std::string> http_request::try_header(const std::string &name) const
 {
 	return m_data->headers.try_header(name);
 }
 
-boost::optional<std::string> network_request::try_header(const char *name) const
+boost::optional<std::string> http_request::try_header(const char *name) const
 {
 	return m_data->headers.try_header(name);
 }
 
-void network_request::set_headers(const std::vector<headers_entry> &headers)
+void http_request::set_headers(const std::vector<headers_entry> &headers)
 {
     m_data->headers.set_headers(headers);
 }
 
-void network_request::set_header(const headers_entry &header)
+void http_request::set_header(const headers_entry &header)
 {
     m_data->headers.set_header(header.first, header.second);
 }
 
-void network_request::set_header(const std::string &name, const std::string &value)
+void http_request::set_header(const std::string &name, const std::string &value)
 {
     m_data->headers.set_header(name, value);
 }
 
-void network_request::add_header(const headers_entry &header)
+void http_request::add_header(const headers_entry &header)
 {
     m_data->headers.add_header(header.first, header.second);
 }
 
-void network_request::add_header(const std::string &name, const std::string &value)
+void http_request::add_header(const std::string &name, const std::string &value)
 {
     m_data->headers.add_header(name, value);
 }
 
-bool network_request::has_if_modified_since() const
+bool http_request::has_if_modified_since() const
 {
     return has_header(IF_MODIFIED_SINCE_HEADER);
 }
 
-time_t network_request::get_if_modified_since() const
+time_t http_request::get_if_modified_since() const
 {
     std::string http_date = get_if_modified_since_string();
 
@@ -372,82 +372,82 @@ time_t network_request::get_if_modified_since() const
     return convert_from_http_date(http_date);
 }
 
-std::string network_request::get_if_modified_since_string() const
+std::string http_request::get_if_modified_since_string() const
 {
     return get_header(IF_MODIFIED_SINCE_HEADER);
 }
 
-void network_request::set_if_modified_since(const std::string &time)
+void http_request::set_if_modified_since(const std::string &time)
 {
     m_data->headers.set_header(IF_MODIFIED_SINCE_HEADER, time);
 }
 
-void network_request::set_if_modified_since(time_t time)
+void http_request::set_if_modified_since(time_t time)
 {
     set_if_modified_since(convert_to_http_date(time));
 }
 
-void network_request::set_http_version(int major_version, int minor_version)
+void http_request::set_http_version(int major_version, int minor_version)
 {
     m_data->major_version = major_version;
     m_data->minor_version = minor_version;
 }
 
-int network_request::get_http_major_version() const
+int http_request::get_http_major_version() const
 {
     return m_data->major_version;
 }
 
-int network_request::get_http_minor_version() const
+int http_request::get_http_minor_version() const
 {
     return m_data->minor_version;
 }
 
-void network_request::set_method(const std::string &method)
+void http_request::set_method(const std::string &method)
 {
     m_data->method = method;
 }
 
-std::string network_request::get_method() const
+std::string http_request::get_method() const
 {
     return m_data->method;
 }
 
-void network_request::set_content_length(size_t length)
+void http_request::set_content_length(size_t length)
 {
     char buffer[20];
     snprintf(buffer, sizeof(buffer), "%zu", length);
     m_data->headers.set_header(CONTENT_LENGTH_HEADER, buffer);
 }
 
-bool network_request::has_content_length() const
+bool http_request::has_content_length() const
 {
     return m_data->headers.has_header(CONTENT_LENGTH_HEADER);
 }
 
-size_t network_request::get_content_length() const
+size_t http_request::get_content_length() const
 {
     const std::string header = m_data->headers.get_header(CONTENT_LENGTH_HEADER);
 
     return header.empty() ? 0ll : atoll(header.c_str());
 }
 
-void network_request::set_content_type(const std::string &type)
+void http_request::set_content_type(const std::string &type)
 {
     m_data->headers.set_header(CONTENT_TYPE_HEADER, type);
 }
 
-bool network_request::has_content_type() const
+bool http_request::has_content_type() const
 {
     return m_data->headers.has_header(CONTENT_TYPE_HEADER);
 }
 
-std::string network_request::get_content_type() const
+std::string http_request::get_content_type() const
 {
     return m_data->headers.get_header(CONTENT_TYPE_HEADER);
 }
 
-bool network_request::is_keep_alive() const
+bool http_request::is_keep_alive() const
 {
     auto header = m_data->headers.find_header(CONNECTION_HEADER);
     if (header == m_data->headers.end())
@@ -470,7 +470,7 @@ public:
     {
     }
 
-    network_request request;
+    http_request request;
 
     int code;
     int error;
@@ -479,135 +479,135 @@ public:
     std::string data;
 };
 
-network_reply::network_reply() : m_data(new network_reply_data)
+http_response::http_response() : m_data(new network_reply_data)
 {
 }
 
-network_reply::network_reply(const network_reply &other) : m_data(other.m_data)
+http_response::http_response(const http_response &other) : m_data(other.m_data)
 {
 }
 
-network_reply::~network_reply()
+http_response::~http_response()
 {
 }
 
-network_reply &network_reply::operator =(const network_reply &other)
+http_response &http_response::operator =(const http_response &other)
 {
     m_data = other.m_data;
     return *this;
 }
 
-network_request network_reply::get_request() const
+http_request http_response::request() const
 {
     return m_data->request;
 }
 
-void network_reply::set_request(const network_request &request)
+void http_response::set_request(const http_request &request)
 {
     m_data->request = request;
 }
 
-int network_reply::get_code() const
+int http_response::code() const
 {
     return m_data->code;
 }
 
-void network_reply::set_code(int code)
+void http_response::set_code(int code)
 {
     m_data->code = code;
 }
 
-int network_reply::get_error() const
+int http_response::error() const
 {
     return m_data->error;
 }
 
-void network_reply::set_error(int error)
+void http_response::set_error(int error)
 {
     m_data->error = error;
 }
 
-const std::string &network_reply::get_url() const
+const std::string &http_response::url() const
 {
     return m_data->url;
 }
 
-void network_reply::set_url(const std::string &url)
+void http_response::set_url(const std::string &url)
 {
     m_data->url = url;
 }
 
-const std::vector<headers_entry> &network_reply::get_headers() const
+const std::vector<headers_entry> &http_response::get_headers() const
 {
     return m_data->headers.get_headers();
 }
 
-bool network_reply::has_header(const std::string &name) const
+bool http_response::has_header(const std::string &name) const
 {
     return m_data->headers.has_header(name);
 }
 
-std::string network_reply::get_header(const std::string &name) const
+std::string http_response::get_header(const std::string &name) const
 {
     return m_data->headers.get_header(name);
 }
 
-std::string network_reply::get_header(const char *name) const
+std::string http_response::get_header(const char *name) const
 {
 	return m_data->headers.get_header(name);
 }
 
-boost::optional<std::string> network_reply::try_header(const std::string &name) const
+boost::optional<std::string> http_response::try_header(const std::string &name) const
 {
 	return m_data->headers.try_header(name);
 }
 
-boost::optional<std::string> network_reply::try_header(const char *name) const
+boost::optional<std::string> http_response::try_header(const char *name) const
 {
 	return m_data->headers.try_header(name);
 }
 
-void network_reply::set_headers(const std::vector<headers_entry> &headers)
+void http_response::set_headers(const std::vector<headers_entry> &headers)
 {
     m_data->headers.set_headers(headers);
 }
 
-void network_reply::set_header(const headers_entry &header)
+void http_response::set_header(const headers_entry &header)
 {
     m_data->headers.set_header(header.first, header.second);
 }
 
-void network_reply::set_header(const std::string &name, const std::string &value)
+void http_response::set_header(const std::string &name, const std::string &value)
 {
     m_data->headers.set_header(name, value);
 }
 
-void network_reply::add_header(const headers_entry &header)
+void http_response::add_header(const headers_entry &header)
 {
     m_data->headers.add_header(header.first, header.second);
 }
 
-void network_reply::add_header(const std::string &name, const std::string &value)
+void http_response::add_header(const std::string &name, const std::string &value)
 {
     m_data->headers.add_header(name, value);
 }
 
-const std::string &network_reply::get_data() const
+const std::string &http_response::data() const
 {
     return m_data->data;
 }
 
-void network_reply::set_data(const std::string &data)
+void http_response::set_data(const std::string &data)
 {
     m_data->data = data;
 }
 
-bool network_reply::has_last_modified() const
+bool http_response::has_last_modified() const
 {
     return has_header(LAST_MODIFIED_HEADER);
 }
 
-time_t network_reply::get_last_modified() const
+time_t http_response::get_last_modified() const
 {
     std::string http_date = get_last_modified_string();
 
@@ -617,51 +617,51 @@ time_t network_reply::get_last_modified() const
     return convert_from_http_date(http_date);
 }
 
-std::string network_reply::get_last_modified_string() const
+std::string http_response::get_last_modified_string() const
 {
     return get_header(LAST_MODIFIED_HEADER);
 }
 
-void network_reply::set_last_modified(const std::string &last_modified)
+void http_response::set_last_modified(const std::string &last_modified)
 {
     m_data->headers.set_header(LAST_MODIFIED_HEADER, last_modified);
 }
 
-void network_reply::set_last_modified(time_t last_modified)
+void http_response::set_last_modified(time_t last_modified)
 {
     set_last_modified(convert_to_http_date(last_modified));
 }
 
-void network_reply::set_content_length(size_t length)
+void http_response::set_content_length(size_t length)
 {
     char buffer[20];
     snprintf(buffer, sizeof(buffer), "%zu", length);
     m_data->headers.set_header(CONTENT_LENGTH_HEADER, buffer);
 }
 
-bool network_reply::has_content_length() const
+bool http_response::has_content_length() const
 {
     return m_data->headers.has_header(CONTENT_LENGTH_HEADER);
 }
 
-size_t network_reply::get_content_length() const
+size_t http_response::get_content_length() const
 {
     const std::string header = m_data->headers.get_header(CONTENT_LENGTH_HEADER);
 
     return header.empty() ? 0ll : atoll(header.c_str());
 }
 
-void network_reply::set_content_type(const std::string &type)
+void http_response::set_content_type(const std::string &type)
 {
     m_data->headers.set_header(CONTENT_TYPE_HEADER, type);
 }
 
-bool network_reply::has_content_type() const
+bool http_response::has_content_type() const
 {
     return m_data->headers.has_header(CONTENT_TYPE_HEADER);
 }
 
-std::string network_reply::get_content_type() const
+std::string http_response::get_content_type() const
 {
     return m_data->headers.get_header(CONTENT_TYPE_HEADER);
 }

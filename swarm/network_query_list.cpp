@@ -14,20 +14,20 @@ public:
 	std::vector<std::pair<std::string, std::string> > items;
 };
 
-network_query_list::network_query_list() : p(new network_query_list_private)
+url_query::url_query() : p(new network_query_list_private)
 {
 }
 
-network_query_list::network_query_list(const std::string &query) : p(new network_query_list_private)
+url_query::url_query(const std::string &query) : p(new network_query_list_private)
 {
 	set_query(query);
 }
 
-network_query_list::~network_query_list()
+url_query::~url_query()
 {
 }
 
-void network_query_list::set_query(const std::string &query)
+void url_query::set_query(const std::string &query)
 {
 	int item_count = 0;
 	UriQueryListA *query_list = NULL;
@@ -45,7 +45,7 @@ void network_query_list::set_query(const std::string &query)
 	uriFreeQueryListA(query_list);
 }
 
-std::string network_query_list::to_string() const
+std::string url_query::to_string() const
 {
 	if (p->items.empty())
 		return std::string();
@@ -76,27 +76,27 @@ std::string network_query_list::to_string() const
 	return result;
 }
 
-size_t network_query_list::count() const
+size_t url_query::count() const
 {
 	return p->items.size();
 }
 
-std::pair<std::string, std::string> network_query_list::item(size_t index) const
+std::pair<std::string, std::string> url_query::item(size_t index) const
 {
 	return p->items[index];
 }
 
-void network_query_list::add_item(const std::string &key, const std::string &value)
+void url_query::add_item(const std::string &key, const std::string &value)
 {
 	p->items.emplace_back(key, value);
 }
 
-void network_query_list::remove_item(size_t index)
+void url_query::remove_item(size_t index)
 {
 	p->items.erase(p->items.begin() + index);
 }
 
-bool network_query_list::has_item(const std::string &key) const
+bool url_query::has_item(const std::string &key) const
 {
 	for (size_t i = 0; i < p->items.size(); ++i) {
 		if (p->items[i].first == key)
@@ -105,16 +105,7 @@ bool network_query_list::has_item(const std::string &key) const
 	return false;
 }
 
-std::string network_query_list::item_value(const std::string &key) const
-{
-	for (size_t i = 0; i < p->items.size(); ++i) {
-		if (p->items[i].first == key)
-			return p->items[i].second;
-	}
-	return std::string();
-}
-
-boost::optional<std::string> network_query_list::try_item(const std::string &key) const
+boost::optional<std::string> url_query::item_value(const std::string &key) const
 {
 	for (size_t i = 0; i < p->items.size(); ++i) {
 		if (p->items[i].first == key)
@@ -123,7 +114,7 @@ boost::optional<std::string> network_query_list::try_item(const std::string &key
 	return boost::none;
 }
 
-boost::optional<std::string> network_query_list::try_item(const char *key) const
+boost::optional<std::string> url_query::item_value(const char *key) const
 {
 	const size_t key_size = strlen(key);
 

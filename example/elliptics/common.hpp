@@ -23,22 +23,22 @@ namespace ioremap { namespace thevoid { namespace elliptics { namespace common {
 
 template <typename T>
 struct on_ping : public simple_request_stream<T>, public std::enable_shared_from_this<on_ping<T>> {
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
 		(void) buffer;
 		(void) req;
 
-		this->send_reply(swarm::network_reply::ok);
+		this->send_reply(swarm::http_response::ok);
 	}
 };
 
 template <typename T>
 struct on_echo : public simple_request_stream<T>, public std::enable_shared_from_this<on_echo<T>> {
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
 		auto data = boost::asio::buffer_cast<const char*>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
 
-		swarm::network_reply reply;
-		reply.set_code(swarm::network_reply::ok);
+		swarm::http_response reply;
+		reply.set_code(swarm::http_response::ok);
 		reply.set_headers(req.get_headers());
 		reply.set_content_length(size);
 

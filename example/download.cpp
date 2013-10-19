@@ -14,6 +14,7 @@
  */
 
 #include <swarm/networkmanager.h>
+#include <swarm/boost_event_loop.h>
 #include <list>
 #include <iostream>
 #include <chrono>
@@ -31,16 +32,16 @@ struct request_handler_functor
 {
 	ev::loop_ref &loop;
 
-	void operator() (const ioremap::swarm::network_reply &reply) const {
-		std::cout << "HTTP code: " << reply.get_code() << std::endl;
-			std::cout << "Network error: " << reply.get_error() << std::endl;
+	void operator() (const ioremap::swarm::http_response &reply) const {
+		std::cout << "HTTP code: " << reply.code() << std::endl;
+			std::cout << "Network error: " << reply.error() << std::endl;
 
 		const auto &headers = reply.get_headers();
 
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
 			std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
 		}
-		std::cout << "data: " << reply.get_data() << std::endl;
+		std::cout << "data: " << reply.data() << std::endl;
 
 		loop.unloop();
 	}
@@ -67,17 +68,22 @@ int main(int argc, char **argv)
 		sig_watcher.start();
 	}
 
-	ioremap::swarm::network_manager manager(loop);
+	boost::asio::io_service service;
+	ioremap::swarm::boost_event_loop boost_loop(service);
+
+	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::LOG_DEBUG);
+
+	ioremap::swarm::network_manager manager(boost_loop, logger);
 
 	std::vector<ioremap::swarm::headers_entry> headers = {
 		{ "Content-Type", "text/html; always" },
 		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
 	};
 
-	ioremap::swarm::network_request request;
+	ioremap::swarm::http_request request;
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
-	request.set_timeout(5000);
+	request.set_timeout(500000);
 	request.set_headers(headers);
 
 	typedef std::chrono::high_resolution_clock clock;
@@ -88,7 +94,9 @@ int main(int argc, char **argv)
 
 	manager.get(request_handler, request);
 
-	loop.loop();
+	boost::asio::io_service::work work(service);
+	service.run();
+//	loop.loop();
 
 	auto end_time = clock::now();
 

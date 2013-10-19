@@ -32,7 +32,7 @@ public:
 	logger(const char *file, int level);
 	~logger();
 
-	int get_level() const;
+	int level() const;
 	void set_level(int level);
 
 	void log(int level, const char *format, ...) __attribute__ ((format(printf, 3, 4)));

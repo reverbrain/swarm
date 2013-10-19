@@ -33,22 +33,22 @@ namespace ioremap { namespace thevoid { namespace elliptics { namespace io {
 template <typename T>
 struct on_get : public simple_request_stream<T>, public std::enable_shared_from_this<on_get<T>>
 {
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
 		using namespace std::placeholders;
 
 		(void) buffer;
 
-		swarm::network_url url(req.get_url());
-		swarm::network_query_list query_list(url.query());
+        const auto &url = swarm::network_url(req.url());
+		swarm::url_query query_list(url.query());
 
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
-		if (auto name = query_list.try_item("name")) {
+		if (auto name = query_list.item_value("name")) {
 			this->log(swarm::LOG_DEBUG, "GET request, name: \"%s\"", name->c_str());
 
 			sess.read_data(*name, 0, 0).connect(
 					std::bind(&on_get::on_read_finished, this->shared_from_this(), _1, _2));
-		} else if (auto sid = query_list.try_item("id")) {
+		} else if (auto sid = query_list.item_value("id")) {
 			struct dnet_id id;
 			memset(&id, 0, sizeof(struct dnet_id));
 
@@ -56,17 +56,17 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 			sess.read_data(id, 0, 0).connect(
 					std::bind(&on_get::on_read_finished, this->shared_from_this(), _1, _2));
 		} else {
-			this->send_reply(swarm::network_reply::bad_request);
+			this->send_reply(swarm::http_response::bad_request);
 		}
 	}
 
 	virtual void on_read_finished(const ioremap::elliptics::sync_read_result &result,
 			const ioremap::elliptics::error_info &error) {
 		if (error.code() == -ENOENT) {
-			this->send_reply(swarm::network_reply::not_found);
+			this->send_reply(swarm::http_response::not_found);
 			return;
 		} else if (error) {
-			this->send_reply(swarm::network_reply::service_unavailable);
+			this->send_reply(swarm::http_response::service_unavailable);
 			return;
 		}
 
@@ -75,17 +75,17 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		ioremap::elliptics::data_pointer file = entry.file();
 
 		const dnet_time &ts = entry.io_attribute()->timestamp;
-		const swarm::network_request &request = this->get_request();
+		const swarm::http_request &request = this->get_request();
 
 		if (request.has_if_modified_since()) {
 			if ((time_t)ts.tsec <= request.get_if_modified_since()) {
-				this->send_reply(swarm::network_reply::not_modified);
+				this->send_reply(swarm::http_response::not_modified);
 				return;
 			}
 		}
 
-		swarm::network_reply reply;
-		reply.set_code(swarm::network_reply::ok);
+		swarm::http_response reply;
+		reply.set_code(swarm::http_response::ok);
 		reply.set_content_length(file.size());
 		reply.set_content_type("text/plain");
 		reply.set_last_modified(ts.tsec);
@@ -98,11 +98,17 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 template <typename T>
 struct on_upload : public simple_request_stream<T>, public std::enable_shared_from_this<on_upload<T>>
 {
-	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
-		swarm::network_url url(req.get_url());
-		swarm::network_query_list query_list(url.query());
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+        const auto &url = swarm::network_url(req.url());
+		swarm::url_query query_list(url.query());
 
-		std::string name = query_list.item_value("name");
+		auto possible_name = query_list.item_value("name");
+        if (!possible_name) {
+            this->send_reply(swarm::http_response::bad_request);
+            return;
+        }
+        
+        auto name = *possible_name;
 
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
@@ -150,18 +156,18 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result,
 			const ioremap::elliptics::error_info &error) {
 		if (error) {
-			this->send_reply(swarm::network_reply::service_unavailable);
+			this->send_reply(swarm::http_response::service_unavailable);
 			return;
 		}
 
 		elliptics::JsonValue result_object;
 		on_upload::fill_upload_reply(result, result_object);
 
-		swarm::network_reply reply;
-		reply.set_code(swarm::network_reply::ok);
+		swarm::http_response reply;
+		reply.set_code(swarm::http_response::ok);
 		reply.set_content_type("text/json");
 		reply.set_data(result_object.ToString());
-		reply.set_content_length(reply.get_data().size());
+		reply.set_content_length(reply.data().size());
 
 		this->send_reply(reply);
 	}
