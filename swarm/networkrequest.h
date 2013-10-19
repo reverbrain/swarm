@@ -29,62 +29,17 @@ namespace swarm {
 class network_request_data;
 class network_reply_data;
 
-template <typename T>
-class shared_data_ptr
-{
-public:
-	explicit shared_data_ptr(T *data) : m_data(data)
-	{
-		if (m_data)
-			++m_data->refcnt;
-	}
-	shared_data_ptr() : m_data(NULL) {}
-	shared_data_ptr(const shared_data_ptr &other) : m_data(other.m_data)
-	{
-		if (m_data)
-			++m_data->refcnt;
-	}
-	~shared_data_ptr()
-	{
-		if (m_data && --m_data->refcnt == 0)
-			delete m_data;
-	}
-	shared_data_ptr &operator =(const shared_data_ptr &other)
-	{
-		shared_data_ptr tmp(other);
-		std::swap(tmp.m_data, m_data);
-		return *this;
-	}
-
-	T *operator ->() { detach(); return m_data; }
-	const T *operator ->() const { return m_data; }
-	T &operator *() { detach(); return *m_data; }
-	const T &operator *() const { return *m_data; }
-	T *data() { detach(); return m_data; }
-	T *data() const { return m_data; }
-	T *constData() { return m_data; }
-
-private:
-	void detach()
-	{
-		if (m_data && m_data->refcnt != 1) {
-			shared_data_ptr tmp(new T(*m_data));
-			std::swap(tmp.m_data, m_data);
-		}
-	}
-
-	T *m_data;
-};
-
 typedef std::pair<std::string, std::string> headers_entry;
 
 class http_request
 {
 public:
 	http_request();
+	http_request(http_request &&other);
 	http_request(const http_request &other);
 	~http_request();
 
+	http_request &operator =(http_request &&other);
 	http_request &operator =(const http_request &other);
 
 	// Request URL
@@ -137,7 +92,7 @@ public:
 	std::string get_content_type() const;
 
 private:
-	shared_data_ptr<network_request_data> m_data;
+	std::unique_ptr<network_request_data> m_data;
 };
 
 class http_response
@@ -208,13 +163,15 @@ public:
 	};
 
 	http_response();
+	http_response(http_response &&other);
 	http_response(const http_response &other);
 	~http_response();
 
+	http_response &operator =(http_response &&other);
 	http_response &operator =(const http_response &other);
 
 	// Original request
-	http_request request() const;
+	const http_request &request() const;
 	void set_request(const http_request &request);
 
 	// HTTP code
@@ -260,7 +217,7 @@ public:
 	std::string get_content_type() const;
 
 private:
-	shared_data_ptr<network_reply_data> m_data;
+	std::unique_ptr<network_reply_data> m_data;
 };
 
 }

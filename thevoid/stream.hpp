@@ -68,7 +68,7 @@ public:
 	base_request_stream();
 	virtual ~base_request_stream();
 
-	virtual void on_headers(const swarm::http_request &req) = 0;
+	virtual void on_headers(swarm::http_request &&req) = 0;
 	virtual void on_data(const boost::asio::const_buffer &buffer) = 0;
 	virtual void on_close(const boost::system::error_code &err) { (void) err; }
 
@@ -218,9 +218,9 @@ protected:
 	}
 
 private:
-	void on_headers(const swarm::http_request &req)
+	void on_headers(swarm::http_request &&req)
 	{
-		m_request = req;
+		m_request = std::move(req);
 		m_content_length = req.get_content_length();
 
 		if (m_content_length == 0) {

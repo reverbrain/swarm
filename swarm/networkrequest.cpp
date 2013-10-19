@@ -229,7 +229,7 @@ public:
     std::atomic_int refcnt;
 };
 
-class network_request_data : public shared_data
+class network_request_data
 {
 public:
     network_request_data()
@@ -237,13 +237,7 @@ public:
           major_version(1), minor_version(1)
     {
     }
-    network_request_data(const network_request_data &o)
-        : shared_data(o), url(o.url), follow_location(o.follow_location),
-          timeout(o.timeout), headers(o.headers),
-          major_version(o.major_version), minor_version(o.minor_version),
-          method(o.method)
-    {
-    }
+    network_request_data(const network_request_data &o) = default;
 
     swarm::url url;
     bool follow_location;
@@ -258,7 +252,13 @@ http_request::http_request() : m_data(new network_request_data)
 {
 }
 
-http_request::http_request(const http_request &other) : m_data(other.m_data)
+http_request::http_request(http_request &&other) : m_data(new network_request_data)
+{
+	using std::swap;
+	swap(m_data, other.m_data);
+}
+
+http_request::http_request(const http_request &other) : m_data(new network_request_data(*other.m_data))
 {
 }
 
@@ -266,10 +266,23 @@ http_request::~http_request()
 {
 }
 
+http_request &http_request::operator =(http_request &&other)
+{
+	using std::swap;
+	http_request tmp;
+	swap(m_data, tmp.m_data);
+	swap(m_data, other.m_data);
+
+	return *this;
+}
+
 http_request &http_request::operator =(const http_request &other)
 {
-    m_data = other.m_data;
-    return *this;
+	using std::swap;
+	http_request tmp(other);
+	swap(m_data, tmp.m_data);
+
+	return *this;
 }
 
 const swarm::url &http_request::url() const
@@ -462,18 +475,14 @@ bool http_request::is_keep_alive() const
                                       sizeof(CONNECTION_HEADER_KEEP_ALIVE) - 1);
 }
 
-class network_reply_data : public shared_data
+class network_reply_data
 {
 public:
     network_reply_data()
         : code(0), error(0)
     {
     }
-    network_reply_data(const network_reply_data &o)
-        : shared_data(o), request(o.request), code(o.code), error(o.error),
-          url(o.url), headers(o.headers), data(o.data)
-    {
-    }
+    network_reply_data(const network_reply_data &o) = default;
 
     http_request request;
 
@@ -488,7 +497,13 @@ http_response::http_response() : m_data(new network_reply_data)
 {
 }
 
-http_response::http_response(const http_response &other) : m_data(other.m_data)
+http_response::http_response(http_response &&other) : m_data(new network_reply_data)
+{
+	using std::swap;
+	swap(m_data, other.m_data);
+}
+
+http_response::http_response(const http_response &other) : m_data(new network_reply_data(*other.m_data))
 {
 }
 
@@ -496,13 +511,24 @@ http_response::~http_response()
 {
 }
 
-http_response &http_response::operator =(const http_response &other)
+http_response &http_response::operator =(http_response &&other)
 {
-    m_data = other.m_data;
-    return *this;
+	using std::swap;
+	http_response tmp;
+	swap(m_data, tmp.m_data);
+	swap(m_data, other.m_data);
+	return *this;
 }
 
-http_request http_response::request() const
+http_response &http_response::operator =(const http_response &other)
+{
+	using std::swap;
+	http_response tmp(other);
+	swap(m_data, tmp.m_data);
+	return *this;
+}
+
+const http_request &http_response::request() const
 {
     return m_data->request;
 }

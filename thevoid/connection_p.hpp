@@ -96,6 +96,8 @@ private:
 
 	//! Request parsing state
 	uint32_t m_state;
+    //! If current connection is keep-alive
+    bool m_keep_alive;
 
 	//! Uprocessed data
 	const char *m_unprocessed_begin;

@@ -39,7 +39,8 @@ connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) 
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
-	m_state(read_headers)
+	m_state(read_headers),
+	m_keep_alive(false)
 {
 	m_unprocessed_begin = m_buffer.data();
 	m_unprocessed_end = m_buffer.data();
@@ -95,7 +96,7 @@ void connection<T>::send_headers(const swarm::http_response &rep,
 		std::make_shared<swarm::http_response>(rep)
 	};
 
-	if (m_request.is_keep_alive()) {
+	if (m_keep_alive) {
 		guard.reply->set_header("Connection", "Keep-Alive");
 		debug("Added Keep-Alive");
 	}
@@ -138,7 +139,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		return;
 	}
 
-	if (!m_request.is_keep_alive()) {
+	if (!m_keep_alive) {
 		boost::system::error_code ignored_ec;
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
 		return;
@@ -211,11 +212,12 @@ void connection<T>::process_data(const char *begin, const char *end)
 			}
 
 			m_content_length = m_request.get_content_length();
+			m_keep_alive = m_request.is_keep_alive();
 
 			++m_server->m_data->active_connections_counter;
 			m_handler = factory->create();
 			m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-			m_handler->on_headers(m_request);
+			m_handler->on_headers(std::move(m_request));
 
 			m_state &= ~read_headers;
 			m_state |=  read_data;
