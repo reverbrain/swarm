@@ -53,7 +53,7 @@ public:
 
 
 private:
-	url_private *p;
+	std::unique_ptr<url_private> p;
 };
 
 } // namespace crawler

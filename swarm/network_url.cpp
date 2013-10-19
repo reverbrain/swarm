@@ -186,15 +186,6 @@ void url_private::ensure_data() const
 	fragment = to_string(parser.fragment);
 }
 
-class network_url_private
-{
-public:
-	std::string url;
-	UriParserStateA state;
-	UriUriA uri;
-	network_url_cleaner cleaner;
-};
-
 url::url() : p(new url_private)
 {
 }
