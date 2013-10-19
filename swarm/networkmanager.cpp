@@ -167,7 +167,7 @@ public:
             curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
 //	    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
-            curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().c_str());
+            curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
             curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
             curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
             curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);

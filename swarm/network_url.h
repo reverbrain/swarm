@@ -22,29 +22,38 @@
 namespace ioremap {
 namespace swarm {
 
-class network_url_private;
+class url_private;
 
-class network_url
+class url
 {
 public:
-	network_url();
-	network_url(const std::string &url);
-	~network_url();
+	url();
+	url(url &&other);
+	url(const url &other);
+	url(const std::string &url);
+	~url();
 
-	bool set_base(const std::string &url);
+	url &operator =(url &&other);
+	url &operator =(const url &other);
+	url &operator =(const std::string &url);
 
-	std::string normalized();
-	std::string host();
-	std::string path();
-	std::string relative(const std::string &other, std::string *other_host = NULL);
+	static url from_user_input(const std::string &url);
 
-	std::string query() const;
+	const std::string &original() const;
+	std::string to_string() const;
+
+	bool is_valid() const;
+
+	const std::string &scheme() const;
+	const std::string &host() const;
+	int port() const;
+	const std::string &path() const;
+	const std::string &query() const;
+	const std::string &fragment() const;
+
 
 private:
-	network_url(const network_url &other);
-	network_url &operator =(const network_url &other);
-
-	std::unique_ptr<network_url_private> p;
+	url_private *p;
 };
 
 } // namespace crawler

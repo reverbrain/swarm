@@ -347,11 +347,9 @@ void base_server::set_server(const std::weak_ptr<base_server> &server)
 	m_data->server = server;
 }
 
-std::shared_ptr<base_stream_factory> base_server::get_factory(const std::string &url)
+std::shared_ptr<base_stream_factory> base_server::get_factory(const swarm::url &url)
 {
-	swarm::network_url url_parser;
-	url_parser.set_base(url);
-	const std::string path = url_parser.path();
+	const std::string &path = url.path();
 
 	auto it = m_data->handlers.find(path);
 

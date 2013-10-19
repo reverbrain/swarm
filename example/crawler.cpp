@@ -90,14 +90,14 @@ struct result_handler
 
 		if (reply.code() == 200 && !reply.error()) {
 			++scope.in_progress;
-			queue_element element = { reply.request(), reply.url(), reply.data(), depth - 1 };
+			queue_element element = { reply.request(), reply.url().to_string(), reply.data(), depth - 1 };
 			std::unique_lock<std::mutex> lock(scope.fs_mutex);
 			scope.files.push_back(element);
 			scope.fs_condition.notify_all();
 		}
 
 		if (reply.error()) {
-			std::cerr << "Error at \"" << reply.request().url() << "\": " << strerror(-reply.error()) << ": " << reply.error() << std::endl;
+			std::cerr << "Error at \"" << reply.request().url().to_string() << "\": " << strerror(-reply.error()) << ": " << reply.error() << std::endl;
 		}
 
 		scope.check_end(--scope.in_progress);
@@ -173,7 +173,7 @@ struct fs_thread
 			}
 			in_progress_guard guard = { scope };
 
-			ioremap::swarm::network_url base_url;
+			ioremap::swarm::url base_url;
 			ioremap::swarm::url_finder finder(element.data);
 
 			if (!base_url.set_base(element.url))
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 		scope.nm_limit = std::max(1, atoi(argv[7]));
 
 
-	ioremap::swarm::network_url url_parser;
+	ioremap::swarm::url url_parser;
 	url_parser.set_base(url);
 	// normalize url
 	std::string normalized_url = url_parser.normalized();

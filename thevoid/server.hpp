@@ -42,7 +42,10 @@
 #endif
 
 namespace ioremap {
-namespace swarm { class logger; }
+namespace swarm {
+class logger;
+class url;
+}
 namespace thevoid {
 
 namespace detail {
@@ -101,7 +104,7 @@ private:
 	friend class monitor_connection;
 
 	void set_server(const std::weak_ptr<base_server> &server);
-	std::shared_ptr<base_stream_factory> get_factory(const std::string &url);
+	std::shared_ptr<base_stream_factory> get_factory(const swarm::url &url);
 
 	server_data *m_data;
 };

@@ -88,7 +88,8 @@ public:
 	http_request &operator =(const http_request &other);
 
 	// Request URL
-	const std::string &url() const;
+	const swarm::url &url() const;
+	void set_url(const swarm::url &url);
 	void set_url(const std::string &url);
 
 	bool is_keep_alive() const;
@@ -223,7 +224,8 @@ public:
 	int error() const;
 	void set_error(int error);
 	// Final URL from HTTP reply
-	const std::string &url() const;
+	const swarm::url &url() const;
+	void set_url(const swarm::url &url);
 	void set_url(const std::string &url);
 	// List of headers
 	const std::vector<headers_entry> &get_headers() const;

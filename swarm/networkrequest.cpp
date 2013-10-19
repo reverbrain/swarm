@@ -245,7 +245,7 @@ public:
     {
     }
 
-    std::string url;
+    swarm::url url;
     bool follow_location;
     long timeout;
     headers_storage headers;
@@ -272,14 +272,19 @@ http_request &http_request::operator =(const http_request &other)
     return *this;
 }
 
-const std::string &http_request::url() const
+const swarm::url &http_request::url() const
 {
     return m_data->url;
 }
 
+void http_request::set_url(const swarm::url &url)
+{
+	m_data->url = url;
+}
+
 void http_request::set_url(const std::string &url)
 {
-    m_data->url = url;
+	m_data->url = std::move(swarm::url(url));
 }
 
 bool http_request::follow_location() const
@@ -474,7 +479,7 @@ public:
 
     int code;
     int error;
-    std::string url;
+    swarm::url url;
     headers_storage headers;
     std::string data;
 };
@@ -527,14 +532,19 @@ void http_response::set_error(int error)
     m_data->error = error;
 }
 
-const std::string &http_response::url() const
+const url &http_response::url() const
 {
     return m_data->url;
 }
 
+void http_response::set_url(const swarm::url &url)
+{
+	m_data->url = url;
+}
+
 void http_response::set_url(const std::string &url)
 {
-    m_data->url = url;
+	m_data->url = std::move(swarm::url(url));
 }
 
 const std::vector<headers_entry> &http_response::get_headers() const
