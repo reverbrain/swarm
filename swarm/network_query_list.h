@@ -16,9 +16,14 @@ class url_query
 {
 public:
 	url_query();
+	url_query(url_query &&other);
+	url_query(const url_query &other);
 	url_query(const std::string &query);
 
 	~url_query();
+
+	url_query &operator =(url_query &&other);
+	url_query &operator =(const url_query &other);
 
 	void set_query(const std::string &query);
 	std::string to_string() const;
@@ -33,9 +38,6 @@ public:
 	boost::optional<std::string> item_value(const char *key) const;
 
 private:
-	url_query(const url_query &other);
-	url_query &operator =(const url_query &other);
-
 	std::unique_ptr<network_query_list_private> p;
 };
 

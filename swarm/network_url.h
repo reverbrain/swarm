@@ -18,6 +18,7 @@
 
 #include <string>
 #include <memory>
+#include "network_query_list.h"
 
 namespace ioremap {
 namespace swarm {
@@ -48,7 +49,8 @@ public:
 	const std::string &host() const;
 	int port() const;
 	const std::string &path() const;
-	const std::string &query() const;
+	const url_query &query() const;
+	const std::string &raw_query() const;
 	const std::string &fragment() const;
 
 

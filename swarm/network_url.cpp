@@ -41,7 +41,8 @@ public:
 		parsed          = 0x01,
 		invalid_original= 0x02,
 		has_original    = 0x04,
-		has_changes     = 0x08
+		has_changes     = 0x08,
+		query_parsed    = 0x10
 	};
 
 	url_private() : state(invalid), port(-1)
@@ -57,7 +58,8 @@ public:
 	mutable std::string password;
 	mutable std::string host;
 	mutable std::string path;
-        mutable std::string query;
+        mutable std::string raw_query;
+	mutable url_query query;
         mutable std::string fragment;
 
 	std::string original;
@@ -159,8 +161,6 @@ void url_private::ensure_data() const
 
 	cleaner.reset(&parser);
 
-	state |= parsed;
-
 	try {
 		std::string port_text = to_string(parser.portText);
 		port = boost::lexical_cast<int>(port_text);
@@ -180,18 +180,22 @@ void url_private::ensure_data() const
 		path += to_string(it->text);
 	}
 
-	query = to_string(parser.query);
+	raw_query = to_string(parser.query);
 	host = to_string(parser.hostText);
 	scheme = to_string(parser.scheme);
 	fragment = to_string(parser.fragment);
+
+	state |= parsed;
 }
 
 url::url() : p(new url_private)
 {
 }
 
-url::url(url &&other) : p(std::move(other.p))
+url::url(url &&other) : p(new url_private)
 {
+	using std::swap;
+	swap(p, other.p);
 }
 
 url::url(const url &other) : p(new url_private(*other.p))
@@ -210,7 +214,10 @@ url::~url()
 
 url &url::operator =(url &&other)
 {
-	p = std::move(other.p);
+	using std::swap;
+	url tmp;
+	swap(p, tmp.p);
+	swap(p, other.p);
 	return *this;
 }
 
@@ -313,6 +320,16 @@ const std::string &url::path() const
 	return p->path;
 }
 
+const url_query &url::query() const
+{
+	if (is_valid() && !(p->state & url_private::query_parsed)) {
+		p->query = std::move(url_query(p->raw_query));
+		p->state |= url_private::query_parsed;
+	}
+
+	return p->query;
+}
+
 //std::string url::relative(const std::string &other, std::string *other_host) const
 //{
 //	std::string url = p->encode_url(other);
@@ -338,10 +355,10 @@ const std::string &url::path() const
 //	return std::string();
 //}
 
-const std::string &url::query() const
+const std::string &url::raw_query() const
 {
 	p->ensure_data();
-	return p->query;
+	return p->raw_query;
 }
 
 const std::string &url::fragment() const

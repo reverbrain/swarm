@@ -18,6 +18,16 @@ url_query::url_query() : p(new network_query_list_private)
 {
 }
 
+url_query::url_query(url_query &&other) : p(new network_query_list_private)
+{
+	using std::swap;
+	swap(p, other.p);
+}
+
+url_query::url_query(const url_query &other) : p(new network_query_list_private(*other.p))
+{
+}
+
 url_query::url_query(const std::string &query) : p(new network_query_list_private)
 {
 	set_query(query);
@@ -25,6 +35,23 @@ url_query::url_query(const std::string &query) : p(new network_query_list_privat
 
 url_query::~url_query()
 {
+}
+
+url_query &url_query::operator =(url_query &&other)
+{
+	using std::swap;
+	url_query tmp;
+	swap(p, tmp.p);
+	swap(p, other.p);
+	return *this;
+}
+
+url_query &url_query::operator =(const url_query &other)
+{
+	using std::swap;
+	url_query tmp(other);
+	swap(p, tmp.p);
+	return *this;
 }
 
 void url_query::set_query(const std::string &query)
