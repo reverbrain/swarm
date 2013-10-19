@@ -38,8 +38,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		(void) buffer;
 
-        const auto &url = swarm::url(req.url());
-		swarm::url_query query_list(url.query());
+		const auto &query_list = req.url().query();
 
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
@@ -99,16 +98,15 @@ template <typename T>
 struct on_upload : public simple_request_stream<T>, public std::enable_shared_from_this<on_upload<T>>
 {
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
-        const auto &url = swarm::url(req.url());
-		swarm::url_query query_list(url.query());
+        const auto &query_list = req.url().query();
 
 		auto possible_name = query_list.item_value("name");
-        if (!possible_name) {
-            this->send_reply(swarm::http_response::bad_request);
-            return;
-        }
-        
-        auto name = *possible_name;
+		if (!possible_name) {
+			this->send_reply(swarm::http_response::bad_request);
+			return;
+		}
+
+		auto name = *possible_name;
 
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
