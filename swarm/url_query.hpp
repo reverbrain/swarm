@@ -29,7 +29,7 @@ public:
 	std::string to_string() const;
 
 	size_t count() const;
-	std::pair<std::string, std::string> item(size_t index) const;
+	const std::pair<std::string, std::string> &item(size_t index) const;
 	void add_item(const std::string &key, const std::string &value);
 	void remove_item(size_t index);
 

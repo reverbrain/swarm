@@ -106,7 +106,7 @@ size_t url_query::count() const
 	return p->items.size();
 }
 
-std::pair<std::string, std::string> url_query::item(size_t index) const
+const std::pair<std::string, std::string> &url_query::item(size_t index) const
 {
 	return p->items[index];
 }
