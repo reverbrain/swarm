@@ -58,9 +58,9 @@ public:
 	mutable std::string password;
 	mutable std::string host;
 	mutable std::string path;
-        mutable std::string raw_query;
+	mutable std::string raw_query;
 	mutable url_query query;
-        mutable std::string fragment;
+	mutable std::string fragment;
 
 	std::string original;
 
@@ -192,7 +192,7 @@ url::url() : p(new url_private)
 {
 }
 
-url::url(url &&other) : p(new url_private)
+url::url(url &&other)
 {
 	using std::swap;
 	swap(p, other.p);
@@ -215,8 +215,6 @@ url::~url()
 url &url::operator =(url &&other)
 {
 	using std::swap;
-	url tmp;
-	swap(p, tmp.p);
 	swap(p, other.p);
 	return *this;
 }
@@ -224,7 +222,7 @@ url &url::operator =(url &&other)
 url &url::operator =(const url &other)
 {
 	url tmp(other);
-	*this = std::move(tmp);
+	swap(p, tmp.p);
 	return *this;
 }
 

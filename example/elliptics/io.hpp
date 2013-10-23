@@ -76,8 +76,8 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		const dnet_time &ts = entry.io_attribute()->timestamp;
 		const swarm::http_request &request = this->get_request();
 
-		if (request.has_if_modified_since()) {
-			if ((time_t)ts.tsec <= request.get_if_modified_since()) {
+		if (request.headers().has_if_modified_since()) {
+			if ((time_t)ts.tsec <= request.headers().if_modified_since()) {
 				this->send_reply(swarm::http_response::not_modified);
 				return;
 			}
@@ -85,9 +85,9 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
-		reply.set_content_length(file.size());
-		reply.set_content_type("text/plain");
-		reply.set_last_modified(ts.tsec);
+		reply.headers().set_content_length(file.size());
+		reply.headers().set_content_type("text/plain");
+		reply.headers().set_last_modified(ts.tsec);
 
 		this->send_reply(reply, std::move(file));
 	}
@@ -160,14 +160,15 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 
 		elliptics::JsonValue result_object;
 		on_upload::fill_upload_reply(result, result_object);
+        
+        auto data = result_object.ToString();
 
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
-		reply.set_content_type("text/json");
-		reply.set_data(result_object.ToString());
-		reply.set_content_length(reply.data().size());
+		reply.headers().set_content_type("text/json");
+		reply.headers().set_content_length(data.size());
 
-		this->send_reply(reply);
+        this->send_reply(reply, std::move(data));
 	}
 };
 

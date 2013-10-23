@@ -125,7 +125,7 @@ swarm::http_response stock_reply(swarm::http_response::status_type status)
 {
 	swarm::http_response reply;
 	reply.set_code(status);
-	reply.set_content_length(0);
+	reply.headers().set_content_length(0);
 	return reply;
 }
 
@@ -134,7 +134,7 @@ std::vector<boost::asio::const_buffer> to_buffers(const swarm::http_response &re
 	std::vector<boost::asio::const_buffer> buffers;
 	buffers.push_back(status_strings::to_buffer(reply.code()));
 
-	const auto &headers = reply.get_headers();
+	const auto &headers = reply.headers().all();
 	for (std::size_t i = 0; i < headers.size(); ++i) {
 		auto &header = headers[i];
 		buffers.push_back(boost::asio::buffer(header.first));

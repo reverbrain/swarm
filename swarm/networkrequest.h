@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include "network_url.h"
+#include "http_headers.hpp"
 
 #include <boost/optional.hpp>
 
@@ -57,39 +58,17 @@ public:
 	long timeout() const;
 	void set_timeout(long timeout);
 
-	// List of headers
-	const std::vector<headers_entry> &get_headers() const;
-	bool has_header(const std::string &name) const;
-	std::string get_header(const std::string &name) const;
-	std::string get_header(const char *name) const;
-	boost::optional<std::string> try_header(const std::string &name) const;
-	boost::optional<std::string> try_header(const char *name) const;
-	void set_headers(const std::vector<headers_entry> &headers);
-	void set_header(const headers_entry &header);
-	void set_header(const std::string &name, const std::string &value);
-	void add_header(const headers_entry &header);
-	void add_header(const std::string &name, const std::string &value);
-	// If-Modified-Since, UTC
-	bool has_if_modified_since() const;
-	time_t get_if_modified_since() const;
-	std::string get_if_modified_since_string() const;
-	void set_if_modified_since(const std::string &time);
-	void set_if_modified_since(time_t time);
+	// HTTP headers
+	http_headers &headers();
+	const http_headers &headers() const;
+
 	// TheVoid specific arguments
 	void set_http_version(int major_version, int minor_version);
-	int get_http_major_version() const;
-	int get_http_minor_version() const;
+	int http_major_version() const;
+	int http_minor_version() const;
 
 	void set_method(const std::string &method);
-	std::string get_method() const;
-
-	void set_content_length(size_t length);
-	bool has_content_length() const;
-	size_t get_content_length() const;
-
-	void set_content_type(const std::string &type);
-	bool has_content_type() const;
-	std::string get_content_type() const;
+	std::string method() const;
 
 private:
 	std::unique_ptr<network_request_data> m_data;
@@ -177,44 +156,25 @@ public:
 	// HTTP code
 	int code() const;
 	void set_code(int code);
+
 	// Errno
 	int error() const;
 	void set_error(int error);
+
+	// HTTP headers
+	http_headers &headers();
+	const http_headers &headers() const;
+	void set_headers(const http_headers &headers);
+	void set_headers(http_headers &&headers);
+
 	// Final URL from HTTP reply
 	const swarm::url &url() const;
 	void set_url(const swarm::url &url);
 	void set_url(const std::string &url);
-	// List of headers
-	const std::vector<headers_entry> &get_headers() const;
-	bool has_header(const std::string &name) const;
-	std::string get_header(const std::string &name) const;
-	std::string get_header(const char *name) const;
-	boost::optional<std::string> try_header(const std::string &name) const;
-	boost::optional<std::string> try_header(const char *name) const;
-	void set_headers(const std::vector<headers_entry> &headers);
-	void set_header(const headers_entry &header);
-	void set_header(const std::string &name, const std::string &value);
-	void add_header(const headers_entry &header);
-	void add_header(const std::string &name, const std::string &value);
+
 	// Reply data
 	const std::string &data() const;
 	void set_data(const std::string &data);
-	// Last-Modified, UTC
-	bool has_last_modified() const;
-	time_t get_last_modified() const;
-	std::string get_last_modified_string() const;
-	void set_last_modified(const std::string &last_modified);
-	void set_last_modified(time_t last_modified);
-
-	// Content length
-	void set_content_length(size_t length);
-	bool has_content_length() const;
-	size_t get_content_length() const;
-
-	// Content type
-	void set_content_type(const std::string &type);
-	bool has_content_type() const;
-	std::string get_content_type() const;
 
 private:
 	std::unique_ptr<network_reply_data> m_data;

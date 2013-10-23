@@ -5,6 +5,8 @@ set(SWARM_SRC_LIST
     ev_event_loop.h
     boost_event_loop.cpp
     boost_event_loop.h
+    http_headers.hpp
+    http_headers.cpp
     logger.cpp
     logger.h
     network_query_list.cpp
@@ -18,6 +20,9 @@ set(SWARM_SRC_LIST
     )
 
 set(SWARM_HDR_LIST
+	event_loop.h
+	ev_event_loop.h
+	boost_event_loop.h
 	network_url.h
 	network_query_list.h
 	networkrequest.h

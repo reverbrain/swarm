@@ -39,8 +39,8 @@ struct on_echo : public simple_request_stream<T>, public std::enable_shared_from
 
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
-		reply.set_headers(req.get_headers());
-		reply.set_content_length(size);
+		reply.set_headers(req.headers());
+		reply.headers().set_content_length(size);
 
 		this->send_reply(reply, std::string(data, size));
 	}

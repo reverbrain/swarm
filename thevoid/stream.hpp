@@ -221,12 +221,13 @@ private:
 	void on_headers(swarm::http_request &&req)
 	{
 		m_request = std::move(req);
-		m_content_length = req.get_content_length();
 
-		if (m_content_length == 0) {
-			on_request(m_request, boost::asio::buffer("", 0));
-		} else {
+		if (auto tmp = req.headers().content_length()) {
+			m_content_length = *tmp;
 			m_data.reserve(m_content_length);
+		} else {
+			m_content_length = 0;
+			on_request(m_request, boost::asio::buffer("", 0));
 		}
 	}
 

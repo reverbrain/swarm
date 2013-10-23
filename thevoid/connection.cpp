@@ -97,7 +97,7 @@ void connection<T>::send_headers(const swarm::http_response &rep,
 	};
 
 	if (m_keep_alive) {
-		guard.reply->set_header("Connection", "Keep-Alive");
+		guard.reply->headers().set("Connection", "Keep-Alive");
 		debug("Added Keep-Alive");
 	}
 
@@ -211,7 +211,10 @@ void connection<T>::process_data(const char *begin, const char *end)
 				return;
 			}
 
-			m_content_length = m_request.get_content_length();
+			if (auto length = m_request.headers().content_length())
+				m_content_length = *length;
+			else
+				m_content_length = 0;
 			m_keep_alive = m_request.is_keep_alive();
 
 			++m_server->m_data->active_connections_counter;

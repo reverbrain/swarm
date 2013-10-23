@@ -152,7 +152,7 @@ boost::tribool request_parser::parse_line(swarm::http_request &request, const st
 			}
 
 			if (!m_header.first.empty()) {
-				request.add_header(m_header);
+				request.headers().add(m_header);
 				m_header.first.resize(0);
 				m_header.second.resize(0);
 			}

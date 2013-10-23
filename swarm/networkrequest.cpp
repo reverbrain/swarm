@@ -14,27 +14,13 @@
  */
 
 #include "networkrequest.h"
-#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
-#  include <cstdatomic>
-#else
-#  include <atomic>
-#endif
-#include <cstring>
 #include <algorithm>
 
 namespace ioremap {
 namespace swarm {
 
-#define HTTP_DATE_RFC_1123 "%a, %d %b %Y %H:%M:%S %Z" // Sun, 06 Nov 1994 08:49:37 GMT
-#define HTTP_DATE_RFC_850  "%A, %d-%b-%y %H:%M:%S %Z" // Sunday, 06-Nov-94 08:49:37 GMT
-#define HTTP_DATE_ASCTIME  "%a %b %e %H:%M:%S %Y"     // Sun Nov  6 08:49:37 1994
-
-#define LAST_MODIFIED_HEADER "Last-Modified"
-#define IF_MODIFIED_SINCE_HEADER "If-Modified-Since"
 #define CONNECTION_HEADER "Connection"
 #define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
-#define CONTENT_LENGTH_HEADER "Content-Length"
-#define CONTENT_TYPE_HEADER "Content-Type"
 
 static bool are_case_insensitive_equal(const std::string &first, const char *second, const size_t second_size)
 {
@@ -49,186 +35,6 @@ static bool are_case_insensitive_equal(const std::string &first, const char *sec
     return true;
 }
 
-static std::string convert_to_http_date(time_t time)
-{
-    struct tm time_data;
-    struct tm *tm_result = gmtime_r(&time, &time_data);
-
-    if (!tm_result)
-        return std::string();
-
-    char buffer[1024];
-    strftime(buffer, sizeof(buffer), HTTP_DATE_RFC_1123, tm_result);
-    buffer[sizeof(buffer) - 1] = '\0';
-
-    return buffer;
-}
-
-static time_t convert_from_http_date(const std::string &str)
-{
-    if (str.empty())
-        return 0;
-
-    struct tm time_data;
-    memset(&time_data, 0, sizeof(struct tm));
-
-    bool success = strptime(str.c_str(), HTTP_DATE_RFC_1123, &time_data)
-            || strptime(str.c_str(), HTTP_DATE_RFC_850, &time_data)
-            || strptime(str.c_str(), HTTP_DATE_ASCTIME, &time_data);
-
-    if (!success)
-        return 0;
-
-    return timegm(&time_data);
-}
-
-class headers_storage
-{
-public:
-    const std::vector<headers_entry> &get_headers() const
-    {
-        return m_data;
-    }
-
-    void set_headers(const std::vector<headers_entry> &headers)
-    {
-        m_data = headers;
-    }
-
-    void add_header(const std::string &name, const std::string &value)
-    {
-        m_data.emplace_back(name, value);
-    }
-
-	struct name_checker
-	{
-		const char * const name;
-		const size_t name_size;
-
-		bool operator() (const headers_entry &value) const
-		{
-			return are_case_insensitive_equal(value.first, name, name_size);
-		}
-	};
-
-	void set_header(const std::string &name, const std::string &value)
-	{
-		name_checker checker = { name.c_str(), name.size() };
-
-		auto position = std::find_if(m_data.begin(), m_data.end(), checker) - m_data.begin();
-		auto new_end = std::remove_if(m_data.begin(), m_data.end(), checker);
-		m_data.erase(new_end, m_data.end());
-		m_data.emplace(std::min(m_data.begin() + position, m_data.end()), name, value);
-	}
-
-    std::vector<headers_entry>::iterator find_header(const char *name, size_t name_size)
-    {
-        return find_header(m_data.begin(), m_data.end(), name, name_size);
-    }
-
-    std::vector<headers_entry>::const_iterator find_header(const char *name, size_t name_size) const
-    {
-        return find_header(m_data.begin(), m_data.end(), name, name_size);
-    }
-
-    template <size_t N>
-    std::vector<headers_entry>::const_iterator find_header(const char (&name)[N]) const
-    {
-        return find_header(name, N - 1);
-    }
-
-    bool has_header(const std::string &name) const
-    {
-        return find_header(name.c_str(), name.size()) != m_data.end();
-    }
-
-    template <size_t N>
-    bool has_header(const char (&name)[N]) const
-    {
-        return find_header(name, N - 1) != m_data.end();
-    }
-
-    std::string get_header(const char *name, size_t name_size) const
-    {
-        auto it = find_header(name, name_size);
-
-        if (it != m_data.end())
-            return it->second;
-
-        return std::string();
-    }
-
-    std::string get_header(const std::string &name) const
-    {
-        return get_header(name.c_str(), name.size());
-    }
-
-    std::string get_header(const char *name) const
-    {
-	    return get_header(name, strlen(name));
-    }
-
-    template <size_t N>
-    std::string get_header(const char (&name)[N]) const
-    {
-        return get_header(name, N - 1);
-    }
-
-    boost::optional<std::string> try_header(const char *name, size_t name_size) const
-    {
-	    auto it = find_header(name, name_size);
-
-            if (it != m_data.end())
-                return it->second;
-
-            return boost::none;
-    }
-
-    boost::optional<std::string> try_header(const std::string &name) const
-    {
-	    return try_header(name.c_str(), name.size());
-    }
-
-    boost::optional<std::string> try_header(const char *name) const
-    {
-	    return try_header(name, strlen(name));
-    }
-
-    std::vector<headers_entry>::const_iterator end()
-    {
-        return m_data.end();
-    }
-
-    std::vector<headers_entry>::const_iterator end() const
-    {
-        return m_data.end();
-    }
-
-private:
-    template <typename T>
-    static T find_header(T begin, T end, const char *name, size_t name_size)
-    {
-        for (; begin != end; ++begin) {
-            if (are_case_insensitive_equal(begin->first, name, name_size))
-                return begin;
-        }
-
-        return end;
-    }
-
-
-    std::vector<headers_entry> m_data;
-};
-
-class shared_data
-{
-public:
-    shared_data() : refcnt(0) {}
-    shared_data(const shared_data &) : refcnt(0) {}
-
-    std::atomic_int refcnt;
-};
-
 class network_request_data
 {
 public:
@@ -242,7 +48,7 @@ public:
     swarm::url url;
     bool follow_location;
     long timeout;
-    headers_storage headers;
+    http_headers headers;
     int major_version;
     int minor_version;
     std::string method;
@@ -269,8 +75,6 @@ http_request::~http_request()
 http_request &http_request::operator =(http_request &&other)
 {
 	using std::swap;
-	http_request tmp;
-	swap(m_data, tmp.m_data);
 	swap(m_data, other.m_data);
 
 	return *this;
@@ -317,92 +121,17 @@ long http_request::timeout() const
 
 void http_request::set_timeout(long timeout)
 {
-    m_data->timeout = timeout;
+	m_data->timeout = timeout;
 }
 
-const std::vector<headers_entry> &http_request::get_headers() const
+http_headers &http_request::headers()
 {
-    return m_data->headers.get_headers();
+	return m_data->headers;
 }
 
-bool http_request::has_header(const std::string &name) const
+const http_headers &http_request::headers() const
 {
-    return m_data->headers.has_header(name);
-}
-
-std::string http_request::get_header(const std::string &name) const
-{
-    return m_data->headers.get_header(name);
-}
-
-std::string http_request::get_header(const char *name) const
-{
-	return m_data->headers.get_header(name);
-}
-
-boost::optional<std::string> http_request::try_header(const std::string &name) const
-{
-	return m_data->headers.try_header(name);
-}
-
-boost::optional<std::string> http_request::try_header(const char *name) const
-{
-	return m_data->headers.try_header(name);
-}
-
-void http_request::set_headers(const std::vector<headers_entry> &headers)
-{
-    m_data->headers.set_headers(headers);
-}
-
-void http_request::set_header(const headers_entry &header)
-{
-    m_data->headers.set_header(header.first, header.second);
-}
-
-void http_request::set_header(const std::string &name, const std::string &value)
-{
-    m_data->headers.set_header(name, value);
-}
-
-void http_request::add_header(const headers_entry &header)
-{
-    m_data->headers.add_header(header.first, header.second);
-}
-
-void http_request::add_header(const std::string &name, const std::string &value)
-{
-    m_data->headers.add_header(name, value);
-}
-
-bool http_request::has_if_modified_since() const
-{
-    return has_header(IF_MODIFIED_SINCE_HEADER);
-}
-
-time_t http_request::get_if_modified_since() const
-{
-    std::string http_date = get_if_modified_since_string();
-
-    if (http_date.empty())
-        return 0;
-
-    return convert_from_http_date(http_date);
-}
-
-std::string http_request::get_if_modified_since_string() const
-{
-    return get_header(IF_MODIFIED_SINCE_HEADER);
-}
-
-void http_request::set_if_modified_since(const std::string &time)
-{
-    m_data->headers.set_header(IF_MODIFIED_SINCE_HEADER, time);
-}
-
-void http_request::set_if_modified_since(time_t time)
-{
-    set_if_modified_since(convert_to_http_date(time));
+	return m_data->headers;
 }
 
 void http_request::set_http_version(int major_version, int minor_version)
@@ -411,12 +140,12 @@ void http_request::set_http_version(int major_version, int minor_version)
     m_data->minor_version = minor_version;
 }
 
-int http_request::get_http_major_version() const
+int http_request::http_major_version() const
 {
     return m_data->major_version;
 }
 
-int http_request::get_http_minor_version() const
+int http_request::http_minor_version() const
 {
     return m_data->minor_version;
 }
@@ -426,70 +155,37 @@ void http_request::set_method(const std::string &method)
     m_data->method = method;
 }
 
-std::string http_request::get_method() const
+std::string http_request::method() const
 {
     return m_data->method;
 }
 
-void http_request::set_content_length(size_t length)
-{
-    char buffer[20];
-    snprintf(buffer, sizeof(buffer), "%zu", length);
-    m_data->headers.set_header(CONTENT_LENGTH_HEADER, buffer);
-}
-
-bool http_request::has_content_length() const
-{
-    return m_data->headers.has_header(CONTENT_LENGTH_HEADER);
-}
-
-size_t http_request::get_content_length() const
-{
-    const std::string header = m_data->headers.get_header(CONTENT_LENGTH_HEADER);
-
-    return header.empty() ? 0ll : atoll(header.c_str());
-}
-
-void http_request::set_content_type(const std::string &type)
-{
-    m_data->headers.set_header(CONTENT_TYPE_HEADER, type);
-}
-
-bool http_request::has_content_type() const
-{
-    return m_data->headers.has_header(CONTENT_TYPE_HEADER);
-}
-
-std::string http_request::get_content_type() const
-{
-    return m_data->headers.get_header(CONTENT_TYPE_HEADER);
-}
-
 bool http_request::is_keep_alive() const
 {
-    auto header = m_data->headers.find_header(CONNECTION_HEADER);
-    if (header == m_data->headers.end())
-		return (m_data->major_version == 1 && m_data->minor_version == 1);
+	if (auto header = headers().get(CONNECTION_HEADER)) {
+		return are_case_insensitive_equal(*header,
+			CONNECTION_HEADER_KEEP_ALIVE, sizeof(CONNECTION_HEADER_KEEP_ALIVE) - 1);
+	}
 
-    return are_case_insensitive_equal(header->second, CONNECTION_HEADER_KEEP_ALIVE,
-                                      sizeof(CONNECTION_HEADER_KEEP_ALIVE) - 1);
+	return http_major_version() == 1 && http_minor_version() >= 1;
 }
 
 class network_reply_data
 {
 public:
     network_reply_data()
-        : code(0), error(0)
+        : error(0), code(0)
     {
     }
     network_reply_data(const network_reply_data &o) = default;
 
     http_request request;
+    int error;
 
     int code;
-    int error;
+    boost::optional<std::string> reason;
     swarm::url url;
-    headers_storage headers;
+    http_headers headers;
     std::string data;
 };
 
@@ -497,7 +193,7 @@ http_response::http_response() : m_data(new network_reply_data)
 {
 }
 
-http_response::http_response(http_response &&other) : m_data(new network_reply_data)
+http_response::http_response(http_response &&other)
 {
 	using std::swap;
 	swap(m_data, other.m_data);
@@ -514,8 +210,6 @@ http_response::~http_response()
 http_response &http_response::operator =(http_response &&other)
 {
 	using std::swap;
-	http_response tmp;
-	swap(m_data, tmp.m_data);
 	swap(m_data, other.m_data);
 	return *this;
 }
@@ -555,7 +249,27 @@ int http_response::error() const
 
 void http_response::set_error(int error)
 {
-    m_data->error = error;
+	m_data->error = error;
+}
+
+http_headers &http_response::headers()
+{
+	return m_data->headers;
+}
+
+const http_headers &http_response::headers() const
+{
+	return m_data->headers;
+}
+
+void http_response::set_headers(const http_headers &headers)
+{
+	m_data->headers = headers;
+}
+
+void http_response::set_headers(http_headers &&headers)
+{
+	m_data->headers = headers;
 }
 
 const url &http_response::url() const
@@ -573,61 +287,6 @@ void http_response::set_url(const std::string &url)
 	m_data->url = std::move(swarm::url(url));
 }
 
-const std::vector<headers_entry> &http_response::get_headers() const
-{
-    return m_data->headers.get_headers();
-}
-
-bool http_response::has_header(const std::string &name) const
-{
-    return m_data->headers.has_header(name);
-}
-
-std::string http_response::get_header(const std::string &name) const
-{
-    return m_data->headers.get_header(name);
-}
-
-std::string http_response::get_header(const char *name) const
-{
-	return m_data->headers.get_header(name);
-}
-
-boost::optional<std::string> http_response::try_header(const std::string &name) const
-{
-	return m_data->headers.try_header(name);
-}
-
-boost::optional<std::string> http_response::try_header(const char *name) const
-{
-	return m_data->headers.try_header(name);
-}
-
-void http_response::set_headers(const std::vector<headers_entry> &headers)
-{
-    m_data->headers.set_headers(headers);
-}
-
-void http_response::set_header(const headers_entry &header)
-{
-    m_data->headers.set_header(header.first, header.second);
-}
-
-void http_response::set_header(const std::string &name, const std::string &value)
-{
-    m_data->headers.set_header(name, value);
-}
-
-void http_response::add_header(const headers_entry &header)
-{
-    m_data->headers.add_header(header.first, header.second);
-}
-
-void http_response::add_header(const std::string &name, const std::string &value)
-{
-    m_data->headers.add_header(name, value);
-}
-
 const std::string &http_response::data() const
 {
     return m_data->data;
@@ -636,70 +295,6 @@ const std::string &http_response::data() const
 void http_response::set_data(const std::string &data)
 {
     m_data->data = data;
-}
-
-bool http_response::has_last_modified() const
-{
-    return has_header(LAST_MODIFIED_HEADER);
-}
-
-time_t http_response::get_last_modified() const
-{
-    std::string http_date = get_last_modified_string();
-
-    if (http_date.empty())
-        return 0;
-
-    return convert_from_http_date(http_date);
-}
-
-std::string http_response::get_last_modified_string() const
-{
-    return get_header(LAST_MODIFIED_HEADER);
-}
-
-void http_response::set_last_modified(const std::string &last_modified)
-{
-    m_data->headers.set_header(LAST_MODIFIED_HEADER, last_modified);
-}
-
-void http_response::set_last_modified(time_t last_modified)
-{
-    set_last_modified(convert_to_http_date(last_modified));
-}
-
-void http_response::set_content_length(size_t length)
-{
-    char buffer[20];
-    snprintf(buffer, sizeof(buffer), "%zu", length);
-    m_data->headers.set_header(CONTENT_LENGTH_HEADER, buffer);
-}
-
-bool http_response::has_content_length() const
-{
-    return m_data->headers.has_header(CONTENT_LENGTH_HEADER);
-}
-
-size_t http_response::get_content_length() const
-{
-    const std::string header = m_data->headers.get_header(CONTENT_LENGTH_HEADER);
-
-    return header.empty() ? 0ll : atoll(header.c_str());
-}
-
-void http_response::set_content_type(const std::string &type)
-{
-    m_data->headers.set_header(CONTENT_TYPE_HEADER, type);
-}
-
-bool http_response::has_content_type() const
-{
-    return m_data->headers.has_header(CONTENT_TYPE_HEADER);
-}
-
-std::string http_response::get_content_type() const
-{
-    return m_data->headers.get_header(CONTENT_TYPE_HEADER);
 }
 
 }

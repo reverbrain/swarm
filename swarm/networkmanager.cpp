@@ -146,9 +146,8 @@ public:
             }
 
             struct curl_slist *headers_list = NULL;
-            for (auto it = request->request.get_headers().begin();
-                 it != request->request.get_headers().end();
-                 ++it) {
+	    const auto &headers = request->request.headers().all();
+            for (auto it = headers.begin(); it != headers.end(); ++it) {
                 std::string line;
                 line.reserve(it->first.size() + 2 + it->second.size());
                 line += it->first;
@@ -342,7 +341,7 @@ public:
                 data = lf;
             } while (data < end && (*(data + 1) == ' ' || *(data + 1) == '\t'));
 
-            info->reply.add_header(field, value);
+            info->reply.headers().add(field, value);
         }
 
         return size * nmemb;

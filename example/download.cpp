@@ -34,9 +34,9 @@ struct request_handler_functor
 
 	void operator() (const ioremap::swarm::http_response &reply) const {
 		std::cout << "HTTP code: " << reply.code() << std::endl;
-			std::cout << "Network error: " << reply.error() << std::endl;
+		std::cout << "Network error: " << reply.error() << std::endl;
 
-		const auto &headers = reply.get_headers();
+		const auto &headers = reply.headers().all();
 
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
 			std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
 	request.set_timeout(500000);
-	request.set_headers(headers);
+	request.headers().set(headers);
 
 	typedef std::chrono::high_resolution_clock clock;
 

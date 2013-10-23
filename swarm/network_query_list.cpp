@@ -18,7 +18,7 @@ url_query::url_query() : p(new network_query_list_private)
 {
 }
 
-url_query::url_query(url_query &&other) : p(new network_query_list_private)
+url_query::url_query(url_query &&other)
 {
 	using std::swap;
 	swap(p, other.p);
@@ -40,8 +40,6 @@ url_query::~url_query()
 url_query &url_query::operator =(url_query &&other)
 {
 	using std::swap;
-	url_query tmp;
-	swap(p, tmp.p);
 	swap(p, other.p);
 	return *this;
 }

@@ -244,14 +244,15 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		JsonValue result_object;
 
 		find_serializer::pack_indexes_json(result_object, read_result, find_serializer::basic_convert, find_result, find_serializer::basic_convert, m_map);
-
+        
+        auto data = result_object.ToString();
+        
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
-		reply.set_content_type("text/json");
-		reply.set_data(result_object.ToString());
-		reply.set_content_length(reply.data().size());
+		reply.headers().set_content_type("text/json");
+		reply.headers().set_content_length(data.size());
 
-		this->send_reply(reply);
+        this->send_reply(reply, std::move(data));
 	}
 
 	ioremap::elliptics::id_to_name_map_t m_map;
