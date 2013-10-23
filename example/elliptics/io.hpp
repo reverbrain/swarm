@@ -399,7 +399,6 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		if (key) {
 			query.add_item("key", *key);
 		}
-		query.add_item("name", name);
 		query.add_item("offset", boost::lexical_cast<std::string>(info->offset));
 		query.add_item("size", boost::lexical_cast<std::string>(info->size));
 		query.add_item("time", time);
