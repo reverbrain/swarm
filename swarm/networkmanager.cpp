@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "networkmanager.h"
+#include "networkmanager.hpp"
 
 #include <string.h>
 #include <curl/curl.h>
@@ -29,7 +29,7 @@
 #include <list>
 #include <algorithm>
 
-#include "ev_event_loop.h"
+#include "ev_event_loop.hpp"
 
 namespace ioremap {
 namespace swarm {

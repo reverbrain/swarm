@@ -13,8 +13,8 @@
  * GNU General Public License for more details.
  */
 
-#include <swarm/networkmanager.h>
-#include <swarm/boost_event_loop.h>
+#include <swarm/networkmanager.hpp>
+#include <swarm/boost_event_loop.hpp>
 #include <list>
 #include <iostream>
 #include <chrono>

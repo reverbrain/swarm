@@ -1,78 +1,15 @@
-/*
- * 2013+ Copyright (c) Ruslan Nigatullin <euroelessar@yandex.ru>
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
+#ifndef IOREMAP_SWARM_HTTP_RESPONSE_HPP
+#define IOREMAP_SWARM_HTTP_RESPONSE_HPP
 
-#ifndef COCAINE_SERVICE_NETWORKREQUEST_H
-#define COCAINE_SERVICE_NETWORKREQUEST_H
-
-#include <vector>
-#include <string>
-#include <utility>
-#include "network_url.h"
+#include "url.hpp"
 #include "http_headers.hpp"
-
-#include <boost/optional.hpp>
 
 namespace ioremap {
 namespace swarm {
 
-class network_request_data;
 class network_reply_data;
 
-typedef std::pair<std::string, std::string> headers_entry;
-
-class http_request
-{
-public:
-	http_request();
-	http_request(http_request &&other);
-	http_request(const http_request &other);
-	~http_request();
-
-	http_request &operator =(http_request &&other);
-	http_request &operator =(const http_request &other);
-
-	// Request URL
-	const swarm::url &url() const;
-	void set_url(const swarm::url &url);
-	void set_url(const std::string &url);
-
-	bool is_keep_alive() const;
-
-	// Follow Location from 302 HTTP replies
-	bool follow_location() const;
-	void set_follow_location(bool follow_location);
-
-	// Timeout in ms
-	long timeout() const;
-	void set_timeout(long timeout);
-
-	// HTTP headers
-	http_headers &headers();
-	const http_headers &headers() const;
-
-	// TheVoid specific arguments
-	void set_http_version(int major_version, int minor_version);
-	int http_major_version() const;
-	int http_minor_version() const;
-
-	void set_method(const std::string &method);
-	std::string method() const;
-
-private:
-	std::unique_ptr<network_request_data> m_data;
-};
+class http_request;
 
 class http_response
 {
@@ -180,7 +117,7 @@ private:
 	std::unique_ptr<network_reply_data> m_data;
 };
 
-}
-}
+} // namespace swarm
+} // namespace ioremap
 
-#endif // COCAINE_SERVICE_NETWORKREQUEST_H
+#endif // IOREMAP_SWARM_HTTP_RESPONSE_HPP

@@ -1,4 +1,4 @@
-#include "boost_event_loop.h"
+#include "boost_event_loop.hpp"
 
 #include <boost/bind.hpp>
 #include <memory>

@@ -10,7 +10,7 @@
 #include <mutex>
 #include <set>
 
-#include <swarm/logger.h>
+#include <swarm/logger.hpp>
 
 #if __GNUC__ == 4 && __GNUC_MINOR__ < 5
 #  include <cstdatomic>

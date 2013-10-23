@@ -1,4 +1,4 @@
-#include "network_query_list.h"
+#include "url_query.hpp"
 
 #include <uriparser/Uri.h>
 

@@ -18,7 +18,7 @@
 
 #include <boost/logic/tribool.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <swarm/networkrequest.h>
+#include <swarm/http_request.hpp>
 
 namespace ioremap {
 namespace thevoid {

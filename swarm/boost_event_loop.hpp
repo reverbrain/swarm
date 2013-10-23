@@ -1,7 +1,7 @@
 #ifndef IOREMAP_SWARM_BOOST_EVENT_LOOP_H
 #define IOREMAP_SWARM_BOOST_EVENT_LOOP_H
 
-#include "event_loop.h"
+#include "event_loop.hpp"
 
 #include <boost/asio.hpp>
 

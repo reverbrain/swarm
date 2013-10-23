@@ -21,7 +21,7 @@
 #include "asio.hpp"
 
 #include <thevoid/server.hpp>
-#include <swarm/logger.h>
+#include <swarm/logger.hpp>
 
 #include "common.hpp"
 #include "io.hpp"

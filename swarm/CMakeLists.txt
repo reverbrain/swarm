@@ -1,42 +1,46 @@
 set(SWARM_SRC_LIST
     event_loop.cpp
-    event_loop.h
+    event_loop.hpp
     ev_event_loop.cpp
-    ev_event_loop.h
+    ev_event_loop.hpp
     boost_event_loop.cpp
-    boost_event_loop.h
+    boost_event_loop.hpp
     http_headers.hpp
     http_headers.cpp
+    http_request.hpp
+    http_request.cpp
+    http_response.hpp
+    http_response.cpp
     logger.cpp
-    logger.h
-    network_query_list.cpp
-    network_query_list.h
-    networkrequest.cpp
-    networkrequest.h
-    network_url.cpp
-    network_url.h
+    logger.hpp
+    url_query.cpp
+    url_query.hpp
+    url.cpp
+    url.hpp
     url_finder.cpp
-    url_finder.h
+    url_finder.hpp
     )
 
 set(SWARM_HDR_LIST
-	event_loop.h
-	ev_event_loop.h
-	boost_event_loop.h
-	network_url.h
-	network_query_list.h
-	networkrequest.h
-	url_finder.h
-	logger.h
+	event_loop.hpp
+	ev_event_loop.hpp
+	boost_event_loop.hpp
+	http_headers.hpp
+	http_request.hpp
+	http_response.hpp
+	url.hpp
+	url_query.hpp
+	url_finder.hpp
+	logger.hpp
     )
 
 if(BUILD_NETWORK_MANAGER)
     list(APPEND SWARM_SRC_LIST
         networkmanager.cpp
-        networkmanager.h
+        networkmanager.hpp
         )
     list(APPEND SWARM_HDR_LIST
-        networkmanager.h
+        networkmanager.hpp
         )
 endif()
 

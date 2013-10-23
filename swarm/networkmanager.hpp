@@ -16,7 +16,8 @@
 #ifndef COCAINE_SERVICE_NETWORKMANAGER_H
 #define COCAINE_SERVICE_NETWORKMANAGER_H
 
-#include "networkrequest.h"
+#include "http_response.hpp"
+#include "http_request.hpp"
 
 #define EV_MULTIPLICITY 1
 #pragma GCC diagnostic push
@@ -26,8 +27,8 @@
 #include <ev++.h>
 #pragma GCC diagnostic pop
 
-#include "logger.h"
-#include "event_loop.h"
+#include "logger.hpp"
+#include "event_loop.hpp"
 #include <memory>
 #include <functional>
 #include <map>

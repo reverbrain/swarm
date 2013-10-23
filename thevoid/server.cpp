@@ -25,8 +25,8 @@
 
 #include <signal.h>
 
-#include <swarm/network_url.h>
-#include <swarm/logger.h>
+#include <swarm/url.hpp>
+#include <swarm/logger.hpp>
 #include <thevoid/rapidjson/filereadstream.h>
 
 #ifdef __linux__

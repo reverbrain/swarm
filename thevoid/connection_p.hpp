@@ -21,7 +21,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include <swarm/networkrequest.h>
+#include <swarm/http_request.hpp>
 #include "request_parser_p.hpp"
 #include "stream.hpp"
 

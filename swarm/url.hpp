@@ -18,7 +18,7 @@
 
 #include <string>
 #include <memory>
-#include "network_query_list.h"
+#include "url_query.hpp"
 
 namespace ioremap {
 namespace swarm {

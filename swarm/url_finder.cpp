@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "url_finder.h"
+#include "url_finder.hpp"
 #include <libxml/HTMLparser.h>
 #include <cstring>
 

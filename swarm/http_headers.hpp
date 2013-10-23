@@ -36,28 +36,31 @@ public:
 	void add(const std::string &name, const std::string &value);
 
 	// Last-Modified, UTC
-	bool has_last_modified() const;
-	time_t last_modified() const;
+	boost::optional<time_t> last_modified() const;
 	boost::optional<std::string> last_modified_string() const;
 	void set_last_modified(const std::string &last_modified);
 	void set_last_modified(time_t last_modified);
 
 	// If-Modified-Since, UTC
-	bool has_if_modified_since() const;
-	time_t if_modified_since() const;
+	boost::optional<time_t> if_modified_since() const;
 	boost::optional<std::string> if_modified_since_string() const;
 	void set_if_modified_since(const std::string &time);
 	void set_if_modified_since(time_t time);
 
 	// Content length
 	void set_content_length(size_t length);
-	bool has_content_length() const;
 	boost::optional<size_t> content_length() const;
 
 	// Content type
 	void set_content_type(const std::string &type);
-	bool has_content_type() const;
 	boost::optional<std::string> content_type() const;
+
+	// Connection
+	void set_connection(const std::string &type);
+	boost::optional<std::string> connection() const;
+
+	void set_keep_alive();
+	boost::optional<bool> is_keep_alive() const;
 
 private:
 	std::unique_ptr<http_headers_private> p;

@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "network_url.h"
+#include "url.hpp"
 #include <uriparser/Uri.h>
 #include <stdexcept>
 #include <iostream>

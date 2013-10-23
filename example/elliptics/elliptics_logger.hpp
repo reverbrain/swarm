@@ -1,7 +1,7 @@
 #ifndef __IOREMAP_THEVOID_ELLIPTICS_LOGGER_HPP
 #define __IOREMAP_THEVOID_ELLIPTICS_LOGGER_HPP
 
-#include <swarm/logger.h>
+#include <swarm/logger.hpp>
 #include <elliptics/session.hpp>
 
 namespace ioremap {

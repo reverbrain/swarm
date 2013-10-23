@@ -21,8 +21,8 @@
 // which must be present at compile time
 #include "asio.hpp"
 
-#include <swarm/network_url.h>
-#include <swarm/network_query_list.h>
+#include <swarm/url.hpp>
+#include <swarm/url_query.hpp>
 
 #include <thevoid/server.hpp>
 
@@ -76,8 +76,8 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		const dnet_time &ts = entry.io_attribute()->timestamp;
 		const swarm::http_request &request = this->get_request();
 
-		if (request.headers().has_if_modified_since()) {
-			if ((time_t)ts.tsec <= request.headers().if_modified_since()) {
+		if (auto tmp = request.headers().if_modified_since()) {
+			if ((time_t)ts.tsec <= *tmp) {
 				this->send_reply(swarm::http_response::not_modified);
 				return;
 			}

@@ -15,6 +15,8 @@ namespace swarm {
 #define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
 #define CONTENT_LENGTH_HEADER "Content-Length"
 #define CONTENT_TYPE_HEADER "Content-Type"
+#define CONNECTION_HEADER "Connection"
+#define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
 
 static bool are_case_insensitive_equal(const std::string &first, const char *second, const size_t second_size)
 {
@@ -278,16 +280,11 @@ void http_headers::add(const std::string &name, const std::string &value)
 	p->add_header(name, value);
 }
 
-bool http_headers::has_last_modified() const
-{
-	return has(LAST_MODIFIED_HEADER);
-}
-
-time_t http_headers::last_modified() const
+boost::optional<time_t> http_headers::last_modified() const
 {
 	if (auto http_date = last_modified_string())
 		return convert_from_http_date(*http_date);
-	return 0;
+	return boost::none;
 }
 
 boost::optional<std::string> http_headers::last_modified_string() const
@@ -305,18 +302,12 @@ void http_headers::set_last_modified(time_t last_modified)
 	set_last_modified(convert_to_http_date(last_modified));
 }
 
-
-bool http_headers::has_if_modified_since() const
-{
-	return has(IF_MODIFIED_SINCE_HEADER);
-}
-
-time_t http_headers::if_modified_since() const
+boost::optional<time_t> http_headers::if_modified_since() const
 {
 	if (auto http_date = if_modified_since_string())
 		return convert_from_http_date(*http_date);
 
-	return 0;
+	return boost::none;
 }
 
 boost::optional<std::string> http_headers::if_modified_since_string() const
@@ -341,11 +332,6 @@ void http_headers::set_content_length(size_t length)
 	p->set_header(CONTENT_LENGTH_HEADER, buffer);
 }
 
-bool http_headers::has_content_length() const
-{
-	return p->has_header(CONTENT_LENGTH_HEADER);
-}
-
 boost::optional<size_t> http_headers::content_length() const
 {
 	const std::string header = p->get_header(CONTENT_LENGTH_HEADER);
@@ -358,14 +344,33 @@ void http_headers::set_content_type(const std::string &type)
 	p->set_header(CONTENT_TYPE_HEADER, type);
 }
 
-bool http_headers::has_content_type() const
-{
-	return p->has_header(CONTENT_TYPE_HEADER);
-}
-
 boost::optional<std::string> http_headers::content_type() const
 {
 	return p->get_header(CONTENT_TYPE_HEADER);
+}
+
+void http_headers::set_connection(const std::string &type)
+{
+	p->set_header(CONNECTION_HEADER, type);
+}
+
+boost::optional<std::string> http_headers::connection() const
+{
+	return p->get_header(CONNECTION_HEADER);
+}
+
+void http_headers::set_keep_alive()
+{
+	set_connection(CONNECTION_HEADER_KEEP_ALIVE);
+}
+
+boost::optional<bool> http_headers::is_keep_alive() const
+{
+	if (auto tmp = connection()) {
+		return *tmp == CONNECTION_HEADER_KEEP_ALIVE;
+	}
+
+	return boost::none;
 }
 
 } // namespace swarm

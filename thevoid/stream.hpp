@@ -17,8 +17,9 @@
 #define IOREMAP_THEVOID_STREAM_HPP
 
 #include <boost/asio.hpp>
-#include <swarm/networkrequest.h>
-#include <swarm/logger.h>
+#include <swarm/http_request.hpp>
+#include <swarm/http_response.hpp>
+#include <swarm/logger.hpp>
 #include <cstdarg>
 
 namespace ioremap { namespace thevoid { namespace detail {

@@ -36,7 +36,7 @@
 
 #include <swarm/networkmanager.h>
 #include <swarm/url_finder.h>
-#include <swarm/network_url.h>
+#include <swarm/url.hpp>
 
 struct queue_element
 {
