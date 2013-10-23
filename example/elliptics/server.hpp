@@ -38,10 +38,10 @@ public:
 	virtual bool initialize(const rapidjson::Value &config);
 
 	ioremap::elliptics::session create_session();
+	ioremap::elliptics::node get_node();
 
 protected:
 	ioremap::swarm::logger get_logger_impl();
-	ioremap::elliptics::node get_node();
 
 private:
 	std::unique_ptr<ioremap::swarm::logger> m_logger;

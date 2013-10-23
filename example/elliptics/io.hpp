@@ -296,37 +296,53 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 	        }
 	}
 
-	static void fill_upload_reply(const ioremap::elliptics::sync_write_result &result, elliptics::JsonValue &result_object) {
-		const ioremap::elliptics::write_result_entry &entry = result[0];
-
+	template <typename Allocator>
+	static void fill_upload_reply(const ioremap::elliptics::write_result_entry &entry, rapidjson::Value &result_object, Allocator &allocator) {
 		char id_str[2 * DNET_ID_SIZE + 1];
 		dnet_dump_id_len_raw(entry.command()->id.id, DNET_ID_SIZE, id_str);
-		rapidjson::Value id_str_value(id_str, 2 * DNET_ID_SIZE, result_object.GetAllocator());
-		result_object.AddMember("id", id_str_value, result_object.GetAllocator());
+		rapidjson::Value id_str_value(id_str, 2 * DNET_ID_SIZE, allocator);
+		result_object.AddMember("id", id_str_value, allocator);
 
 		char csum_str[2 * DNET_ID_SIZE + 1];
 		dnet_dump_id_len_raw(entry.file_info()->checksum, DNET_ID_SIZE, csum_str);
-		rapidjson::Value csum_str_value(csum_str, 2 * DNET_ID_SIZE, result_object.GetAllocator());
-		result_object.AddMember("csum", csum_str_value, result_object.GetAllocator());
+		rapidjson::Value csum_str_value(csum_str, 2 * DNET_ID_SIZE, allocator);
+		result_object.AddMember("csum", csum_str_value, allocator);
 
 		if (entry.file_path())
-			result_object.AddMember("filename", entry.file_path(), result_object.GetAllocator());
+			result_object.AddMember("filename", entry.file_path(), allocator);
 
-		result_object.AddMember("size", entry.file_info()->size, result_object.GetAllocator());
+		result_object.AddMember("size", entry.file_info()->size, allocator);
 		result_object.AddMember("offset-within-data-file", entry.file_info()->offset,
-				result_object.GetAllocator());
+				allocator);
 
 		rapidjson::Value tobj;
-		JsonValue::set_time(tobj, result_object.GetAllocator(),
+		JsonValue::set_time(tobj, allocator,
 				entry.file_info()->mtime.tsec,
 				entry.file_info()->mtime.tnsec / 1000);
-		result_object.AddMember("mtime", tobj, result_object.GetAllocator());
+		result_object.AddMember("mtime", tobj, allocator);
 
 		char addr_str[128];
 		dnet_server_convert_dnet_addr_raw(entry.storage_address(), addr_str, sizeof(addr_str));
 		
-		rapidjson::Value server_addr(addr_str, strlen(addr_str), result_object.GetAllocator());
-		result_object.AddMember("server", server_addr, result_object.GetAllocator());
+		rapidjson::Value server_addr(addr_str, strlen(addr_str), allocator);
+		result_object.AddMember("server", server_addr, allocator);
+	}
+
+	template <typename Allocator>
+	static void fill_upload_reply(const ioremap::elliptics::sync_write_result &result, rapidjson::Value &result_object, Allocator &allocator) {
+		rapidjson::Value infos;
+		infos.SetArray();
+
+		for (auto it = result.begin(); it != result.end(); ++it) {
+			rapidjson::Value download_info;
+			download_info.SetObject();
+
+			fill_upload_reply(*it, download_info, allocator);
+
+			infos.PushBack(download_info, allocator);
+		}
+
+		result_object.AddMember("info", infos, allocator);
 	}
 
 	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result,
@@ -337,7 +353,7 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		}
 
 		elliptics::JsonValue result_object;
-		on_upload::fill_upload_reply(result, result_object);
+		on_upload::fill_upload_reply(result, result_object, result_object.GetAllocator());
 
 		swarm::network_reply reply;
 		reply.set_code(swarm::network_reply::ok);
@@ -345,6 +361,137 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		reply.set_data(result_object.ToString());
 		reply.set_content_length(reply.get_data().size());
 
+		this->send_reply(reply);
+	}
+};
+
+// perform lookup, get file-info json in response
+template <typename T>
+struct on_download_info : public simple_request_stream<T>, public std::enable_shared_from_this<on_download_info<T>>
+{
+	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &) {
+		swarm::network_url url(req.get_url());
+		swarm::network_query_list query_list(url.query());
+
+		ioremap::elliptics::session sess = this->get_server()->create_session();
+
+		auto name = query_list.item_value("name");
+
+		using namespace std::placeholders;
+		sess.lookup(name).connect(std::bind(&on_download_info::on_lookup_finished, this->shared_from_this(), _1, _2));
+	}
+
+	std::string generate_signature(const ioremap::elliptics::lookup_result_entry &entry, const std::string &time, std::string *url_ptr) {
+		swarm::network_url url_parser(this->get_request().get_url());
+		swarm::network_query_list query_list(url_parser.query());
+		const auto name = query_list.item_value("name");
+		auto key = this->get_server()->find_signature(name);
+
+		if (!key && !url_ptr) {
+			return std::string();
+		}
+
+		const dnet_file_info *info = entry.file_info();
+
+		std::string url = this->get_server()->generate_url_base(entry.address());
+		swarm::network_query_list query;
+		query.add_item("file-path", entry.file_path());
+		if (key) {
+			query.add_item("key", *key);
+		}
+		query.add_item("name", name);
+		query.add_item("offset", boost::lexical_cast<std::string>(info->offset));
+		query.add_item("size", boost::lexical_cast<std::string>(info->size));
+		query.add_item("time", time);
+
+		auto sign_input = url + "?" + query.to_string();
+
+		if (!key) {
+			*url_ptr = std::move(sign_input);
+			return std::string();
+		}
+
+		dnet_raw_id signature_id;
+		dnet_transform_node(this->get_server()->get_node().get_native(),
+				    sign_input.c_str(), sign_input.size(),
+				    signature_id.id, sizeof(signature_id.id));
+
+		char signature_str[2 * DNET_ID_SIZE + 1];
+		dnet_dump_id_len_raw(signature_id.id, DNET_ID_SIZE, signature_str);
+
+		const std::string signature(signature_str, 2 * DNET_ID_SIZE);
+
+		query.add_item("signature", signature);
+
+		if (url_ptr) {
+			// index of "key"
+			query.remove_item(1);
+
+			url += "?";
+			url += query.to_string();
+			*url_ptr = std::move(url);
+		}
+
+		return std::move(signature);
+	}
+
+	virtual void on_lookup_finished(const ioremap::elliptics::sync_lookup_result &result,
+		const ioremap::elliptics::error_info &error) {
+		if (error) {
+			this->send_reply(swarm::network_reply::service_unavailable);
+			return;
+		}
+
+		elliptics::JsonValue result_object;
+		on_upload<T>::fill_upload_reply(result[0], result_object, result_object.GetAllocator());
+
+		dnet_time time;
+		dnet_current_time(&time);
+		const std::string time_str = boost::lexical_cast<std::string>(time.tsec);
+
+		std::string signature = generate_signature(result[0], time_str, NULL);
+
+		if (!signature.empty()) {
+			rapidjson::Value signature_value(signature.c_str(), signature.size(), result_object.GetAllocator());
+			result_object.AddMember("signature", signature_value, result_object.GetAllocator());
+		}
+
+		result_object.AddMember("time", time_str.c_str(), result_object.GetAllocator());
+
+		swarm::network_reply reply;
+		reply.set_code(swarm::network_reply::ok);
+		reply.set_content_type("text/json");
+		reply.set_data(result_object.ToString());
+		reply.set_content_length(reply.get_data().size());
+
+		this->send_reply(reply);
+	}
+};
+
+// perform lookup, redirect in response
+template <typename T>
+struct on_redirectable_get : public on_download_info<T>
+{
+
+	virtual void on_lookup_finished(const ioremap::elliptics::sync_lookup_result &result,
+		const ioremap::elliptics::error_info &error) {
+		if (error) {
+			this->send_reply(swarm::network_reply::service_unavailable);
+			return;
+		}
+
+		dnet_time time;
+		dnet_current_time(&time);
+		const std::string time_str = boost::lexical_cast<std::string>(time.tsec);
+
+		std::string url;
+
+		this->generate_signature(result[0], time_str, &url);
+
+		swarm::network_reply reply;
+		reply.set_code(swarm::network_reply::moved_temporarily);
+		reply.set_header("Location", url);
+		reply.set_content_length(0);
 		this->send_reply(reply);
 	}
 };
