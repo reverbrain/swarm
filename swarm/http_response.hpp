@@ -94,6 +94,10 @@ public:
 	int code() const;
 	void set_code(int code);
 
+	// HTTP Reason phrase
+	boost::optional<std::string> reason() const;
+	void set_reason(const std::string &reason);
+
 	// Errno
 	int error() const;
 	void set_error(int error);

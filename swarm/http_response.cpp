@@ -76,6 +76,16 @@ void http_response::set_code(int code)
 	m_data->code = code;
 }
 
+boost::optional<std::string> http_response::reason() const
+{
+	return m_data->reason;
+}
+
+void http_response::set_reason(const std::string &reason)
+{
+	m_data->reason = reason;
+}
+
 int http_response::error() const
 {
 	return m_data->error;
