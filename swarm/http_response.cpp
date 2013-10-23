@@ -7,20 +7,20 @@ namespace swarm {
 class network_reply_data
 {
 public:
-    network_reply_data()
-        : error(0), code(0)
-    {
-    }
-    network_reply_data(const network_reply_data &o) = default;
+	network_reply_data()
+		: error(0), code(0)
+	{
+	}
+	network_reply_data(const network_reply_data &o) = default;
 
-    http_request request;
-    int error;
+	http_request request;
+	int error;
 
-    int code;
-    boost::optional<std::string> reason;
-    swarm::url url;
-    http_headers headers;
-    std::string data;
+	int code;
+	boost::optional<std::string> reason;
+	swarm::url url;
+	http_headers headers;
+	std::string data;
 };
 
 http_response::http_response() : m_data(new network_reply_data)
@@ -58,27 +58,27 @@ http_response &http_response::operator =(const http_response &other)
 
 const http_request &http_response::request() const
 {
-    return m_data->request;
+	return m_data->request;
 }
 
 void http_response::set_request(const http_request &request)
 {
-    m_data->request = request;
+	m_data->request = request;
 }
 
 int http_response::code() const
 {
-    return m_data->code;
+	return m_data->code;
 }
 
 void http_response::set_code(int code)
 {
-    m_data->code = code;
+	m_data->code = code;
 }
 
 int http_response::error() const
 {
-    return m_data->error;
+	return m_data->error;
 }
 
 void http_response::set_error(int error)
@@ -108,7 +108,7 @@ void http_response::set_headers(http_headers &&headers)
 
 const url &http_response::url() const
 {
-    return m_data->url;
+	return m_data->url;
 }
 
 void http_response::set_url(const swarm::url &url)
@@ -123,12 +123,12 @@ void http_response::set_url(const std::string &url)
 
 const std::string &http_response::data() const
 {
-    return m_data->data;
+	return m_data->data;
 }
 
 void http_response::set_data(const std::string &data)
 {
-    m_data->data = data;
+	m_data->data = data;
 }
 
 } // namespace swarm

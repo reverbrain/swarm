@@ -25,16 +25,16 @@ namespace swarm {
 class url_finder
 {
 public:
-    url_finder(const std::string &html);
+	url_finder(const std::string &html);
 
-    const std::vector<std::string> &urls() const;
+	const std::vector<std::string> &urls() const;
 
 private:
-    void parse() const;
+	void parse() const;
 
-    std::string m_html;
-    mutable bool m_parsed;
-    mutable std::vector<std::string> m_urls;
+	std::string m_html;
+	mutable bool m_parsed;
+	mutable std::vector<std::string> m_urls;
 };
 
 } // namespace crawler

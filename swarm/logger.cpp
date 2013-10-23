@@ -64,7 +64,7 @@ public:
 				m_stream.write(msg, len - 1);
 			else
 				m_stream.write(msg, len);
-			 m_stream << std::endl;
+			m_stream << std::endl;
 		} else {
 			std::cerr << str << usecs_and_id << ": could not write log in elliptics file logger" << std::endl;
 		}
