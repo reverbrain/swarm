@@ -17,6 +17,8 @@ class http_headers
 {
 public:
 	http_headers();
+	http_headers(std::vector<headers_entry> &&headers);
+	http_headers(const std::vector<headers_entry> &headers);
 	http_headers(http_headers &&other);
 	http_headers(const http_headers &other);
 	~http_headers();
@@ -30,6 +32,7 @@ public:
 	boost::optional<std::string> get(const std::string &name) const;
 	boost::optional<std::string> get(const char *name) const;
 	void set(const std::vector<headers_entry> &headers);
+	void set(std::vector<headers_entry> &&headers);
 	void set(const headers_entry &header);
 	void set(const std::string &name, const std::string &value);
 	void add(const headers_entry &header);

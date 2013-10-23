@@ -204,6 +204,16 @@ http_headers::http_headers() : p(new http_headers_private)
 {
 }
 
+http_headers::http_headers(std::vector<headers_entry> &&headers) : p(new http_headers_private)
+{
+	p->data = std::move(headers);
+}
+
+http_headers::http_headers(const std::vector<headers_entry> &headers) : p(new http_headers_private)
+{
+	p->data = headers;
+}
+
 http_headers::http_headers(http_headers &&other) : p(new http_headers_private)
 {
 	using std::swap;
@@ -258,6 +268,11 @@ boost::optional<std::string> http_headers::get(const char *name) const
 void http_headers::set(const std::vector<headers_entry> &headers)
 {
 	p->set_headers(headers);
+}
+
+void http_headers::set(std::vector<headers_entry> &&headers)
+{
+	p->data = std::move(headers);
 }
 
 void http_headers::set(const headers_entry &header)
