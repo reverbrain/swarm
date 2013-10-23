@@ -1,7 +1,17 @@
 include_directories(${elliptics_INCLUDE_DIRS})
 link_directories(${ELLIPTICS_LIBRARY_DIRS})
 
-add_library(elliptics-thevoid SHARED server.cpp)
+set(SWARM_ELLIPTICS_HEADERS
+	asio.hpp
+	common.hpp
+	elliptics_logger.hpp
+	index.hpp
+	io.hpp
+	jsonvalue.hpp
+	server.hpp
+)
+
+add_library(elliptics-thevoid SHARED server.cpp ${SWARM_ELLIPTICS_HEADERS})
 target_link_libraries(elliptics-thevoid thevoid ${elliptics_cpp_LIBRARY} ${elliptics_client_LIBRARY} pthread)
 set_target_properties(elliptics-thevoid PROPERTIES
 	VERSION ${DEBFULLVERSION}

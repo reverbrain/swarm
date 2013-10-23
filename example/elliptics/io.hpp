@@ -25,6 +25,7 @@
 #include <swarm/network_query_list.h>
 
 #include <thevoid/server.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "jsonvalue.hpp"
 
@@ -43,10 +44,25 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
+		size_t offset = 0;
+		size_t size = 0;
+
+		try {
+			if (auto tmp = query_list.try_item("offset"))
+				offset = boost::lexical_cast<size_t>(*tmp);
+
+			if (auto tmp = query_list.try_item("size"))
+				size = boost::lexical_cast<size_t>(*tmp);
+		} catch (std::exception &e) {
+			this->log(swarm::LOG_ERROR, "GET request, invalid cast: %s", e.what());
+			this->send_reply(swarm::network_reply::bad_request);
+			return;
+		}
+
 		if (auto name = query_list.try_item("name")) {
 			this->log(swarm::LOG_DEBUG, "GET request, name: \"%s\"", name->c_str());
 
-			sess.read_data(*name, 0, 0).connect(
+			sess.read_data(*name, offset, size).connect(
 					std::bind(&on_get::on_read_finished, this->shared_from_this(), _1, _2));
 		} else if (auto sid = query_list.try_item("id")) {
 			struct dnet_id id;
@@ -99,6 +115,21 @@ template <typename T>
 struct on_upload : public simple_request_stream<T>, public std::enable_shared_from_this<on_upload<T>>
 {
 	virtual void on_request(const swarm::network_request &req, const boost::asio::const_buffer &buffer) {
+		auto data = ioremap::elliptics::data_pointer::from_raw(
+			const_cast<char *>(boost::asio::buffer_cast<const char*>(buffer)),
+			boost::asio::buffer_size(buffer));
+
+		try {
+			write_data(req, data).connect(
+				std::bind(&on_upload::on_write_finished, this->shared_from_this(),
+				std::placeholders::_1, std::placeholders::_2));
+		} catch (std::exception &e) {
+			this->log(swarm::LOG_ERROR, "GET request, invalid cast: %s", e.what());
+			this->send_reply(swarm::network_reply::bad_request);
+		}
+	}
+
+	ioremap::elliptics::async_write_result write_data(const swarm::network_request &req, const ioremap::elliptics::data_pointer &data) {
 		swarm::network_url url(req.get_url());
 		swarm::network_query_list query_list(url.query());
 
@@ -106,12 +137,21 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
-		auto data = boost::asio::buffer_cast<const char*>(buffer);
-		auto size = boost::asio::buffer_size(buffer);
+		size_t offset = 0;
+		if (auto tmp = query_list.try_item("offset"))
+			offset = boost::lexical_cast<size_t>(*tmp);
 
-		sess.write_data(name, ioremap::elliptics::data_pointer::from_raw(const_cast<char *>(data), size), 0)
-				.connect(std::bind(&on_upload::on_write_finished, this->shared_from_this(),
-							std::placeholders::_1, std::placeholders::_2));
+		if (auto tmp = query_list.try_item("prepare")) {
+	            size_t size = boost::lexical_cast<size_t>(*tmp);
+	            return sess.write_prepare(name, data, offset, size);
+	        } else if (auto tmp = query_list.try_item("commit")) {
+	            size_t size = boost::lexical_cast<size_t>(*tmp);
+	            return sess.write_commit(name, data, offset, size);
+	        } else if (query_list.has_item("plain_write") || query_list.has_item("plain-write")) {
+	            return sess.write_plain(name, data, offset);
+	        } else {
+	            return sess.write_data(name, data, offset);
+	        }
 	}
 
 	static void fill_upload_reply(const ioremap::elliptics::sync_write_result &result, elliptics::JsonValue &result_object) {
