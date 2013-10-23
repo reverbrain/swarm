@@ -26,6 +26,7 @@
 
 #include <thevoid/server.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "jsonvalue.hpp"
 
@@ -100,6 +101,21 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 			}
 		}
 
+		if (auto tmp = request.try_header("Range")) {
+			std::string range = *tmp;
+			this->log(swarm::LOG_DATA, "GET, Range: \"%s\"", range.c_str());
+			if (range.compare(0, 6, "bytes=") == 0) {
+				range.erase(range.begin(), range.begin() + 6);
+				std::vector<std::string> ranges;
+				boost::split(ranges, range, boost::is_any_of(","));
+				if (ranges.size() == 1)
+					on_range(ranges[0], file, ts);
+				else
+					on_ranges(ranges, file, ts);
+				return;
+			}
+		}
+
 		swarm::network_reply reply;
 		reply.set_code(swarm::network_reply::ok);
 		reply.set_content_length(file.size());
@@ -107,6 +123,132 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		reply.set_last_modified(ts.tsec);
 
 		this->send_reply(reply, std::move(file));
+	}
+
+	bool parse_range(const std::string &range, size_t data_size, size_t &begin, size_t &end)
+	{
+		begin = 0;
+		end = data_size - 1;
+
+		if (range.size() <= 1)
+			return false;
+
+		try {
+			const auto separator = range.find('-');
+			if (separator == std::string::npos)
+				return false;
+
+			if (separator == 0) {
+				auto tmp = boost::lexical_cast<size_t>(range.substr(separator + 1));
+				if (tmp > data_size)
+					begin = 0;
+				else
+					begin = data_size - tmp;
+			} else {
+				if (separator > 0)
+					begin = boost::lexical_cast<size_t>(range.substr(0, separator));
+
+				if (separator + 1 < range.size())
+					end = boost::lexical_cast<size_t>(range.substr(separator + 1));
+			}
+		} catch (...) {
+			return false;
+		}
+
+		if (begin > end)
+			return false;
+
+		if (begin >= data_size)
+			return false;
+
+		end = std::min(data_size - 1, end);
+
+		return true;
+	}
+
+	std::string create_content_range(size_t begin, size_t end, size_t data_size)
+	{
+		std::string result = "bytes ";
+		result += boost::lexical_cast<std::string>(begin);
+		result += "-";
+		result += boost::lexical_cast<std::string>(end);
+		result += "/";
+		result += boost::lexical_cast<std::string>(data_size);
+		return result;
+	}
+
+	virtual void on_range(const std::string &range, const ioremap::elliptics::data_pointer &data, const dnet_time &ts)
+	{
+		size_t begin;
+		size_t end;
+		if (!parse_range(range, data.size(), begin, end)) {
+			this->send_reply(swarm::network_reply::requested_range_not_satisfiable);
+			return;
+		}
+
+		auto data_part = data.slice(begin, end + 1 - begin);
+
+		swarm::network_reply reply;
+		reply.set_code(swarm::network_reply::partial_content);
+		reply.set_content_type("text/plain");
+		reply.set_last_modified(ts.tsec);
+		reply.add_header("Accept-Ranges", "bytes");
+		reply.add_header("Content-Range", create_content_range(begin, end, data.size()));
+		reply.set_content_length(data_part.size());
+
+		this->send_reply(reply, std::move(data_part));
+	}
+
+	struct range_info
+	{
+		size_t begin;
+		size_t end;
+	};
+
+	virtual void on_ranges(const std::vector<std::string> &ranges_str, const ioremap::elliptics::data_pointer &data, const dnet_time &ts)
+	{
+		std::vector<range_info> ranges;
+		for (auto it = ranges_str.begin(); it != ranges_str.end(); ++it) {
+			range_info info;
+			if (parse_range(*it, data.size(), info.begin, info.end))
+				ranges.push_back(info);
+		}
+
+		if (ranges.empty()) {
+			this->send_reply(swarm::network_reply::requested_range_not_satisfiable);
+			return;
+		}
+
+		char boundary[17];
+		for (size_t i = 0; i < 2; ++i) {
+			uint32_t tmp = rand();
+			sprintf(boundary + i * 8, "%08X", tmp);
+		}
+
+		std::string result;
+		for (auto it = ranges.begin(); it != ranges.end(); ++it) {
+			result += "--";
+			result += boundary;
+			result += "\r\n"
+				"Content-Type: text/plain\r\n"
+				"Content-Range: ";
+			result += create_content_range(it->begin, it->end, data.size());
+			result += "\r\n\r\n";
+			result += data.slice(it->begin, it->end + 1 - it->begin).to_string();
+			result += "\r\n";
+		}
+		result += "--";
+		result += boundary;
+		result += "--\r\n";
+
+		swarm::network_reply reply;
+		reply.set_code(swarm::network_reply::partial_content);
+		reply.set_content_type(std::string("multipart/byteranges; boundary=") + boundary);
+		reply.set_last_modified(ts.tsec);
+		reply.add_header("Accept-Ranges", "bytes");
+		reply.set_content_length(result.size());
+
+		this->send_reply(reply, std::move(result));
 	}
 };
 
