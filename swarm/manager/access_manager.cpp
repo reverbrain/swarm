@@ -33,8 +33,8 @@ namespace ioremap {
 namespace swarm {
 
 enum http_command {
-    GET,
-    POST
+	GET,
+	POST
 };
 
 std::atomic_int alive(0);
@@ -42,25 +42,25 @@ std::atomic_int alive(0);
 class network_connection_info
 {
 public:
-    typedef std::unique_ptr<network_connection_info> ptr;
+	typedef std::unique_ptr<network_connection_info> ptr;
 
-    network_connection_info() : easy(NULL)
-    {
-//        error[0] = '\0';
-    }
-    ~network_connection_info()
-    {
-        curl_easy_cleanup(easy);
-//                error[CURL_ERROR_SIZE - 1] = '\0';
-    }
+	network_connection_info() : easy(NULL)
+	{
+		//        error[0] = '\0';
+	}
+	~network_connection_info()
+	{
+		curl_easy_cleanup(easy);
+		//                error[CURL_ERROR_SIZE - 1] = '\0';
+	}
 
-    CURL *easy;
-    swarm::logger logger;
-    http_response reply;
-    std::function<void (const http_response &reply)> handler;
-    std::string body;
-    std::stringstream data;
-//    char error[CURL_ERROR_SIZE];
+	CURL *easy;
+	swarm::logger logger;
+	http_response reply;
+	std::function<void (const http_response &reply)> handler;
+	std::string body;
+	std::stringstream data;
+	//    char error[CURL_ERROR_SIZE];
 };
 
 class network_manager_private : public event_listener
@@ -110,241 +110,241 @@ public:
 	}
 
 	struct request_info
-        {
-            typedef std::shared_ptr<request_info> ptr;
+	{
+		typedef std::shared_ptr<request_info> ptr;
 
-            http_request request;
-            http_command command;
-            std::string body;
-            std::function<void (const http_response &reply)> handler;
-        };
+		http_request request;
+		http_command command;
+		std::string body;
+		std::function<void (const http_response &reply)> handler;
+	};
 
-    void process_info(request_info::ptr request)
-    {
-            network_connection_info::ptr info(new network_connection_info);
-            info->easy = curl_easy_init();
-            info->reply.set_request(request->request);
-            info->reply.set_url(request->request.url());
-            info->reply.set_code(200);
-            info->handler = request->handler;
-            info->body = request->body;
-            info->logger = logger;
-            if (!info->easy) {
-                info->reply.set_code(650);
-                request->handler(info->reply);
-		return;
-            }
+	void process_info(request_info::ptr request)
+	{
+		network_connection_info::ptr info(new network_connection_info);
+		info->easy = curl_easy_init();
+		info->reply.set_request(request->request);
+		info->reply.set_url(request->request.url());
+		info->reply.set_code(200);
+		info->handler = request->handler;
+		info->body = request->body;
+		info->logger = logger;
+		if (!info->easy) {
+			info->reply.set_code(650);
+			request->handler(info->reply);
+			return;
+		}
 
-            struct curl_slist *headers_list = NULL;
-	    const auto &headers = request->request.headers().all();
-            for (auto it = headers.begin(); it != headers.end(); ++it) {
-                std::string line;
-                line.reserve(it->first.size() + 2 + it->second.size());
-                line += it->first;
-                line += ": ";
-                line += it->second;
+		struct curl_slist *headers_list = NULL;
+		const auto &headers = request->request.headers().all();
+		for (auto it = headers.begin(); it != headers.end(); ++it) {
+			std::string line;
+			line.reserve(it->first.size() + 2 + it->second.size());
+			line += it->first;
+			line += ": ";
+			line += it->second;
 
-                headers_list = curl_slist_append(headers_list, line.c_str());
-            }
+			headers_list = curl_slist_append(headers_list, line.c_str());
+		}
 
-            if (request->command == POST) {
-                curl_easy_setopt(info->easy, CURLOPT_POST, true);
-                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
-                curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, info->body.size());
-            }
+		if (request->command == POST) {
+			curl_easy_setopt(info->easy, CURLOPT_POST, true);
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, info->body.size());
+		}
 
-            curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
+		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
-//	    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
-            curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
-            curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
-            curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
-            curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
-            curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
-            curl_easy_setopt(info->easy, CURLOPT_NOSIGNAL, 1L);
-//            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
+		//	    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
+		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
+		curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
+		curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
+		curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
+		curl_easy_setopt(info->easy, CURLOPT_NOSIGNAL, 1L);
+		//            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
 
-            /*
-             * Grab raw data and free it later in curl_easy_cleanup()
-             */
-            curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
-            curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
-
-            if (request->request.follow_location())
-                curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
-
-            CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
-            if (err == CURLM_OK) {
-                ++active_connections;
-                /*
-                 * We saved info's content in info->easy and stored it in multi handler,
-                 * which will free it, so we just forget about info's content here.
-                 * Info's destructor (~network_connection_info()) will not be called.
-                 */
-                info.release();
-            } else {
-                info->reply.set_code(600 + err);
-                /*
-                 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
-                 * which is ok, since easy handler was not added into multi handler in this case.
-                 */
-                info->handler(info->reply);
-            }
-    }
-
-    /* Check for completed transfers, and remove their easy handles */
-    void check_run_count()
-    {
-	    char *effective_url = NULL;
-	    CURLMsg *msg;
-	    int messsages_left;
-	    network_connection_info *info = NULL;
-	    CURL*easy;
-	    CURLcode res;
-
-	    /*
-	     * I am still uncertain whether it is safe to remove an easy handle
-	     * from inside the curl_multi_info_read loop, so here I will search
-	     * for completed transfers in the inner "while" loop, and then remove
-	     * them in the outer "do-while" loop...
+		/*
+	     * Grab raw data and free it later in curl_easy_cleanup()
 	     */
+		curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
+		curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
 
-	    do {
-		    easy = NULL;
-		    while ((msg = curl_multi_info_read(multi, &messsages_left))) {
-			    if (msg->msg == CURLMSG_DONE) {
-				    easy = msg->easy_handle;
-				    res = msg->data.result;
-				    (void) res;
-				    break;
-			    }
-		    }
+		if (request->request.follow_location())
+			curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
 
-		    if (!easy)
-			    break;
+		CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
+		if (err == CURLM_OK) {
+			++active_connections;
+			/*
+		 * We saved info's content in info->easy and stored it in multi handler,
+		 * which will free it, so we just forget about info's content here.
+		 * Info's destructor (~network_connection_info()) will not be called.
+		 */
+			info.release();
+		} else {
+			info->reply.set_code(600 + err);
+			/*
+		 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
+		 * which is ok, since easy handler was not added into multi handler in this case.
+		 */
+			info->handler(info->reply);
+		}
+	}
 
-		    curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
-		    curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
+	/* Check for completed transfers, and remove their easy handles */
+	void check_run_count()
+	{
+		char *effective_url = NULL;
+		CURLMsg *msg;
+		int messsages_left;
+		network_connection_info *info = NULL;
+		CURL*easy;
+		CURLcode res;
 
-		    try {
-			    --active_connections;
-			    if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-				    info->reply.set_code(0);
-				    info->reply.set_error(-ETIMEDOUT);
-			    } else {
-				    long code = 200;
-				    long err = 0;
-				    curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
-				    curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
-				    info->reply.set_code(code);
-				    info->reply.set_error(-err);
-			    }
-			    info->reply.set_url(effective_url);
-			    info->reply.set_data(info->data.str());
-			    info->handler(info->reply);
-		    } catch (...) {
-			    curl_multi_remove_handle(multi, easy);
-			    delete info;
+		/*
+	 * I am still uncertain whether it is safe to remove an easy handle
+	 * from inside the curl_multi_info_read loop, so here I will search
+	 * for completed transfers in the inner "while" loop, and then remove
+	 * them in the outer "do-while" loop...
+	 */
 
-			    throw;
-		    }
+		do {
+			easy = NULL;
+			while ((msg = curl_multi_info_read(multi, &messsages_left))) {
+				if (msg->msg == CURLMSG_DONE) {
+					easy = msg->easy_handle;
+					res = msg->data.result;
+					(void) res;
+					break;
+				}
+			}
 
-		    curl_multi_remove_handle(multi, easy);
-		    delete info;
-	    } while (easy);
-    }
+			if (!easy)
+				break;
 
-    static int socket_callback(CURL *e, curl_socket_t s, int what, access_manager *manager, void *data)
-    {
-	    (void) e;
+			curl_easy_getinfo(easy, CURLINFO_PRIVATE, &info);
+			curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 
-	    event_loop::poll_option option;
+			try {
+				--active_connections;
+				if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
+					info->reply.set_code(0);
+					info->reply.set_error(-ETIMEDOUT);
+				} else {
+					long code = 200;
+					long err = 0;
+					curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
+					curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
+					info->reply.set_code(code);
+					info->reply.set_error(-err);
+				}
+				info->reply.set_url(effective_url);
+				info->reply.set_data(info->data.str());
+				info->handler(info->reply);
+			} catch (...) {
+				curl_multi_remove_handle(multi, easy);
+				delete info;
 
-	    switch (what) {
-		    case CURL_POLL_REMOVE:
-			    option = event_loop::poll_remove;
-			    break;
-		    case CURL_POLL_IN:
-			    option = event_loop::poll_in;
-			    break;
-		    case CURL_POLL_OUT:
-			    option = event_loop::poll_out;
-			    break;
-		    case CURL_POLL_INOUT:
-			    option = event_loop::poll_all;
-			    break;
-		    default:
-			    manager->p->logger.log(LOG_INFO, "socket_callback, unknown what: %d", what);
-			    return 0;
-	    }
+				throw;
+			}
 
-	    return manager->p->loop.socket_request(s, option, data);
-    }
+			curl_multi_remove_handle(multi, easy);
+			delete info;
+		} while (easy);
+	}
 
-    static int timer_callback(CURLM *multi, long timeout_ms, access_manager *manager)
-    {
-	    (void) multi;
+	static int socket_callback(CURL *e, curl_socket_t s, int what, access_manager *manager, void *data)
+	{
+		(void) e;
 
-	    return manager->p->loop.timer_request(timeout_ms);
-    }
+		event_loop::poll_option option;
 
-    static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
-    {
-	    info->logger.log(LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
-	    const size_t real_size = size * nmemb;
-	    info->data.write(data, real_size);
-	    return real_size;
-    }
+		switch (what) {
+			case CURL_POLL_REMOVE:
+				option = event_loop::poll_remove;
+				break;
+			case CURL_POLL_IN:
+				option = event_loop::poll_in;
+				break;
+			case CURL_POLL_OUT:
+				option = event_loop::poll_out;
+				break;
+			case CURL_POLL_INOUT:
+				option = event_loop::poll_all;
+				break;
+			default:
+				manager->p->logger.log(LOG_INFO, "socket_callback, unknown what: %d", what);
+				return 0;
+		}
 
-    static std::string trimmed(const char *begin, const char *end)
-    {
-        while (begin < end && isspace(*begin))
-            ++begin;
-        while (begin < end && isspace(*(end - 1)))
-            --end;
+		return manager->p->loop.socket_request(s, option, data);
+	}
 
-        return std::string(begin, end);
-    }
+	static int timer_callback(CURLM *multi, long timeout_ms, access_manager *manager)
+	{
+		(void) multi;
 
-    static size_t header_callback(char *data, size_t size, size_t nmemb, network_connection_info *info) {
-        const size_t real_size = size * nmemb;
+		return manager->p->loop.timer_request(timeout_ms);
+	}
 
-        char *lf;
-        char *end = data + real_size;
-        char *colon = std::find(data, end, ':');
+	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
+	{
+		info->logger.log(LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
+		const size_t real_size = size * nmemb;
+		info->data.write(data, real_size);
+		return real_size;
+	}
 
-        if (colon != end) {
-            const std::string field = trimmed(data, colon);
-            std::string value;
+	static std::string trimmed(const char *begin, const char *end)
+	{
+		while (begin < end && isspace(*begin))
+			++begin;
+		while (begin < end && isspace(*(end - 1)))
+			--end;
 
-            data = colon + 1;
+		return std::string(begin, end);
+	}
 
-            // any number of LWS is allowed after field, rfc 2068
-            do {
-                lf = std::find(data, end, '\n');
+	static size_t header_callback(char *data, size_t size, size_t nmemb, network_connection_info *info) {
+		const size_t real_size = size * nmemb;
 
-                if (!value.empty())
-                    value += ' ';
+		char *lf;
+		char *end = data + real_size;
+		char *colon = std::find(data, end, ':');
 
-                value += trimmed(data, lf);
+		if (colon != end) {
+			const std::string field = trimmed(data, colon);
+			std::string value;
 
-                data = lf;
-            } while (data < end && (*(data + 1) == ' ' || *(data + 1) == '\t'));
+			data = colon + 1;
 
-            info->reply.headers().add(field, value);
-        }
+			// any number of LWS is allowed after field, rfc 2068
+			do {
+				lf = std::find(data, end, '\n');
 
-        return size * nmemb;
-    }
+				if (!value.empty())
+					value += ' ';
 
-    event_loop &loop;
-    int still_running;
-    int prev_running;
-    int active_connections_limit;
-    std::atomic_int active_connections;
-    std::list<request_info::ptr> requests;
-    swarm::logger logger;
-    CURLM *multi;
+				value += trimmed(data, lf);
+
+				data = lf;
+			} while (data < end && (*(data + 1) == ' ' || *(data + 1) == '\t'));
+
+			info->reply.headers().add(field, value);
+		}
+
+		return size * nmemb;
+	}
+
+	event_loop &loop;
+	int still_running;
+	int prev_running;
+	int active_connections_limit;
+	std::atomic_int active_connections;
+	std::list<request_info::ptr> requests;
+	swarm::logger logger;
+	CURLM *multi;
 };
 
 access_manager::access_manager(event_loop &loop, const swarm::logger &logger)
@@ -354,9 +354,9 @@ access_manager::access_manager(event_loop &loop, const swarm::logger &logger)
 	p->loop.set_logger(logger);
 	p->logger.log(LOG_INFO, "Creating network_manager: %p", this);
 	p->multi = curl_multi_init();
-        curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
-        curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
-        curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
+	curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
+	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
+	curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
 }
 
@@ -384,23 +384,23 @@ swarm::logger access_manager::logger() const
 
 void access_manager::get(const std::function<void (const http_response &reply)> &handler, const http_request &request)
 {
-    auto info = std::make_shared<network_manager_private::request_info>();
-    info->handler = handler;
-    info->request = request;
-    info->command = GET;
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->handler = handler;
+	info->request = request;
+	info->command = GET;
 
-    p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
 }
 
 void access_manager::post(const std::function<void (const http_response &)> &handler, const http_request &request, const std::string &body)
 {
-    auto info = std::make_shared<network_manager_private::request_info>();
-    info->handler = handler;
-    info->request = request;
-    info->command = POST;
-    info->body = body;
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->handler = handler;
+	info->request = request;
+	info->command = POST;
+	info->body = body;
 
-    p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
 }
 
 } // namespace service

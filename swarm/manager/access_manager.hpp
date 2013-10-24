@@ -33,23 +33,23 @@ class network_manager_private;
 class access_manager
 {
 public:
-    access_manager(event_loop &loop, const ioremap::swarm::logger &logger);
-    ~access_manager();
+	access_manager(event_loop &loop, const ioremap::swarm::logger &logger);
+	~access_manager();
 
-    void set_limit(int active_connections);
-    void set_logger(const swarm::logger &log);
-    swarm::logger logger() const;
+	void set_limit(int active_connections);
+	void set_logger(const swarm::logger &log);
+	swarm::logger logger() const;
 
-    void get(const std::function<void (const http_response &reply)> &handler, const http_request &request);
-    void post(const std::function<void (const http_response &reply)> &handler, const http_request &request, const std::string &body);
+	void get(const std::function<void (const http_response &reply)> &handler, const http_request &request);
+	void post(const std::function<void (const http_response &reply)> &handler, const http_request &request, const std::string &body);
 
 private:
-    access_manager(const access_manager &other);
-    access_manager &operator =(const access_manager &other);
+	access_manager(const access_manager &other);
+	access_manager &operator =(const access_manager &other);
 
-    network_manager_private *p;
+	network_manager_private *p;
 
-    friend class network_manager_private;
+	friend class network_manager_private;
 };
 
 } // namespace service
