@@ -6,6 +6,7 @@
 #include <string>
 
 #include <boost/optional.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace ioremap {
 namespace swarm {
@@ -36,6 +37,22 @@ public:
 	bool has_item(const std::string &key) const;
 	boost::optional<std::string> item_value(const std::string &key) const;
 	boost::optional<std::string> item_value(const char *key) const;
+
+	template <typename T>
+	T item_value(const std::string &key, const T &default_value) const
+	{
+		if (auto value = item_value(key))
+			return boost::lexical_cast<T>(value);
+		return default_value;
+	}
+
+	template <typename T>
+	T item_value(const char *key, const T &default_value) const
+	{
+		if (auto value = item_value(key))
+			return boost::lexical_cast<T>(value);
+		return default_value;
+	}
 
 private:
 	std::unique_ptr<network_query_list_private> p;

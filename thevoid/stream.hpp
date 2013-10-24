@@ -257,7 +257,7 @@ public:
 	};
 
 	buffered_request_stream() :
-		m_chunk_size(10 * 1024), m_state(0),
+		m_chunk_size(10 * 1024), m_state(1),
 		m_first_chunk(true), m_last_chunk(false)
 	{
 	}
@@ -308,9 +308,9 @@ protected:
 	}
 
 private:
-	void on_headers(const swarm::http_request &req)
+	void on_headers(swarm::http_request &&req)
 	{
-		m_request = req;
+		m_request = std::move(req);
 
 		on_request(m_request);
 
@@ -326,6 +326,8 @@ private:
 		auto size = boost::asio::buffer_size(buffer);
 		const auto original_size = size;
 
+//		this->log(swarm::LOG_DEBUG, "on_data, size: %zu, m_data.size: %zu", size, m_data.size());
+
 		while (size > 0) {
 			const auto delta = std::min(size, m_chunk_size - m_data.size());
 			m_data.insert(m_data.end(), begin, begin + delta);
@@ -333,10 +335,12 @@ private:
 			size -= delta;
 
 			if (m_data.size() == m_chunk_size) {
+//				this->log(swarm::LOG_DEBUG, "on_data, size: %zu, m_data.size: %zu (next_chunk)", size, m_data.size());
 				try_next_chunk();
 				return original_size - size;
 			}
 		}
+//		this->log(swarm::LOG_DEBUG, "on_data, size: %zu, m_data.size: %zu (end)", size, m_data.size());
 		return original_size;
 	}
 

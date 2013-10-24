@@ -10,6 +10,7 @@
     },
     "backlog": 128,
     "threads": 2,
+    "buffer_size": 65536,
     "application": {
 	"log": "/dev/stderr",
         "loglevel": 4,

@@ -31,6 +31,33 @@
 #include "jsonvalue.hpp"
 
 namespace ioremap { namespace thevoid { namespace elliptics { namespace io {
+
+static boost::optional<ioremap::elliptics::key> get_key(const swarm::http_request &request)
+{
+	const auto &query = request.url().query();
+
+	if (auto name = query.item_value("name")) {
+		return ioremap::elliptics::key(*name);
+	} else if (auto sid = query.item_value("id")) {
+		struct dnet_id id;
+		memset(&id, 0, sizeof(struct dnet_id));
+
+		dnet_parse_numeric_id(sid->c_str(), id.id);
+
+		return ioremap::elliptics::key(id);
+	} else {
+		return boost::none;
+	}
+}
+
+static ioremap::elliptics::data_pointer create_data(const boost::asio::const_buffer &buffer)
+{
+	return ioremap::elliptics::data_pointer::from_raw(
+		const_cast<char *>(boost::asio::buffer_cast<const char*>(buffer)),
+		boost::asio::buffer_size(buffer)
+	);
+}
+
 // read data object
 template <typename T>
 struct on_get : public simple_request_stream<T>, public std::enable_shared_from_this<on_get<T>>
@@ -58,8 +85,8 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
-        
-        if (auto name = query.item_value("name")) {
+
+		if (auto name = query.item_value("name")) {
 			this->log(swarm::LOG_DEBUG, "GET request, name: \"%s\"", name->c_str());
 
 			sess.read_data(*name, offset, size).connect(
@@ -115,12 +142,12 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 			}
 		}
 
-        swarm::http_response reply;
+		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
 		reply.headers().set_content_length(file.size());
 		reply.headers().set_content_type("text/plain");
 		reply.headers().set_last_modified(ts.tsec);
-        
+
 		this->send_reply(reply, std::move(file));
 	}
 
@@ -271,11 +298,11 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 	}
 
 	ioremap::elliptics::async_write_result write_data(const swarm::http_request &req, const ioremap::elliptics::data_pointer &data) {
-        const auto &query = req.url().query();
-        
+		const auto &query = req.url().query();
+
 		auto possible_name = query.item_value("name");
 		if (!possible_name) {
-            throw std::runtime_error("invalid name");
+			throw std::runtime_error("invalid name");
 		}
 
 		auto name = *possible_name;
@@ -287,16 +314,16 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 			offset = boost::lexical_cast<size_t>(*tmp);
 
 		if (auto tmp = query.item_value("prepare")) {
-	            size_t size = boost::lexical_cast<size_t>(*tmp);
-	            return sess.write_prepare(name, data, offset, size);
-	        } else if (auto tmp = query.item_value("commit")) {
-	            size_t size = boost::lexical_cast<size_t>(*tmp);
-	            return sess.write_commit(name, data, offset, size);
-	        } else if (query.has_item("plain_write") || query.has_item("plain-write")) {
-	            return sess.write_plain(name, data, offset);
-	        } else {
-	            return sess.write_data(name, data, offset);
-	        }
+				size_t size = boost::lexical_cast<size_t>(*tmp);
+				return sess.write_prepare(name, data, offset, size);
+			} else if (auto tmp = query.item_value("commit")) {
+				size_t size = boost::lexical_cast<size_t>(*tmp);
+				return sess.write_commit(name, data, offset, size);
+			} else if (query.has_item("plain-write")) {
+				return sess.write_plain(name, data, offset);
+			} else {
+				return sess.write_data(name, data, offset);
+			}
 	}
 
 	template <typename Allocator>
@@ -358,15 +385,139 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		elliptics::JsonValue result_object;
 		on_upload::fill_upload_reply(result, result_object, result_object.GetAllocator());
 
-        auto data = result_object.ToString();
-        
+		auto data = result_object.ToString();
+
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
 		reply.headers().set_content_type("text/json");
 		reply.headers().set_content_length(data.size());
 
-        this->send_reply(reply, std::move(data));
+		this->send_reply(reply, std::move(data));
 	}
+};
+
+// write data object, get file-info json in response
+template <typename T>
+struct on_buffered_upload : public buffered_request_stream<T>, public std::enable_shared_from_this<on_buffered_upload<T>>
+{
+public:
+	virtual void on_request(const swarm::http_request &request)
+	{
+		const auto &query = request.url().query();
+		this->set_chunk_size(10 * 1024 * 1024);
+
+		auto key = get_key(request);
+
+		if (!key) {
+			this->send_reply(swarm::http_response::bad_request);
+			return;
+		}
+
+		m_offset = query.item_value("offset", 0llu);
+		if (auto size = request.headers().content_length())
+			m_size = *size;
+		else
+			m_size = 0;
+		m_key = *key;
+	}
+
+	virtual void on_chunk(const boost::asio::const_buffer &buffer, unsigned int flags)
+	{
+		ioremap::elliptics::session sess = this->get_server()->create_session();
+		const auto data = create_data(buffer);
+
+		this->log(swarm::LOG_INFO, "on_chunk: size: %zu, m_offset: %llu, flags: %u", data.size(), (unsigned long long)m_offset, flags);
+
+		if (flags & buffered_request_stream<T>::first_chunk) {
+			m_groups = sess.get_groups();
+		} else {
+			sess.set_groups(m_groups);
+		}
+
+		ioremap::elliptics::async_write_result result = write(sess, data, flags);
+		m_offset += data.size();
+
+		using namespace std::placeholders;
+		if (flags & buffered_request_stream<T>::last_chunk) {
+			result.connect(std::bind(&on_buffered_upload::on_write_finished, this->shared_from_this(), _1, _2));
+		} else {
+			result.connect(std::bind(&on_buffered_upload::on_write_partial, this->shared_from_this(), _1, _2));
+		}
+	}
+
+	ioremap::elliptics::async_write_result write(ioremap::elliptics::session &sess,
+		const ioremap::elliptics::data_pointer &data,
+		unsigned int flags)
+	{
+		typedef unsigned long long ull;
+
+		if (flags == buffered_request_stream<T>::single_chunk) {
+			return sess.write_data(m_key, data, m_offset);
+		} else if (m_size > 0) {
+			if (flags & buffered_request_stream<T>::first_chunk) {
+				this->log(swarm::LOG_INFO, "prepare, offset: %llu, size: %llu", ull(m_offset), ull(m_size));
+				return sess.write_prepare(m_key, data, m_offset, m_size);
+			} else if (flags & buffered_request_stream<T>::last_chunk) {
+				this->log(swarm::LOG_INFO, "commit, offset: %llu, size: %llu", ull(m_offset), ull(m_offset + data.size()));
+				return sess.write_commit(m_key, data, m_offset, m_offset + data.size());
+			} else {
+				this->log(swarm::LOG_INFO, "plain, offset: %llu", ull(m_offset));
+				return sess.write_plain(m_key, data, m_offset);
+			}
+		} else {
+			this->log(swarm::LOG_INFO, "write_data, offset: %llu", ull(m_offset));
+			return sess.write_data(m_key, data, m_offset);
+		}
+	}
+
+	virtual void on_error(const boost::system::error_code &err)
+	{
+		this->log(swarm::LOG_ERROR, "on_error, error: %s", err.message().c_str());
+	}
+
+	virtual void on_write_partial(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error)
+	{
+		this->log(swarm::LOG_ERROR, "on_write_partial, error: %s", error.message().c_str());
+
+		if (error) {
+			on_write_finished(result, error);
+			return;
+		}
+
+		std::vector<int> groups;
+
+		for (auto it = result.begin(); it != result.end(); ++it) {
+			ioremap::elliptics::write_result_entry entry = *it;
+
+			if (!entry.error())
+				groups.push_back(entry.command()->id.group_id);
+		}
+
+		using std::swap;
+		swap(m_groups, groups);
+
+		sleep(1);
+
+		this->try_next_chunk();
+	}
+
+	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error)
+	{
+		this->log(swarm::LOG_ERROR, "on_write_finished, error: %s", error.message().c_str());
+
+		if (error) {
+			this->send_reply(swarm::http_response::internal_server_error);
+			return;
+		}
+
+		this->send_reply(swarm::http_response::ok);
+	}
+
+private:
+	std::vector<int> m_groups;
+	ioremap::elliptics::key m_key;
+	uint64_t m_offset;
+	uint64_t m_size;
 };
 
 // perform lookup, get file-info json in response
@@ -379,10 +530,10 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		ioremap::elliptics::session sess = this->get_server()->create_session();
 
 		auto name = query.item_value("name");
-        if (!name) {
-            this->send_reply(swarm::http_response::bad_request);
-            return;
-        }
+		if (!name) {
+			this->send_reply(swarm::http_response::bad_request);
+			return;
+		}
 
 		using namespace std::placeholders;
 		sess.lookup(*name).connect(std::bind(&on_download_info::on_lookup_finished, this->shared_from_this(), _1, _2));
@@ -417,8 +568,8 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 
 		dnet_raw_id signature_id;
 		dnet_transform_node(this->get_server()->get_node().get_native(),
-				    sign_input.c_str(), sign_input.size(),
-				    signature_id.id, sizeof(signature_id.id));
+					sign_input.c_str(), sign_input.size(),
+					signature_id.id, sizeof(signature_id.id));
 
 		char signature_str[2 * DNET_ID_SIZE + 1];
 		dnet_dump_id_len_raw(signature_id.id, DNET_ID_SIZE, signature_str);
@@ -462,14 +613,14 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 
 		result_object.AddMember("time", time_str.c_str(), result_object.GetAllocator());
 
-        auto data = result_object.ToString();
-        
+		auto data = result_object.ToString();
+
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
 		reply.headers().set_content_type("text/json");
 		reply.headers().set_content_length(data.size());
 
-        this->send_reply(reply, std::move(data));
+		this->send_reply(reply, std::move(data));
 	}
 };
 
