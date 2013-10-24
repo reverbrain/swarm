@@ -4,6 +4,7 @@
 #include "event_loop.hpp"
 
 #include <boost/asio.hpp>
+#include <memory>
 
 namespace ioremap {
 namespace swarm {
@@ -20,7 +21,7 @@ public:
 	void post(const std::function<void ()> &func);
 
 private:
-	void on_event(int fd, boost_socket_info *info, int what);
+	void on_event(int fd, const std::weak_ptr<boost_socket_info> &info, int what, const boost::system::error_code &error);
 
 	boost::asio::io_service &m_service;
 	boost::asio::deadline_timer m_timer;

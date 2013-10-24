@@ -27,10 +27,10 @@ class event_loop
 {
 public:
 	enum poll_option {
-		poll_in = 0x01,
-		poll_out = 0x02,
-		poll_all = poll_in | poll_out,
-		poll_remove = 0x04
+		poll_in         = 0x01,
+		poll_out        = 0x02,
+		poll_all        = poll_in | poll_out,
+		poll_remove     = 0x04
 	};
 
 	event_loop();
