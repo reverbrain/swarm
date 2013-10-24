@@ -141,7 +141,7 @@ boost::tribool request_parser::parse_line(swarm::http_request &request, const st
 		case header_line: {
 			if (!m_header.first.empty() && (line[0] == ' ' || line[0] == '\t')) {
 				// any number of LWS is allowed after field, rfc 2068
-				auto begin = line.begin() + 2;
+				auto begin = line.begin() + 1;
 				auto end = line.end();
 				trim_line(begin, end);
 
