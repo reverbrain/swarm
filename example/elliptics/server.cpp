@@ -82,7 +82,7 @@ session elliptics_server::create_session()
 	return m_session->clone();
 }
 
-ioremap::swarm::logger elliptics_server::get_logger_impl()
+ioremap::swarm::logger elliptics_server::logger_impl()
 {
 	return *m_logger;
 }

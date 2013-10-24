@@ -30,17 +30,17 @@ public:
 		if (!elliptics_server::initialize(config))
 			return false;
 
-		set_logger(get_logger_impl());
+		set_logger(logger_impl());
 
 		if (config.HasMember("signatures")) {
 			auto &signatures = config["signatures"];
 			for (auto it = signatures.Begin(); it != signatures.End(); ++it) {
 				if (!it->HasMember("key")) {
-					get_logger().log(ioremap::swarm::LOG_ERROR, "\"signatures[i].key\" field is missed");
+					logger().log(ioremap::swarm::LOG_ERROR, "\"signatures[i].key\" field is missed");
 					return false;
 				}
 				if (!it->HasMember("path")) {
-					get_logger().log(ioremap::swarm::LOG_ERROR, "\"signatures[i].path\" field is missed");
+					logger().log(ioremap::swarm::LOG_ERROR, "\"signatures[i].path\" field is missed");
 					return false;
 				}
 

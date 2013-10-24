@@ -41,7 +41,7 @@ public:
 	ioremap::elliptics::node get_node();
 
 protected:
-	ioremap::swarm::logger get_logger_impl();
+	ioremap::swarm::logger logger_impl();
 
 private:
 	std::unique_ptr<ioremap::swarm::logger> m_logger;

@@ -16,18 +16,10 @@
 #ifndef COCAINE_SERVICE_NETWORKMANAGER_H
 #define COCAINE_SERVICE_NETWORKMANAGER_H
 
-#include "http_response.hpp"
-#include "http_request.hpp"
+#include "../http_response.hpp"
+#include "../http_request.hpp"
 
-#define EV_MULTIPLICITY 1
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-
-#include <ev++.h>
-#pragma GCC diagnostic pop
-
-#include "logger.hpp"
+#include "../logger.hpp"
 #include "event_loop.hpp"
 #include <memory>
 #include <functional>
@@ -38,24 +30,22 @@ namespace swarm {
 
 class network_manager_private;
 
-class network_manager
+class access_manager
 {
 public:
-    network_manager(ev::loop_ref &loop);
-    network_manager(ev::loop_ref &loop, const ioremap::swarm::logger &logger);
-    network_manager(event_loop &loop, const ioremap::swarm::logger &logger);
-    ~network_manager();
+    access_manager(event_loop &loop, const ioremap::swarm::logger &logger);
+    ~access_manager();
 
     void set_limit(int active_connections);
-    void set_logger(const logger &log);
-    logger get_logger() const;
+    void set_logger(const swarm::logger &log);
+    swarm::logger logger() const;
 
     void get(const std::function<void (const http_response &reply)> &handler, const http_request &request);
     void post(const std::function<void (const http_response &reply)> &handler, const http_request &request, const std::string &body);
 
 private:
-    network_manager(const network_manager &other);
-    network_manager &operator =(const network_manager &other);
+    access_manager(const access_manager &other);
+    access_manager &operator =(const access_manager &other);
 
     network_manager_private *p;
 

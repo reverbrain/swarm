@@ -111,7 +111,7 @@ void base_server::set_logger(const swarm::logger &logger)
 	m_data->logger = logger;
 }
 
-swarm::logger base_server::get_logger() const
+swarm::logger base_server::logger() const
 {
 	return m_data->logger;
 }

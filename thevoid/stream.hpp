@@ -102,16 +102,16 @@ public:
 	}
 
 protected:
-	std::shared_ptr<Server> get_server()
+	std::shared_ptr<Server> server()
 	{
 		if (__builtin_expect(!m_server, false))
 			throw std::logic_error("request_stream::m_server must be initialized");
 		return m_server;
 	}
 
-	swarm::logger get_logger()
+	swarm::logger logger()
 	{
-		return get_server()->get_logger();
+		return server()->logger();
 	}
 
 	void log(int level, const char *format, ...) __attribute__ ((format(printf, 3, 4)))
@@ -119,7 +119,7 @@ protected:
 		va_list args;
 		va_start(args, format);
 
-		get_logger().vlog(level, format, args);
+		logger().vlog(level, format, args);
 
 		va_end(args);
 	}
@@ -214,7 +214,7 @@ public:
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) = 0;
 
 protected:
-	const swarm::http_request &get_request()
+	const swarm::http_request &request()
 	{
 		return m_request;
 	}
@@ -267,7 +267,7 @@ public:
 	virtual void on_error(const boost::system::error_code &err) = 0;
 
 protected:
-	const swarm::http_request &get_request()
+	const swarm::http_request &request()
 	{
 		return m_request;
 	}
@@ -277,16 +277,10 @@ protected:
 		m_chunk_size = chunk_size;
 	}
 
-	size_t get_chunk_size() const
+	size_t chunk_size() const
 	{
 		return m_chunk_size;
 	}
-
-	struct chunk_info
-	{
-		boost::asio::const_buffer buffer;
-		int flags;
-	};
 
 	void try_next_chunk()
 	{
@@ -326,8 +320,6 @@ private:
 		auto size = boost::asio::buffer_size(buffer);
 		const auto original_size = size;
 
-//		this->log(swarm::LOG_DEBUG, "on_data, size: %zu, m_data.size: %zu", size, m_data.size());
-
 		while (size > 0) {
 			const auto delta = std::min(size, m_chunk_size - m_data.size());
 			if (delta == 0) {
@@ -340,12 +332,10 @@ private:
 			size -= delta;
 
 			if (m_data.size() == m_chunk_size) {
-//				this->log(swarm::LOG_DEBUG, "on_data, size: %zu, m_data.size: %zu (next_chunk)", size, m_data.size());
 				try_next_chunk();
 				return original_size - size;
 			}
 		}
-//		this->log(swarm::LOG_DEBUG, "on_data, size: %zu, m_data.size: %zu (end)", size, m_data.size());
 		return original_size;
 	}
 

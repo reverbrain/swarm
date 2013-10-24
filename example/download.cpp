@@ -13,8 +13,9 @@
  * GNU General Public License for more details.
  */
 
-#include <swarm/networkmanager.hpp>
-#include <swarm/boost_event_loop.hpp>
+#include <swarm/manager/access_manager.hpp>
+#include <swarm/manager/boost_event_loop.hpp>
+#include <swarm/manager/ev_event_loop.hpp>
 #include <list>
 #include <iostream>
 #include <chrono>
@@ -73,7 +74,7 @@ int main(int argc, char **argv)
 
 	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::LOG_DEBUG);
 
-	ioremap::swarm::network_manager manager(boost_loop, logger);
+	ioremap::swarm::access_manager manager(boost_loop, logger);
 
 	std::vector<ioremap::swarm::headers_entry> headers = {
 		{ "Content-Type", "text/html; always" },

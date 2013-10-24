@@ -84,7 +84,7 @@ public:
 	int run(int argc, char **argv);
 
 	void set_logger(const swarm::logger &logger);
-	swarm::logger get_logger() const;
+	swarm::logger logger() const;
 
 	void set_statisitcs_handler(const statistics_function &handler);
 	std::map<std::string, std::string> get_statistics();

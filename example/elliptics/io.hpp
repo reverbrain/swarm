@@ -69,7 +69,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		const auto &query = req.url().query();
 
-		ioremap::elliptics::session sess = this->get_server()->create_session();
+		ioremap::elliptics::session sess = this->server()->create_session();
 
 		size_t offset = 0;
 		size_t size = 0;
@@ -118,7 +118,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		ioremap::elliptics::data_pointer file = entry.file();
 
 		const dnet_time &ts = entry.io_attribute()->timestamp;
-		const swarm::http_request &request = this->get_request();
+		const swarm::http_request &request = this->request();
 
 		if (auto tmp = request.headers().if_modified_since()) {
 			if ((time_t)ts.tsec <= *tmp) {
@@ -307,7 +307,7 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 
 		auto name = *possible_name;
 
-		ioremap::elliptics::session sess = this->get_server()->create_session();
+		ioremap::elliptics::session sess = this->server()->create_session();
 
 		size_t offset = 0;
 		if (auto tmp = query.item_value("offset"))
@@ -423,7 +423,7 @@ public:
 
 	virtual void on_chunk(const boost::asio::const_buffer &buffer, unsigned int flags)
 	{
-		ioremap::elliptics::session sess = this->get_server()->create_session();
+		ioremap::elliptics::session sess = this->server()->create_session();
 		const auto data = create_data(buffer);
 
 		this->log(swarm::LOG_INFO, "on_chunk: size: %zu, m_offset: %llu, flags: %u", data.size(), (unsigned long long)m_offset, flags);
@@ -525,7 +525,7 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &) {
 		const auto &query = req.url().query();
 
-		ioremap::elliptics::session sess = this->get_server()->create_session();
+		ioremap::elliptics::session sess = this->server()->create_session();
 
 		auto name = query.item_value("name");
 		if (!name) {
@@ -538,8 +538,8 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 	}
 
 	std::string generate_signature(const ioremap::elliptics::lookup_result_entry &entry, const std::string &time, std::string *url_ptr) {
-		const auto name = this->get_request().url().query().item_value("name");
-		auto key = this->get_server()->find_signature(*name);
+		const auto name = this->request().url().query().item_value("name");
+		auto key = this->server()->find_signature(*name);
 
 		if (!key && !url_ptr) {
 			return std::string();
@@ -547,7 +547,7 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 
 		const dnet_file_info *info = entry.file_info();
 
-		std::string url = this->get_server()->generate_url_base(entry.address());
+		std::string url = this->server()->generate_url_base(entry.address());
 		swarm::url_query query;
 		query.add_item("file-path", entry.file_path());
 		if (key) {
@@ -565,7 +565,7 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		}
 
 		dnet_raw_id signature_id;
-		dnet_transform_node(this->get_server()->get_node().get_native(),
+		dnet_transform_node(this->server()->get_node().get_native(),
 					sign_input.c_str(), sign_input.size(),
 					signature_id.id, sizeof(signature_id.id));
 

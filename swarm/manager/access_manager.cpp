@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "networkmanager.hpp"
+#include "access_manager.hpp"
 
 #include <string.h>
 #include <curl/curl.h>
@@ -28,8 +28,6 @@
 #endif
 #include <list>
 #include <algorithm>
-
-#include "ev_event_loop.hpp"
 
 namespace ioremap {
 namespace swarm {
@@ -68,14 +66,6 @@ public:
 class network_manager_private : public event_listener
 {
 public:
-	network_manager_private(ev::loop_ref &loop) :
-		ev_loop(new ev_event_loop(loop)), loop(*ev_loop), still_running(0),
-		prev_running(0), active_connections_limit(10), active_connections(0)
-	{
-		this->loop.set_listener(this);
-		this->loop.set_logger(logger);
-	}
-
 	network_manager_private(event_loop &loop) :
 		loop(loop), still_running(0), prev_running(0),
 		active_connections_limit(10), active_connections(0)
@@ -264,7 +254,7 @@ public:
 	    } while (easy);
     }
 
-    static int socket_callback(CURL *e, curl_socket_t s, int what, network_manager *manager, void *data)
+    static int socket_callback(CURL *e, curl_socket_t s, int what, access_manager *manager, void *data)
     {
 	    (void) e;
 
@@ -291,7 +281,7 @@ public:
 	    return manager->p->loop.socket_request(s, option, data);
     }
 
-    static int timer_callback(CURLM *multi, long timeout_ms, network_manager *manager)
+    static int timer_callback(CURLM *multi, long timeout_ms, access_manager *manager)
     {
 	    (void) multi;
 
@@ -347,7 +337,6 @@ public:
         return size * nmemb;
     }
 
-    std::unique_ptr<ev_event_loop> ev_loop;
     event_loop &loop;
     int still_running;
     int prev_running;
@@ -358,30 +347,7 @@ public:
     CURLM *multi;
 };
 
-network_manager::network_manager(ev::loop_ref &loop)
-    : p(new network_manager_private(loop))
-{
-    p->multi = curl_multi_init();
-    curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
-    curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
-    curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
-    curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
-}
-
-network_manager::network_manager(ev::loop_ref &loop, const logger &log)
-	: p(new network_manager_private(loop))
-{
-	p->logger = log;
-	p->loop.set_logger(log);
-	p->logger.log(LOG_INFO, "Creating network_manager: %p", this);
-	p->multi = curl_multi_init();
-        curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
-        curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
-        curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
-	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
-}
-
-network_manager::network_manager(event_loop &loop, const swarm::logger &logger)
+access_manager::access_manager(event_loop &loop, const swarm::logger &logger)
 	: p(new network_manager_private(loop))
 {
 	p->logger = logger;
@@ -394,29 +360,29 @@ network_manager::network_manager(event_loop &loop, const swarm::logger &logger)
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
 }
 
-network_manager::~network_manager()
+access_manager::~access_manager()
 {
 	p->logger.log(LOG_INFO, "Destroying network_manager: %p", this);
 	delete p;
 }
 
-void network_manager::set_limit(int active_connections)
+void access_manager::set_limit(int active_connections)
 {
 	p->active_connections_limit = active_connections;
 }
 
-void network_manager::set_logger(const logger &log)
+void access_manager::set_logger(const swarm::logger &log)
 {
 	p->loop.set_logger(log);
 	p->logger = log;
 }
 
-logger network_manager::get_logger() const
+swarm::logger access_manager::logger() const
 {
 	return p->logger;
 }
 
-void network_manager::get(const std::function<void (const http_response &reply)> &handler, const http_request &request)
+void access_manager::get(const std::function<void (const http_response &reply)> &handler, const http_request &request)
 {
     auto info = std::make_shared<network_manager_private::request_info>();
     info->handler = handler;
@@ -426,7 +392,7 @@ void network_manager::get(const std::function<void (const http_response &reply)>
     p->loop.post(std::bind(&network_manager_private::process_info, p, info));
 }
 
-void network_manager::post(const std::function<void (const http_response &)> &handler, const http_request &request, const std::string &body)
+void access_manager::post(const std::function<void (const http_response &)> &handler, const http_request &request, const std::string &body)
 {
     auto info = std::make_shared<network_manager_private::request_info>();
     info->handler = handler;
