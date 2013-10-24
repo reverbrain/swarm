@@ -35,11 +35,11 @@ template <typename T>
 class connection : public std::enable_shared_from_this<connection<T>>, public reply_stream, private boost::noncopyable
 {
 public:
-    typedef T socket_type;
+	typedef T socket_type;
 
 	enum state {
 		processing_request = 0x00,
-		read_headers       = 0x01,
+		read_headers	   = 0x01,
 		read_data          = 0x02,
 		request_processed  = 0x04
 	};
@@ -59,11 +59,13 @@ public:
 		const std::function<void (const boost::system::error_code &err)> &handler) /*override*/;
 	virtual void send_data(const boost::asio::const_buffer &buffer,
 		const std::function<void (const boost::system::error_code &err)> &handler) /*override*/;
+	void want_more();
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
-    void close_impl(const boost::system::error_code &err);
-    void process_next();
+	void want_more_impl();
+	void close_impl(const boost::system::error_code &err);
+	void process_next();
 
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
@@ -80,7 +82,7 @@ private:
 	T m_socket;
 
 	//! Buffer for incoming data.
-    std::vector<char> m_buffer;
+	std::vector<char> m_buffer;
 
 	//! The incoming request.
 	swarm::http_request m_request;
@@ -96,8 +98,10 @@ private:
 
 	//! Request parsing state
 	uint32_t m_state;
-    //! If current connection is keep-alive
-    bool m_keep_alive;
+	//! If current connection is keep-alive
+	bool m_keep_alive;
+    //! If async_read is already called
+    bool m_at_read;
 
 	//! Uprocessed data
 	const char *m_unprocessed_begin;

@@ -382,7 +382,7 @@ void http_headers::set_keep_alive()
 boost::optional<bool> http_headers::is_keep_alive() const
 {
 	if (auto tmp = connection()) {
-		return *tmp == CONNECTION_HEADER_KEEP_ALIVE;
+		return are_case_insensitive_equal(*tmp, CONNECTION_HEADER_KEEP_ALIVE, sizeof(CONNECTION_HEADER_KEEP_ALIVE) - 1);
 	}
 
 	return boost::none;

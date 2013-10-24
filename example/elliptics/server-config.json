@@ -1,7 +1,9 @@
 {
     "endpoints": [
-        "0.0.0.0:8080",
-	"unix:test.sock"
+        "0.0.0.0:8080"
+    ],
+    "also-possible-endpoints": [
+        "unix:test.sock"
     ],
     "daemon": {
         "monitor-port": 20000

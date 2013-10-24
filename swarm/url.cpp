@@ -45,7 +45,7 @@ public:
 		query_parsed    = 0x10
 	};
 
-	url_private() : state(invalid), port(-1)
+	url_private() : state(invalid)
 	{
 	}
 
@@ -65,7 +65,7 @@ public:
 	std::string original;
 
 	mutable int state;
-	mutable int port;
+	mutable boost::optional<uint16_t> port;
 };
 
 
@@ -150,8 +150,9 @@ void url_private::ensure_data() const
 	if (state & parsed)
 		return;
 
-	UriParserStateA parser_state;
 	UriUriA parser;
+	UriParserStateA parser_state;
+	parser_state.uri = &parser;
 	network_url_cleaner cleaner;
 
 	if (uriParseUriA(&parser_state, original.c_str()) != URI_SUCCESS) {
@@ -163,10 +164,13 @@ void url_private::ensure_data() const
 
 	try {
 		std::string port_text = to_string(parser.portText);
-		port = boost::lexical_cast<int>(port_text);
+		if (!port_text.empty())
+			port = boost::lexical_cast<int>(port_text);
+		else
+			port = boost::none;
 	} catch (...) {
-		port = -1;
-		state |= invalid;
+		port = boost::none;
+		state |= (parsed | invalid_original);
 		return;
 	}
 
@@ -306,7 +310,7 @@ const std::string &url::host() const
 	return p->host;
 }
 
-int url::port() const
+const boost::optional<uint16_t> &url::port() const
 {
 	p->ensure_data();
 	return p->port;

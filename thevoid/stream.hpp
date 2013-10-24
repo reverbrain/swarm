@@ -58,6 +58,7 @@ public:
 				  const std::function<void (const boost::system::error_code &err)> &handler) = 0;
 	virtual void send_data(const boost::asio::const_buffer &buffer,
 			       const std::function<void (const boost::system::error_code &err)> &handler) = 0;
+	virtual void want_more() = 0;
 	virtual void close(const boost::system::error_code &err) = 0;
 
 	virtual void send_error(swarm::http_response::status_type type) = 0;
@@ -70,7 +71,7 @@ public:
 	virtual ~base_request_stream();
 
 	virtual void on_headers(swarm::http_request &&req) = 0;
-	virtual void on_data(const boost::asio::const_buffer &buffer) = 0;
+	virtual size_t on_data(const boost::asio::const_buffer &buffer) = 0;
 	virtual void on_close(const boost::system::error_code &err) = 0;
 
 	void initialize(const std::shared_ptr<reply_stream> &reply);
@@ -226,11 +227,12 @@ private:
 			m_data.reserve(*tmp);
 	}
 
-	void on_data(const boost::asio::const_buffer &buffer)
+	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
 		m_data.insert(m_data.end(), begin, begin + size);
+		return size;
 	}
 
 	void on_close(const boost::system::error_code &err)
@@ -254,7 +256,9 @@ public:
 		single_chunk = first_chunk | last_chunk
 	};
 
-	buffered_request_stream() : m_chunk_size(10 * 1024), m_first_chunk(true)
+	buffered_request_stream() :
+		m_chunk_size(10 * 1024), m_state(0),
+		m_first_chunk(true), m_last_chunk(false)
 	{
 	}
 
@@ -278,6 +282,31 @@ protected:
 		return m_chunk_size;
 	}
 
+	struct chunk_info
+	{
+		boost::asio::const_buffer buffer;
+		int flags;
+	};
+
+	void try_next_chunk()
+	{
+		if (++m_state == 2) {
+			int flags = 0;
+			if (m_first_chunk)
+				flags |= first_chunk;
+			m_first_chunk = false;
+			if (m_last_chunk)
+				flags |= last_chunk;
+
+			on_chunk(boost::asio::buffer(m_data), flags);
+
+			m_data.resize(0);
+			m_state -= 2;
+
+			this->get_reply()->want_more();
+		}
+	}
+
 private:
 	void on_headers(const swarm::http_request &req)
 	{
@@ -288,10 +317,14 @@ private:
 		m_data.reserve(m_chunk_size);
 	}
 
-	void on_data(const boost::asio::const_buffer &buffer)
+	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
+		if (m_state == 2)
+			return 0;
+
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
+		const auto original_size = size;
 
 		while (size > 0) {
 			const auto delta = std::min(size, m_chunk_size - m_data.size());
@@ -299,10 +332,12 @@ private:
 			begin += delta;
 			size -= delta;
 
-			on_chunk(boost::asio::buffer(m_data), m_first_chunk ? first_chunk : 0);
-			m_first_chunk = false;
-			m_data.resize(0);
+			if (m_data.size() == m_chunk_size) {
+				try_next_chunk();
+				return original_size - size;
+			}
 		}
+		return original_size;
 	}
 
 	void on_close(const boost::system::error_code &err)
@@ -310,14 +345,17 @@ private:
 		if (err) {
 			on_error(err);
 		} else {
-			on_chunk(boost::asio::buffer(m_data), last_chunk | (m_first_chunk ? first_chunk : 0));
+			m_last_chunk = true;
+			try_next_chunk();
 		}
 	}
 
 	swarm::http_request m_request;
 	std::vector<char> m_data;
 	size_t m_chunk_size;
+	std::atomic_uint m_state;
 	bool m_first_chunk;
+	bool m_last_chunk;
 };
 
 }} // namespace ioremap::thevoid

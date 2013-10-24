@@ -40,7 +40,8 @@ connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) 
 	m_buffer(buffer_size),
 	m_content_length(0),
 	m_state(read_headers),
-	m_keep_alive(false)
+	m_keep_alive(false),
+	m_at_read(false)
 {
 	m_unprocessed_begin = m_buffer.data();
 	m_unprocessed_end = m_buffer.data();
@@ -112,10 +113,27 @@ void connection<T>::send_data(const boost::asio::const_buffer &buffer,
 }
 
 template <typename T>
+void connection<T>::want_more()
+{
+	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
+	m_socket.get_io_service().post(std::bind(&connection::want_more_impl, this->shared_from_this()));
+}
+
+template <typename T>
 void connection<T>::close(const boost::system::error_code &err)
 {
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
 	m_socket.get_io_service().post(std::bind(&connection::close_impl, this->shared_from_this(), err));
+}
+
+template <typename T>
+void connection<T>::want_more_impl()
+{
+	if (m_unprocessed_begin != m_unprocessed_end) {
+		process_data(m_unprocessed_begin, m_unprocessed_end);
+	} else {
+		async_read();
+	}
 }
 
 template <typename T>
@@ -167,6 +185,7 @@ void connection<T>::process_next()
 template <typename T>
 void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred)
 {
+	m_at_read = false;
 	debug("error: " << err.message());
 	if (err) {
 		if (m_handler) {
@@ -234,20 +253,26 @@ void connection<T>::process_data(const char *begin, const char *end)
 		async_read();
 	} else if (m_state & read_data) {
 		size_t data_from_body = std::min<size_t>(m_content_length, end - begin);
+		size_t processed_size = data_from_body;
 
 		if (data_from_body && m_handler)
-			m_handler->on_data(boost::asio::buffer(begin, data_from_body));
+			processed_size = m_handler->on_data(boost::asio::buffer(begin, data_from_body));
 
-		m_content_length -= data_from_body;
+		m_content_length -= processed_size;
 
 		debug(m_state);
 
-		if (m_content_length > 0) {
+		if (data_from_body != processed_size) {
+			// Handler can't process all data, wait until want_more method is called
+			m_unprocessed_begin = begin + processed_size;
+			m_unprocessed_end = end;
+			return;
+		} else if (m_content_length > 0) {
 			debug("");
 			async_read();
 		} else {
 			m_state &= ~read_data;
-			m_unprocessed_begin = begin + data_from_body;
+			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 
 			if (m_handler)
@@ -264,6 +289,9 @@ void connection<T>::process_data(const char *begin, const char *end)
 template <typename T>
 void connection<T>::async_read()
 {
+	if (m_at_read)
+		return;
+	m_at_read = true;
 	debug("");
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 					 std::bind(&connection::handle_read, this->shared_from_this(),

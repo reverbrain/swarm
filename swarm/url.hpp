@@ -47,7 +47,7 @@ public:
 
 	const std::string &scheme() const;
 	const std::string &host() const;
-	int port() const;
+	const boost::optional<uint16_t> &port() const;
 	const std::string &path() const;
 	const url_query &query() const;
 	const std::string &raw_query() const;
