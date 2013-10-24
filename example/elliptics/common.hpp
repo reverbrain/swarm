@@ -42,7 +42,7 @@ struct on_echo : public simple_request_stream<T>, public std::enable_shared_from
 		reply.set_headers(req.headers());
 		reply.headers().set_content_length(size);
 
-		this->send_reply(reply, std::string(data, size));
+		this->send_reply(std::move(reply), std::string(data, size));
 	}
 };
 

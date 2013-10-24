@@ -37,6 +37,7 @@ namespace thevoid {
 template <typename T>
 connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
 	m_socket(service),
+	m_sending(false),
 	m_buffer(buffer_size),
 	m_content_length(0),
 	m_state(read_headers),
@@ -88,28 +89,28 @@ struct send_headers_guard
 };
 
 template <typename T>
-void connection<T>::send_headers(const swarm::http_response &rep,
+void connection<T>::send_headers(swarm::http_response &&rep,
 	const boost::asio::const_buffer &content,
-	const std::function<void (const boost::system::error_code &err)> &handler)
+	std::function<void (const boost::system::error_code &err)> &&handler)
 {
-	send_headers_guard guard = {
-		handler,
-		std::make_shared<swarm::http_response>(rep)
-	};
-
-	if (m_keep_alive) {
-		guard.reply->headers().set("Connection", "Keep-Alive");
-		debug("Added Keep-Alive");
-	}
-
-	boost::asio::async_write(m_socket, stock_replies::to_buffers(*guard.reply, content), guard);
+	buffer_info info(
+		std::move(stock_replies::to_buffers(rep, content)),
+		std::move(rep),
+		std::move(handler)
+	);
+	send_impl(std::move(info));
 }
 
 template <typename T>
 void connection<T>::send_data(const boost::asio::const_buffer &buffer,
-	const std::function<void (const boost::system::error_code &)> &handler)
+	std::function<void (const boost::system::error_code &)> &&handler)
 {
-	boost::asio::async_write(m_socket, boost::asio::buffer(buffer), boost::bind(handler, _1));
+	buffer_info info(
+		std::move(std::vector<boost::asio::const_buffer>(1, buffer)),
+		boost::none,
+		std::move(handler)
+	);
+	send_impl(std::move(info));
 }
 
 template <typename T>
@@ -133,6 +134,83 @@ void connection<T>::want_more_impl()
 		process_data(m_unprocessed_begin, m_unprocessed_end);
 	} else {
 		async_read();
+	}
+}
+
+template <typename T>
+void connection<T>::send_impl(buffer_info &&info)
+{
+	std::lock_guard<std::mutex> lock(m_outgoing_mutex);
+	if (m_sending) {
+		m_outgoing.emplace_back(std::move(info));
+	} else {
+		m_sending = true;
+		m_outgoing_info = std::move(info);
+		m_socket.async_write_some(m_outgoing_info.buffer, std::bind(
+			&connection::write_finished, this->shared_from_this(),
+			std::placeholders::_1, std::placeholders::_2));
+	}
+}
+
+template <typename T>
+void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written)
+{
+	if (err) {
+		std::list<buffer_info> outgoing;
+		{
+			std::lock_guard<std::mutex> lock(m_outgoing_mutex);
+			outgoing = std::move(m_outgoing);
+		}
+
+		if (m_outgoing_info.handler)
+			m_outgoing_info.handler(err);
+
+		for (auto it = outgoing.begin(); it != outgoing.end(); ++it) {
+			if (it->handler)
+				it->handler(err);
+		}
+
+		if (m_handler)
+			m_handler->on_close(err);
+		close_impl(err);
+		return;
+	}
+
+	auto &buffers = m_outgoing_info.buffer;
+	for (auto it = buffers.begin(); bytes_written > 0 && it != buffers.end(); ++it) {
+		auto &buffer = *it;
+		buffer = buffer + std::min(bytes_written, boost::asio::buffer_size(buffer));
+	}
+
+	if (boost::asio::buffer_size(m_outgoing_info.buffer) > 0) {
+		m_socket.async_write_some(m_outgoing_info.buffer, std::bind(
+			&connection::write_finished, this->shared_from_this(),
+			std::placeholders::_1, std::placeholders::_2));
+	} else {
+		if (m_outgoing_info.handler) {
+			m_outgoing_info.handler(err);
+		}
+
+		{
+			using std::swap;
+			buffer_info info;
+			swap(info, m_outgoing_info);
+		}
+
+		{
+			std::lock_guard<std::mutex> lock(m_outgoing_mutex);
+			if (m_outgoing.empty()) {
+				m_sending = false;
+				return;
+			}
+
+			m_outgoing_info = std::move(m_outgoing.front());
+			m_outgoing.erase(m_outgoing.begin());
+		}
+
+		m_socket.async_write_some(m_outgoing_info.buffer, std::bind(
+			&connection::write_finished, this->shared_from_this(),
+			std::placeholders::_1, std::placeholders::_2));
 	}
 }
 

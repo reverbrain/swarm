@@ -79,6 +79,7 @@ public:
 	};
 
 	http_response();
+	http_response(const boost::none_t &);
 	http_response(http_response &&other);
 	http_response(const http_response &other);
 	~http_response();

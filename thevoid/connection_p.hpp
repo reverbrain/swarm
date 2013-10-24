@@ -24,6 +24,8 @@
 #include <swarm/http_request.hpp>
 #include "request_parser_p.hpp"
 #include "stream.hpp"
+#include <list>
+#include <mutex>
 
 namespace ioremap {
 namespace thevoid {
@@ -40,7 +42,7 @@ public:
 	enum state {
 		processing_request = 0x00,
 		read_headers	   = 0x01,
-		read_data          = 0x02,
+		read_data		  = 0x02,
 		request_processed  = 0x04
 	};
 
@@ -54,16 +56,45 @@ public:
 	//! Start the first asynchronous operation for the connection.
 	void start(const std::shared_ptr<base_server> &server);
 
-	virtual void send_headers(const swarm::http_response &rep,
+	virtual void send_headers(swarm::http_response &&rep,
 		const boost::asio::const_buffer &content,
-		const std::function<void (const boost::system::error_code &err)> &handler) /*override*/;
+		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	virtual void send_data(const boost::asio::const_buffer &buffer,
-		const std::function<void (const boost::system::error_code &err)> &handler) /*override*/;
+		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	void want_more();
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
+	struct buffer_info {
+		buffer_info() : response(boost::none), bytes_sent(0)
+		{
+		}
+
+		template <typename A, typename B, typename C>
+		buffer_info(A &&a, B &&b, C &&c) :
+			buffer(std::move(a)),
+			response(std::move(b)),
+			handler(std::move(c)),
+			bytes_sent(0)
+		{
+		}
+
+		buffer_info(buffer_info &&info) = default;
+		buffer_info(const buffer_info &info) = delete;
+
+		buffer_info &operator =(buffer_info &&info) = default;
+		buffer_info &operator =(const buffer_info &info) = delete;
+
+		std::vector<boost::asio::const_buffer> buffer;
+		swarm::http_response response;
+		std::function<void (const boost::system::error_code &err)> handler;
+		size_t bytes_sent;
+	};
+
 	void want_more_impl();
+	void send_impl(buffer_info &&info);
+	void write_finished(const boost::system::error_code &err, size_t bytes_written);
+
 	void close_impl(const boost::system::error_code &err);
 	void process_next();
 
@@ -80,6 +111,12 @@ private:
 
 	//! Socket for the connection.
 	T m_socket;
+
+	//! Buffer for outgoing data
+	std::list<buffer_info> m_outgoing;
+	buffer_info m_outgoing_info;
+	std::mutex m_outgoing_mutex;
+	bool m_sending;
 
 	//! Buffer for incoming data.
 	std::vector<char> m_buffer;
@@ -100,8 +137,8 @@ private:
 	uint32_t m_state;
 	//! If current connection is keep-alive
 	bool m_keep_alive;
-    //! If async_read is already called
-    bool m_at_read;
+	//! If async_read is already called
+	bool m_at_read;
 
 	//! Uprocessed data
 	const char *m_unprocessed_begin;

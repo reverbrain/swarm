@@ -148,7 +148,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		reply.headers().set_content_type("text/plain");
 		reply.headers().set_last_modified(ts.tsec);
 
-		this->send_reply(reply, std::move(file));
+		this->send_reply(std::move(reply), std::move(file));
 	}
 
 	bool parse_range(const std::string &range, size_t data_size, size_t &begin, size_t &end)
@@ -222,7 +222,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		reply.headers().add("Content-Range", create_content_range(begin, end, data.size()));
 		reply.headers().set_content_length(data_part.size());
 
-		this->send_reply(reply, std::move(data_part));
+		this->send_reply(std::move(reply), std::move(data_part));
 	}
 
 	struct range_info
@@ -274,7 +274,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		reply.headers().add("Accept-Ranges", "bytes");
 		reply.headers().set_content_length(result.size());
 
-		this->send_reply(reply, std::move(result));
+		this->send_reply(std::move(reply), std::move(result));
 	}
 };
 
@@ -392,7 +392,7 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		reply.headers().set_content_type("text/json");
 		reply.headers().set_content_length(data.size());
 
-		this->send_reply(reply, std::move(data));
+		this->send_reply(std::move(reply), std::move(data));
 	}
 };
 
@@ -495,8 +495,6 @@ public:
 
 		using std::swap;
 		swap(m_groups, groups);
-
-		sleep(1);
 
 		this->try_next_chunk();
 	}
@@ -620,7 +618,7 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		reply.headers().set_content_type("text/json");
 		reply.headers().set_content_length(data.size());
 
-		this->send_reply(reply, std::move(data));
+		this->send_reply(std::move(reply), std::move(data));
 	}
 };
 

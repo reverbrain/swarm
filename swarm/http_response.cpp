@@ -27,6 +27,10 @@ http_response::http_response() : m_data(new network_reply_data)
 {
 }
 
+http_response::http_response(const boost::none_t &)
+{
+}
+
 http_response::http_response(http_response &&other)
 {
 	using std::swap;

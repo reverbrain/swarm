@@ -131,10 +131,13 @@ swarm::http_response stock_reply(swarm::http_response::status_type status)
 
 std::vector<boost::asio::const_buffer> to_buffers(const swarm::http_response &reply, const boost::asio::const_buffer &content)
 {
+	const auto &headers = reply.headers().all();
+
 	std::vector<boost::asio::const_buffer> buffers;
+	buffers.reserve(1 + headers.size() * 4 + 2);
+
 	buffers.push_back(status_strings::to_buffer(reply.code()));
 
-	const auto &headers = reply.headers().all();
 	for (std::size_t i = 0; i < headers.size(); ++i) {
 		auto &header = headers[i];
 		buffers.push_back(boost::asio::buffer(header.first));
@@ -142,9 +145,46 @@ std::vector<boost::asio::const_buffer> to_buffers(const swarm::http_response &re
 		buffers.push_back(boost::asio::buffer(header.second));
 		buffers.push_back(boost::asio::buffer(misc_strings::crlf));
 	}
+
 	buffers.push_back(boost::asio::buffer(misc_strings::crlf));
 	buffers.push_back(content);
-	return buffers;
+
+	return std::move(buffers);
+}
+
+static inline void push_back(std::vector<char> &result, const boost::asio::const_buffer &buffer)
+{
+	const auto data = boost::asio::buffer_cast<const char *>(buffer);
+	const auto size = boost::asio::buffer_size(buffer);
+	result.insert(result.end(), data, data + size);
+}
+
+static inline void push_back(std::vector<char> &result, const std::string &buffer)
+{
+	result.insert(result.end(), buffer.begin(), buffer.end());
+}
+
+template <size_t N>
+static inline void push_back(std::vector<char> &result, const char (&buffer)[N])
+{
+	result.insert(result.end(), buffer, buffer + N);
+}
+
+void to_buffers(const swarm::http_response &reply, std::vector<char> &buffer)
+{
+	buffer.reserve(1024);
+
+	push_back(buffer, status_strings::to_buffer(reply.code()));
+
+	const auto &headers = reply.headers().all();
+	for (std::size_t i = 0; i < headers.size(); ++i) {
+		auto &header = headers[i];
+		push_back(buffer, header.first);
+		push_back(buffer, misc_strings::name_value_separator);
+		push_back(buffer, header.second);
+		push_back(buffer, misc_strings::crlf);
+	}
+	push_back(buffer, misc_strings::crlf);
 }
 
 } // namespace stock_replies

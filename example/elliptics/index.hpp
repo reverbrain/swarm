@@ -240,19 +240,19 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 	}
 
 	virtual void send_indexes_reply(const ioremap::elliptics::sync_read_result &read_result,
-			const ioremap::elliptics::sync_find_indexes_result &find_result) {
+		const ioremap::elliptics::sync_find_indexes_result &find_result) {
 		JsonValue result_object;
 
 		find_serializer::pack_indexes_json(result_object, read_result, find_serializer::basic_convert, find_result, find_serializer::basic_convert, m_map);
-        
-        auto data = result_object.ToString();
-        
+
+		auto data = result_object.ToString();
+
 		swarm::http_response reply;
 		reply.set_code(swarm::http_response::ok);
 		reply.headers().set_content_type("text/json");
 		reply.headers().set_content_length(data.size());
 
-        this->send_reply(reply, std::move(data));
+		this->send_reply(std::move(reply), std::move(data));
 	}
 
 	ioremap::elliptics::id_to_name_map_t m_map;
