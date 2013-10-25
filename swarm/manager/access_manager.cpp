@@ -155,9 +155,13 @@ public:
 
 		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
-		//	    curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
+//		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
 		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
 		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
+		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETFUNCTION, network_manager_private::open_callback);
+		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETDATA, &loop);
+		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETFUNCTION, network_manager_private::close_callback);
+		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETDATA, &loop);
 		curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
 		curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
 		curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
@@ -252,6 +256,19 @@ public:
 			curl_multi_remove_handle(multi, easy);
 			delete info;
 		} while (easy);
+	}
+
+	static int open_callback(event_loop *loop, curlsocktype purpose, struct curl_sockaddr *address)
+	{
+		if (purpose != CURLSOCKTYPE_IPCXN) {
+			return CURL_SOCKET_BAD;
+		}
+		return loop->open_socket(address->family, address->socktype, address->protocol);
+	}
+
+	static int close_callback(event_loop *loop, curl_socket_t item)
+	{
+		return loop->close_socket(item);
 	}
 
 	static int socket_callback(CURL *e, curl_socket_t s, int what, access_manager *manager, void *data)

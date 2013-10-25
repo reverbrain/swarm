@@ -27,6 +27,7 @@ class event_loop
 {
 public:
 	enum poll_option {
+		poll_none       = 0x00,
 		poll_in         = 0x01,
 		poll_out        = 0x02,
 		poll_all        = poll_in | poll_out,
@@ -42,6 +43,8 @@ public:
 	void set_logger(const swarm::logger &logger);
 	swarm::logger logger() const;
 
+	virtual int open_socket(int domain, int type, int protocol);
+	virtual int close_socket(int fd);
 	virtual int socket_request(int socket, poll_option what, void *data) = 0;
 	virtual int timer_request(long timeout_ms) = 0;
 	virtual void post(const std::function<void ()> &func) = 0;

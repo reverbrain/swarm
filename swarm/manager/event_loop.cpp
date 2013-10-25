@@ -1,4 +1,7 @@
 #include "event_loop.hpp"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 namespace ioremap {
 namespace swarm {
@@ -34,6 +37,16 @@ void event_loop::set_logger(const swarm::logger &logger)
 logger event_loop::logger() const
 {
 	return m_logger;
+}
+
+int event_loop::open_socket(int domain, int type, int protocol)
+{
+	return ::socket(domain, type, protocol);
+}
+
+int event_loop::close_socket(int fd)
+{
+	return ::close(fd);
 }
 
 }} // namespace ioremap::swarm

@@ -19,6 +19,7 @@
 #include <list>
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 struct sig_handler
 {
@@ -64,15 +65,16 @@ int main(int argc, char **argv)
 	for (size_t i = 0; i < sizeof(signal_ids) / sizeof(signal_ids[0]); ++i) {
 		sigs.emplace_back(loop);
 		ev::sig &sig_watcher = sigs.back();
-	sig_watcher.set(signal_ids[i]);
+		sig_watcher.set(signal_ids[i]);
 		sig_watcher.set(&shandler);
 		sig_watcher.start();
 	}
 
 	boost::asio::io_service service;
+	ioremap::swarm::ev_event_loop ev_loop(loop);
 	ioremap::swarm::boost_event_loop boost_loop(service);
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::LOG_DEBUG);
+	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::LOG_ERROR);
 
 	ioremap::swarm::access_manager manager(boost_loop, logger);
 
@@ -91,9 +93,36 @@ int main(int argc, char **argv)
 
 	auto begin_time = clock::now();
 
-	request_handler_functor request_handler = { loop };
+//	request_handler_functor request_handler = { loop };
 
-	manager.get(request_handler, request);
+//	manager.get(request_handler, request);
+
+	std::thread thread([&manager] () {
+		ioremap::swarm::http_request request;
+		request.set_url("http://localhost:8080/ping");
+		request.headers().set_keep_alive();
+
+		for (size_t j = 0; j < 20; ++j) {
+			unsigned long long total_mu = 0;
+
+			for (size_t i = 0; i < 2000/*00000*/; ++i) {
+				auto begin = clock::now();
+				manager.get([&total_mu, begin] (const ioremap::swarm::http_response &reply) {
+					auto end = clock::now();
+					auto mu = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+					total_mu += mu.count();
+//					std::cout << "reply: " << reply.code() << ", " << mu.count() << " ms" << std::endl;
+					(void) reply;
+				}, request);
+			}
+
+			sleep(1);
+
+			std::cout << "total: " << total_mu * 1.0 / (1000 * 1000) << " ms" << std::endl;
+		}
+
+		std::cout << "Sent all" << std::endl;
+	});
 
 	boost::asio::io_service::work work(service);
 	service.run();

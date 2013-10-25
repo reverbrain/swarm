@@ -93,6 +93,10 @@ void connection<T>::send_headers(swarm::http_response &&rep,
 	const boost::asio::const_buffer &content,
 	std::function<void (const boost::system::error_code &err)> &&handler)
 {
+	if (m_keep_alive) {
+                rep.headers().set_keep_alive();
+                debug("Added Keep-Alive");
+        }
 	buffer_info info(
 		std::move(stock_replies::to_buffers(rep, content)),
 		std::move(rep),
