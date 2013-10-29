@@ -6,16 +6,12 @@ namespace swarm {
 class network_request_data
 {
 public:
-	network_request_data()
-		: follow_location(false), timeout(30000),
-		  major_version(1), minor_version(1)
+	network_request_data() : major_version(1), minor_version(1)
 	{
 	}
 	network_request_data(const network_request_data &o) = default;
 
 	swarm::url url;
-	bool follow_location;
-	long timeout;
 	http_headers headers;
 	int major_version;
 	int minor_version;
@@ -23,6 +19,10 @@ public:
 };
 
 http_request::http_request() : m_data(new network_request_data)
+{
+}
+
+http_request::http_request(const boost::none_t &)
 {
 }
 
@@ -70,26 +70,6 @@ void http_request::set_url(const swarm::url &url)
 void http_request::set_url(const std::string &url)
 {
 	m_data->url = std::move(swarm::url(url));
-}
-
-bool http_request::follow_location() const
-{
-	return m_data->follow_location;
-}
-
-void http_request::set_follow_location(bool follow_location)
-{
-	m_data->follow_location = follow_location;
-}
-
-long http_request::timeout() const
-{
-	return m_data->timeout;
-}
-
-void http_request::set_timeout(long timeout)
-{
-	m_data->timeout = timeout;
 }
 
 http_headers &http_request::headers()

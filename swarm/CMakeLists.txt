@@ -43,4 +43,4 @@ install(TARGETS swarm
 # Disable for current
 # add_subdirectory(xml)
 
-add_subdirectory(manager)
+add_subdirectory(urlfetcher)

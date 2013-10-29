@@ -17,6 +17,7 @@ int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 
 	if (what == poll_remove) {
 		logger().log(LOG_DEBUG, "socket_callback, destroying io: %p, socket: %d, what: %d", io, socket, what);
+		listener()->set_socket_data(socket, NULL);
 		delete io;
 		return 0;
 	}

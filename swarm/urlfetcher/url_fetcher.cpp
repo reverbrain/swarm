@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  */
 
-#include "access_manager.hpp"
+#include "url_fetcher.hpp"
 
 #include <string.h>
 #include <curl/curl.h>
@@ -31,6 +31,8 @@
 
 namespace ioremap {
 namespace swarm {
+
+typedef std::chrono::high_resolution_clock clock;
 
 enum http_command {
 	GET,
@@ -56,10 +58,11 @@ public:
 
 	CURL *easy;
 	swarm::logger logger;
-	http_response reply;
-	std::function<void (const http_response &reply)> handler;
+	url_fetcher::response reply;
+	url_fetcher::request request;
+	std::shared_ptr<base_stream> stream;
 	std::string body;
-	std::stringstream data;
+
 	//    char error[CURL_ERROR_SIZE];
 };
 
@@ -113,33 +116,63 @@ public:
 	{
 		typedef std::shared_ptr<request_info> ptr;
 
-		http_request request;
+		request_info() : request(boost::none), begin(clock::now())
+		{
+		}
+
+		url_fetcher::request request;
 		http_command command;
 		std::string body;
-		std::function<void (const http_response &reply)> handler;
+		std::shared_ptr<base_stream> stream;
+		std::chrono::time_point<clock> begin;
 	};
+
+	struct multi_error_category : public boost::system::error_category
+	{
+	public:
+		const char *name() const
+		{
+			return "curl_multi_code";
+		}
+
+		std::string message(int ev) const
+		{
+			if (ev == 50) {
+				return "failed to create easy handle";
+			}
+
+			return curl_multi_strerror(static_cast<CURLMcode>(ev));
+		}
+	};
+
+	static const multi_error_category &multi_category()
+	{
+		static multi_error_category instance;
+		return instance;
+	}
 
 	void process_info(request_info::ptr request)
 	{
+		auto tmp = clock::now();
+
 		network_connection_info::ptr info(new network_connection_info);
 		info->easy = curl_easy_init();
-		info->reply.set_request(request->request);
-		info->reply.set_url(request->request.url());
+		info->request = std::move(request->request);
+		info->reply.set_url(info->request.url());
 		info->reply.set_code(200);
-		info->handler = request->handler;
-		info->body = request->body;
+		info->stream = request->stream;
+		info->body = std::move(request->body);
 		info->logger = logger;
 		if (!info->easy) {
-			info->reply.set_code(650);
-			request->handler(info->reply);
+			info->stream->on_close(boost::system::error_code(50, multi_category()));
 			return;
 		}
 
 		struct curl_slist *headers_list = NULL;
 		const auto &headers = request->request.headers().all();
+		std::string line;
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
-			std::string line;
-			line.reserve(it->first.size() + 2 + it->second.size());
+			line.clear();
 			line += it->first;
 			line += ": ";
 			line += it->second;
@@ -156,8 +189,8 @@ public:
 		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
 //		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
-		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
-		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
+		curl_easy_setopt(info->easy, CURLOPT_URL, info->request.url().to_string().c_str());
+		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->request.timeout());
 		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETFUNCTION, network_manager_private::open_callback);
 		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETDATA, &loop);
 		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETFUNCTION, network_manager_private::close_callback);
@@ -169,30 +202,34 @@ public:
 		//            curl_easy_setopt(info->easy, CURLOPT_ERRORBUFFER, info->error);
 
 		/*
-	     * Grab raw data and free it later in curl_easy_cleanup()
-	     */
+		 * Grab raw data and free it later in curl_easy_cleanup()
+		 */
 		curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
 		curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
 
-		if (request->request.follow_location())
+		if (info->request.follow_location())
 			curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
 
 		CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
+
+		auto end = clock::now();
+//		std::cout << "process_info: " << std::chrono::duration_cast<std::chrono::microseconds>(tmp - request->begin).count() / 1000. << " ms"
+//			  << ", add_handle: " << std::chrono::duration_cast<std::chrono::microseconds>(end - tmp).count() / 1000. << " ms"
+//			  << std::endl;
 		if (err == CURLM_OK) {
 			++active_connections;
 			/*
-		 * We saved info's content in info->easy and stored it in multi handler,
-		 * which will free it, so we just forget about info's content here.
-		 * Info's destructor (~network_connection_info()) will not be called.
-		 */
+			 * We saved info's content in info->easy and stored it in multi handler,
+			 * which will free it, so we just forget about info's content here.
+			 * Info's destructor (~network_connection_info()) will not be called.
+			 */
 			info.release();
 		} else {
-			info->reply.set_code(600 + err);
 			/*
-		 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
-		 * which is ok, since easy handler was not added into multi handler in this case.
-		 */
-			info->handler(info->reply);
+			 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
+			 * which is ok, since easy handler was not added into multi handler in this case.
+			 */
+			info->stream->on_close(boost::system::error_code(err, multi_category()));
 		}
 	}
 
@@ -207,11 +244,11 @@ public:
 		CURLcode res;
 
 		/*
-	 * I am still uncertain whether it is safe to remove an easy handle
-	 * from inside the curl_multi_info_read loop, so here I will search
-	 * for completed transfers in the inner "while" loop, and then remove
-	 * them in the outer "do-while" loop...
-	 */
+		 * I am still uncertain whether it is safe to remove an easy handle
+		 * from inside the curl_multi_info_read loop, so here I will search
+		 * for completed transfers in the inner "while" loop, and then remove
+		 * them in the outer "do-while" loop...
+		 */
 
 		do {
 			easy = NULL;
@@ -233,19 +270,24 @@ public:
 			try {
 				--active_connections;
 				if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-					info->reply.set_code(0);
-					info->reply.set_error(-ETIMEDOUT);
+					info->stream->on_close(boost::system::error_code(-ETIMEDOUT, boost::system::generic_category()));
 				} else {
 					long code = 200;
-					long err = 0;
 					curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
+					long err = 0;
 					curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
-					info->reply.set_code(code);
-					info->reply.set_error(-err);
+
+					if (err) {
+						info->stream->on_close(boost::system::error_code(err, boost::system::generic_category()));
+					} else {
+						info->stream->on_close(boost::system::error_code());
+					}
+
+//					info->reply.set_code(code);
+//					info->reply.set_error(-err);
 				}
-				info->reply.set_url(effective_url);
-				info->reply.set_data(info->data.str());
-				info->handler(info->reply);
+//				info->reply.set_url(effective_url);
+//				info->stream->on_close(boost::system::error_code());
 			} catch (...) {
 				curl_multi_remove_handle(multi, easy);
 				delete info;
@@ -271,7 +313,7 @@ public:
 		return loop->close_socket(item);
 	}
 
-	static int socket_callback(CURL *e, curl_socket_t s, int what, access_manager *manager, void *data)
+	static int socket_callback(CURL *e, curl_socket_t s, int what, url_fetcher *manager, void *data)
 	{
 		(void) e;
 
@@ -298,7 +340,7 @@ public:
 		return manager->p->loop.socket_request(s, option, data);
 	}
 
-	static int timer_callback(CURLM *multi, long timeout_ms, access_manager *manager)
+	static int timer_callback(CURLM *multi, long timeout_ms, url_fetcher *manager)
 	{
 		(void) multi;
 
@@ -309,7 +351,7 @@ public:
 	{
 		info->logger.log(LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
 		const size_t real_size = size * nmemb;
-		info->data.write(data, real_size);
+		info->stream->on_data(boost::asio::buffer(data, real_size));
 		return real_size;
 	}
 
@@ -325,6 +367,19 @@ public:
 
 	static size_t header_callback(char *data, size_t size, size_t nmemb, network_connection_info *info) {
 		const size_t real_size = size * nmemb;
+
+		// Empty header line, so it's the end
+		if (real_size == 2) {
+			long code;
+			char *effective_url = NULL;
+			curl_easy_getinfo(info->easy, CURLINFO_RESPONSE_CODE, &code);
+			curl_easy_getinfo(info->easy, CURLINFO_EFFECTIVE_URL, &effective_url);
+
+			info->reply.set_code(code);
+			info->reply.set_url(effective_url);
+			info->stream->on_headers(std::move(info->reply));
+			return real_size;
+		}
 
 		char *lf;
 		char *end = data + real_size;
@@ -364,7 +419,7 @@ public:
 	CURLM *multi;
 };
 
-access_manager::access_manager(event_loop &loop, const swarm::logger &logger)
+url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 	: p(new network_manager_private(loop))
 {
 	p->logger = logger;
@@ -377,47 +432,174 @@ access_manager::access_manager(event_loop &loop, const swarm::logger &logger)
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
 }
 
-access_manager::~access_manager()
+url_fetcher::~url_fetcher()
 {
 	p->logger.log(LOG_INFO, "Destroying network_manager: %p", this);
 	delete p;
 }
 
-void access_manager::set_limit(int active_connections)
+void url_fetcher::set_limit(int active_connections)
 {
 	p->active_connections_limit = active_connections;
 }
 
-void access_manager::set_logger(const swarm::logger &log)
+void url_fetcher::set_logger(const swarm::logger &log)
 {
 	p->loop.set_logger(log);
 	p->logger = log;
 }
 
-swarm::logger access_manager::logger() const
+swarm::logger url_fetcher::logger() const
 {
 	return p->logger;
 }
 
-void access_manager::get(const std::function<void (const http_response &reply)> &handler, const http_request &request)
+void url_fetcher::get(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request)
 {
 	auto info = std::make_shared<network_manager_private::request_info>();
-	info->handler = handler;
-	info->request = request;
+	info->stream = stream;
+	info->request = std::move(request);
 	info->command = GET;
 
 	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
 }
 
-void access_manager::post(const std::function<void (const http_response &)> &handler, const http_request &request, const std::string &body)
+void url_fetcher::post(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body)
 {
 	auto info = std::make_shared<network_manager_private::request_info>();
-	info->handler = handler;
-	info->request = request;
+	info->stream = stream;
+	info->request = std::move(request);
 	info->command = POST;
-	info->body = body;
+	info->body = std::move(body);
 
 	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+}
+
+class url_fetcher_request_data
+{
+public:
+	url_fetcher_request_data() : follow_location(false), timeout(30000)
+	{
+	}
+
+	bool follow_location;
+	long timeout;
+};
+
+class url_fetcher_response_data
+{
+public:
+	swarm::url url;
+};
+
+url_fetcher::request::request() : m_data(new url_fetcher_request_data)
+{
+}
+
+url_fetcher::request::request(const boost::none_t &none) : http_request(none)
+{
+
+}
+
+url_fetcher::request::request(url_fetcher::request &&other) :
+	http_request(other), m_data(std::move(other.m_data))
+{
+}
+
+url_fetcher::request::request(const url_fetcher::request &other) :
+	http_request(other), m_data(new url_fetcher_request_data(*other.m_data))
+{
+}
+
+url_fetcher::request::~request()
+{
+}
+
+url_fetcher::request &url_fetcher::request::operator =(url_fetcher::request &&other)
+{
+	m_data = std::move(other.m_data);
+	http_request::operator =(other);
+	return *this;
+}
+
+url_fetcher::request &url_fetcher::request::operator =(const url_fetcher::request &other)
+{
+	using std::swap;
+	url_fetcher::request tmp(other);
+	swap(m_data, tmp.m_data);
+	return *this;
+}
+
+bool url_fetcher::request::follow_location() const
+{
+	return m_data->follow_location;
+}
+
+void url_fetcher::request::set_follow_location(bool follow_location)
+{
+	m_data->follow_location = follow_location;
+}
+
+long url_fetcher::request::timeout() const
+{
+	return m_data->timeout;
+}
+
+void url_fetcher::request::set_timeout(long timeout)
+{
+	m_data->timeout = timeout;
+}
+
+url_fetcher::response::response() : m_data(new url_fetcher_response_data)
+{
+}
+
+url_fetcher::response::response(const boost::none_t &none) : http_response(none)
+{
+}
+
+url_fetcher::response::response(url_fetcher::response &&other) :
+	http_response(other), m_data(std::move(other.m_data))
+{
+}
+
+url_fetcher::response::response(const url_fetcher::response &other) :
+	http_response(other), m_data(new url_fetcher_response_data(*other.m_data))
+{
+}
+
+url_fetcher::response::~response()
+{
+}
+
+url_fetcher::response &url_fetcher::response::operator =(url_fetcher::response &&other)
+{
+	m_data = std::move(other.m_data);
+	http_response::operator =(other);
+	return *this;
+}
+
+url_fetcher::response &url_fetcher::response::operator =(const url_fetcher::response &other)
+{
+	using std::swap;
+	url_fetcher::response tmp(other);
+	swap(m_data, tmp.m_data);
+	return *this;
+}
+
+const url &url_fetcher::response::url() const
+{
+	return m_data->url;
+}
+
+void url_fetcher::response::set_url(const swarm::url &url)
+{
+	m_data->url = url;
+}
+
+void url_fetcher::response::set_url(const std::string &url)
+{
+	m_data->url = std::move(swarm::url(url));
 }
 
 } // namespace service

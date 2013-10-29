@@ -130,28 +130,28 @@ public:
 		return find_header(name, N - 1) != data.end();
 	}
 
-	std::string get_header(const char *name, size_t name_size) const
+	boost::optional<std::string> get_header(const char *name, size_t name_size) const
 	{
 		auto it = find_header(name, name_size);
 
 		if (it != data.end())
 			return it->second;
 
-		return std::string();
+		return boost::none;
 	}
 
-	std::string get_header(const std::string &name) const
+	boost::optional<std::string> get_header(const std::string &name) const
 	{
 		return get_header(name.c_str(), name.size());
 	}
 
-	std::string get_header(const char *name) const
+	boost::optional<std::string> get_header(const char *name) const
 	{
 		return get_header(name, strlen(name));
 	}
 
 	template <size_t N>
-	std::string get_header(const char (&name)[N]) const
+	boost::optional<std::string> get_header(const char (&name)[N]) const
 	{
 		return get_header(name, N - 1);
 	}
@@ -349,9 +349,11 @@ void http_headers::set_content_length(size_t length)
 
 boost::optional<size_t> http_headers::content_length() const
 {
-	const std::string header = p->get_header(CONTENT_LENGTH_HEADER);
+	if (auto header = p->get_header(CONTENT_LENGTH_HEADER)) {
+		return atoll(header->c_str());
+	}
 
-	return header.empty() ? 0ll : atoll(header.c_str());
+	return boost::none;
 }
 
 void http_headers::set_content_type(const std::string &type)

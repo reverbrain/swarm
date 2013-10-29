@@ -51,12 +51,15 @@ int boost_event_loop::open_socket(int domain, int type, int protocol)
 		return -1;
 	}
 
+//	std::cout << "open_socket, fd: " << fd << std::endl;
+
 	m_sockets.insert(std::make_pair(fd, boost_socket_info::create(m_service, fd)));
 	return fd;
 }
 
 int boost_event_loop::close_socket(int fd)
 {
+//	std::cout << "close_socket, fd: " << fd << std::endl;
 	if (m_sockets.erase(fd) == 0) {
 		return event_loop::close_socket(fd);
 	}
@@ -66,6 +69,7 @@ int boost_event_loop::close_socket(int fd)
 
 int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 {
+//	std::cout << "socket_request, fd: " << fd << ", what: " << what << std::endl;
 	boost_socket_info::ptr info;
 	auto it = m_sockets.find(fd);
 
@@ -74,13 +78,18 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 		if (what == poll_remove) {
 			info->what = poll_none;
-			info->socket.cancel();
+//			info->socket.cancel();
 		}
 	} else {
 		if (what == poll_remove) {
-			logger().log(LOG_DEBUG, "remove socket: %p, fd: %d",
-				(*reinterpret_cast<boost_socket_info::ptr *>(data)).get(), fd);
-			delete reinterpret_cast<boost_socket_info::ptr *>(data);
+			if (data) {
+				listener()->set_socket_data(fd, NULL);
+				logger().log(LOG_DEBUG, "remove socket: %p, fd: %d",
+					(*reinterpret_cast<boost_socket_info::ptr *>(data)).get(), fd);
+				delete reinterpret_cast<boost_socket_info::ptr *>(data);
+			} else {
+				// This is our own socket. It's already destroyed
+			}
 			return 0;
 		}
 

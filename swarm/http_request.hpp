@@ -13,6 +13,7 @@ class http_request
 {
 public:
 	http_request();
+	http_request(const boost::none_t &);
 	http_request(http_request &&other);
 	http_request(const http_request &other);
 	~http_request();
@@ -26,14 +27,6 @@ public:
 	void set_url(const std::string &url);
 
 	bool is_keep_alive() const;
-
-	// Follow Location from 302 HTTP replies
-	bool follow_location() const;
-	void set_follow_location(bool follow_location);
-
-	// Timeout in ms
-	long timeout() const;
-	void set_timeout(long timeout);
 
 	// HTTP headers
 	http_headers &headers();

@@ -9,8 +9,6 @@ namespace swarm {
 
 class network_reply_data;
 
-class http_request;
-
 class http_response
 {
 public:
@@ -87,10 +85,6 @@ public:
 	http_response &operator =(http_response &&other);
 	http_response &operator =(const http_response &other);
 
-	// Original request
-	const http_request &request() const;
-	void set_request(const http_request &request);
-
 	// HTTP code
 	int code() const;
 	void set_code(int code);
@@ -108,15 +102,6 @@ public:
 	const http_headers &headers() const;
 	void set_headers(const http_headers &headers);
 	void set_headers(http_headers &&headers);
-
-	// Final URL from HTTP reply
-	const swarm::url &url() const;
-	void set_url(const swarm::url &url);
-	void set_url(const std::string &url);
-
-	// Reply data
-	const std::string &data() const;
-	void set_data(const std::string &data);
 
 private:
 	std::unique_ptr<network_reply_data> m_data;
