@@ -26,6 +26,7 @@ public:
 	void set_url(const swarm::url &url);
 	void set_url(const std::string &url);
 
+	// Checks by Connection header and HTTP version if connection is Keep-Alive
 	bool is_keep_alive() const;
 
 	// HTTP headers
