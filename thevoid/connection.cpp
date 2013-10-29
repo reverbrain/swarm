@@ -97,6 +97,7 @@ void connection<T>::send_headers(swarm::http_response &&rep,
                 rep.headers().set_keep_alive();
                 debug("Added Keep-Alive");
         }
+
 	buffer_info info(
 		std::move(stock_replies::to_buffers(rep, content)),
 		std::move(rep),
@@ -128,7 +129,7 @@ template <typename T>
 void connection<T>::close(const boost::system::error_code &err)
 {
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
-	m_socket.get_io_service().post(std::bind(&connection::close_impl, this->shared_from_this(), err));
+	m_socket.get_io_service().dispatch(std::bind(&connection::close_impl, this->shared_from_this(), err));
 }
 
 template <typename T>
@@ -145,14 +146,12 @@ template <typename T>
 void connection<T>::send_impl(buffer_info &&info)
 {
 	std::lock_guard<std::mutex> lock(m_outgoing_mutex);
-	if (m_sending) {
-		m_outgoing.emplace_back(std::move(info));
-	} else {
+
+	m_outgoing.emplace_back(std::move(info));
+
+	if (!m_sending) {
 		m_sending = true;
-		m_outgoing_info = std::move(info);
-		m_socket.async_write_some(m_outgoing_info.buffer, std::bind(
-			&connection::write_finished, this->shared_from_this(),
-			std::placeholders::_1, std::placeholders::_2));
+		send_nolock();
 	}
 }
 
@@ -160,14 +159,11 @@ template <typename T>
 void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written)
 {
 	if (err) {
-		std::list<buffer_info> outgoing;
+		decltype(m_outgoing) outgoing;
 		{
 			std::lock_guard<std::mutex> lock(m_outgoing_mutex);
 			outgoing = std::move(m_outgoing);
 		}
-
-		if (m_outgoing_info.handler)
-			m_outgoing_info.handler(err);
 
 		for (auto it = outgoing.begin(); it != outgoing.end(); ++it) {
 			if (it->handler)
@@ -180,42 +176,99 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 		return;
 	}
 
-	auto &buffers = m_outgoing_info.buffer;
-	for (auto it = buffers.begin(); bytes_written > 0 && it != buffers.end(); ++it) {
-		auto &buffer = *it;
-		buffer = buffer + std::min(bytes_written, boost::asio::buffer_size(buffer));
-	}
-
-	if (boost::asio::buffer_size(m_outgoing_info.buffer) > 0) {
-		m_socket.async_write_some(m_outgoing_info.buffer, std::bind(
-			&connection::write_finished, this->shared_from_this(),
-			std::placeholders::_1, std::placeholders::_2));
-	} else {
-		if (m_outgoing_info.handler) {
-			m_outgoing_info.handler(err);
+	while (bytes_written) {
+		std::unique_lock<std::mutex> lock(m_outgoing_mutex);
+		if (m_outgoing.empty()) {
+			m_server->logger().log(swarm::LOG_ERROR, "connection::write_finished: extra written bytes: %zu", bytes_written);
+			break;
 		}
 
-		{
-			using std::swap;
-			buffer_info info;
-			swap(info, m_outgoing_info);
+		auto &buffers = m_outgoing.front().buffer;
+
+		auto it = buffers.begin();
+
+		size_t buffer_size = 0;
+		for (auto jt = buffers.begin(); jt != buffers.end(); ++jt) {
+			buffer_size += boost::asio::buffer_size(*jt);
 		}
 
-		{
-			std::lock_guard<std::mutex> lock(m_outgoing_mutex);
-			if (m_outgoing.empty()) {
-				m_sending = false;
-				return;
+		for (; it != buffers.end(); ++it) {
+			const size_t size = boost::asio::buffer_size(*it);
+			if (size <= bytes_written) {
+				bytes_written -= size;
+			} else {
+				*it = bytes_written + *it;
+				bytes_written = 0;
+				break;
 			}
-
-			m_outgoing_info = std::move(m_outgoing.front());
-			m_outgoing.erase(m_outgoing.begin());
 		}
 
-		m_socket.async_write_some(m_outgoing_info.buffer, std::bind(
-			&connection::write_finished, this->shared_from_this(),
-			std::placeholders::_1, std::placeholders::_2));
+		if (it == buffers.end()) {
+			const auto handler = std::move(m_outgoing.front().handler);
+			m_outgoing.pop_front();
+			if (handler) {
+				lock.unlock();
+				handler(err);
+				lock.lock();
+			}
+		} else {
+			buffers.erase(buffers.begin(), it);
+		}
 	}
+
+	std::unique_lock<std::mutex> lock(m_outgoing_mutex);
+	if (m_outgoing.empty()) {
+		m_sending = false;
+		return;
+	}
+
+	send_nolock();
+}
+
+class buffers_array
+{
+private:
+	enum {
+		buffers_count = 32
+	};
+public:
+	typedef boost::asio::const_buffer value_type;
+	typedef const value_type * const_iterator;
+
+	template <typename Iterator>
+	buffers_array(Iterator begin, Iterator end) :
+		m_size(0)
+	{
+		for (auto it = begin; it != end && m_size < buffers_count; ++it) {
+			for (auto jt = it->buffer.begin(); jt != it->buffer.end() && m_size < buffers_count; ++jt) {
+				m_data[m_size++] = *jt;
+			}
+		}
+	}
+
+	const_iterator begin() const
+	{
+		return m_data;
+	}
+
+	const_iterator end() const
+	{
+		return &m_data[m_size];
+	}
+
+private:
+	value_type m_data[buffers_count];
+	size_t m_size;
+};
+
+template <typename T>
+void connection<T>::send_nolock()
+{
+	buffers_array data(m_outgoing.begin(), m_outgoing.end());
+
+	m_socket.async_write_some(data, std::bind(
+		&connection::write_finished, this->shared_from_this(),
+		std::placeholders::_1, std::placeholders::_2));
 }
 
 template <typename T>
@@ -374,6 +427,8 @@ void connection<T>::async_read()
 	if (m_at_read)
 		return;
 	m_at_read = true;
+	m_unprocessed_begin = NULL;
+	m_unprocessed_end = NULL;
 	debug("");
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 					 std::bind(&connection::handle_read, this->shared_from_this(),

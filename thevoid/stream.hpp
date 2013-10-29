@@ -22,28 +22,6 @@
 #include <swarm/logger.hpp>
 #include <cstdarg>
 
-namespace ioremap { namespace thevoid { namespace detail {
-struct network_reply_wrapper
-{
-	const swarm::http_response reply;
-
-	network_reply_wrapper(const swarm::http_response &reply) : reply(reply)
-	{
-	}
-};
-}
-
-} } // namespace ioremap::thevoid::detail
-
-namespace boost { namespace asio {
-
-inline const_buffer buffer(const ioremap::thevoid::detail::network_reply_wrapper &wrapper)
-{
-	return buffer(wrapper.reply.data());
-}
-
-} } // namespace boost::asio
-
 namespace ioremap {
 namespace thevoid {
 
@@ -126,14 +104,15 @@ protected:
 
 	void send_reply(swarm::http_response &&rep)
 	{
-		send_reply(std::move(rep), detail::network_reply_wrapper(rep));
+		get_reply()->send_headers(std::move(rep), boost::asio::const_buffer(), make_close_handler());
 	}
 
 	template <typename T>
 	void send_reply(swarm::http_response &&rep, T &&data)
 	{
-		auto wrapper = make_wrapper(std::move(data), make_close_handler());
-		get_reply()->send_headers(std::move(rep), boost::asio::buffer(wrapper.data()), wrapper);
+		auto wrapper = make_wrapper(std::forward<T>(data), make_close_handler());
+		auto buffer = boost::asio::buffer(wrapper.data());
+		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
 	}
 
 	void send_reply(int code)
@@ -144,7 +123,7 @@ protected:
 	void send_headers(swarm::http_response &&rep,
 			  std::function<void (const boost::system::error_code &err)> &&handler)
 	{
-		get_reply()->send_headers(std::move(rep), detail::network_reply_wrapper(rep), std::move(handler));
+		get_reply()->send_headers(std::move(rep), boost::asio::const_buffer(), std::move(handler));
 	}
 
 	template <typename T>
@@ -152,8 +131,9 @@ protected:
 			  T &&data,
 			  std::function<void (const boost::system::error_code &err)> &&handler)
 	{
-		auto wrapper = make_wrapper(std::move(data), std::move(handler));
-		get_reply()->send_headers(std::move(rep), boost::asio::buffer(wrapper.data()), std::move(wrapper));
+		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
+		auto buffer = boost::asio::buffer(wrapper.data());
+		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
 	}
 
 	void send_data(const boost::asio::const_buffer &data,
@@ -166,8 +146,9 @@ protected:
 	void send_data(T &&data,
 		       std::function<void (const boost::system::error_code &err)> &&handler)
 	{
-		auto wrapper = make_wrapper(std::move(data), std::move(handler));
-		get_reply()->send_data(boost::asio::buffer(wrapper.data()), std::move(wrapper));
+		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
+		auto buffer = boost::asio::buffer(wrapper.data());
+		get_reply()->send_data(buffer, std::move(wrapper));
 	}
 
 private:
@@ -178,13 +159,14 @@ private:
 		std::function<void (const boost::system::error_code &err)> m_handler;
 
 		functor_wrapper(T &&data, std::function<void (const boost::system::error_code &err)> &&handler)
-			: m_data(std::make_shared<T>(std::move(data))), m_handler(std::move(handler))
+			: m_data(std::make_shared<T>(std::forward<T>(data))), m_handler(std::move(handler))
 		{
 		}
 
 		void operator() (const boost::system::error_code &err) const
 		{
-			m_handler(err);
+			if (m_handler)
+				m_handler(err);
 		}
 
 		T &data()
@@ -194,9 +176,9 @@ private:
 	};
 
 	template <typename T>
-	functor_wrapper<T> make_wrapper(T &&data, std::function<void (const boost::system::error_code &err)> &&handler)
+	functor_wrapper<typename std::remove_reference<T>::type> make_wrapper(T &&data, std::function<void (const boost::system::error_code &err)> &&handler)
 	{
-		return functor_wrapper<T>(std::move(data), std::move(handler));
+		return functor_wrapper<typename std::remove_reference<T>::type>(std::forward<T>(data), std::move(handler));
 	}
 
 	std::function<void (const boost::system::error_code &err)> make_close_handler()
@@ -284,21 +266,7 @@ protected:
 
 	void try_next_chunk()
 	{
-		if (++m_state == 2) {
-			int flags = 0;
-			if (m_first_chunk)
-				flags |= first_chunk;
-			m_first_chunk = false;
-			if (m_last_chunk)
-				flags |= last_chunk;
-
-			on_chunk(boost::asio::buffer(m_data), flags);
-
-			m_data.resize(0);
-			m_state -= 2;
-
-			this->get_reply()->want_more();
-		}
+		this->try_next_chunk_internal(1);
 	}
 
 private:
@@ -313,7 +281,7 @@ private:
 
 	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
-		if (m_state >= 2)
+		if (m_state & 2)
 			return 0;
 
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
@@ -332,7 +300,7 @@ private:
 			size -= delta;
 
 			if (m_data.size() == m_chunk_size) {
-				try_next_chunk();
+				this->try_next_chunk_internal(2);
 				return original_size - size;
 			}
 		}
@@ -345,7 +313,26 @@ private:
 			on_error(err);
 		} else {
 			m_last_chunk = true;
-			try_next_chunk();
+			try_next_chunk_internal(2);
+		}
+	}
+
+	void try_next_chunk_internal(unsigned int flag)
+	{
+		if ((m_state |= flag) == 3) {
+			int flags = 0;
+			if (m_first_chunk)
+				flags |= first_chunk;
+			m_first_chunk = false;
+			if (m_last_chunk)
+				flags |= last_chunk;
+
+			on_chunk(boost::asio::buffer(m_data), flags);
+
+			m_data.resize(0);
+			m_state = 0;
+
+			this->get_reply()->want_more();
 		}
 	}
 

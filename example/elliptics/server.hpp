@@ -30,6 +30,30 @@
 namespace ioremap {
 namespace thevoid {
 
+class elliptics_base
+{
+public:
+	elliptics_base();
+
+	bool initialize(const rapidjson::Value &config, const swarm::logger &logger);
+
+	ioremap::elliptics::node node() const;
+	ioremap::elliptics::session session() const;
+	bool process_request(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const;
+
+protected:
+	virtual bool prepare_config(const rapidjson::Value &config, dnet_config &node_config);
+	virtual bool prepare_node(const rapidjson::Value &config, ioremap::elliptics::node &node);
+	virtual bool prepare_session(const rapidjson::Value &config, ioremap::elliptics::session &session);
+
+	swarm::logger logger() const;
+
+private:
+	swarm::logger m_logger;
+	std::unique_ptr<ioremap::elliptics::node> m_node;
+	std::unique_ptr<ioremap::elliptics::session> m_session;
+};
+
 class elliptics_server
 {
 public:

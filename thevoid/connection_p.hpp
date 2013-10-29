@@ -24,13 +24,37 @@
 #include <swarm/http_request.hpp>
 #include "request_parser_p.hpp"
 #include "stream.hpp"
-#include <list>
+#include <queue>
 #include <mutex>
 
 namespace ioremap {
 namespace thevoid {
 
 class base_server;
+
+struct buffer_info {
+    buffer_info() : response(boost::none)
+    {
+    }
+
+    template <typename A, typename B, typename C>
+    buffer_info(A &&a, B &&b, C &&c) :
+        buffer(std::move(a)),
+        response(std::move(b)),
+        handler(std::move(c))
+    {
+    }
+
+    buffer_info(buffer_info &&info) = default;
+    buffer_info(const buffer_info &info) = delete;
+
+    buffer_info &operator =(buffer_info &&info) = default;
+    buffer_info &operator =(const buffer_info &info) = delete;
+
+    std::vector<boost::asio::const_buffer> buffer;
+    swarm::http_response response;
+    std::function<void (const boost::system::error_code &err)> handler;
+};
 
 //! Represents a single connection from a client.
 template <typename T>
@@ -65,35 +89,10 @@ public:
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
-	struct buffer_info {
-		buffer_info() : response(boost::none), bytes_sent(0)
-		{
-		}
-
-		template <typename A, typename B, typename C>
-		buffer_info(A &&a, B &&b, C &&c) :
-			buffer(std::move(a)),
-			response(std::move(b)),
-			handler(std::move(c)),
-			bytes_sent(0)
-		{
-		}
-
-		buffer_info(buffer_info &&info) = default;
-		buffer_info(const buffer_info &info) = delete;
-
-		buffer_info &operator =(buffer_info &&info) = default;
-		buffer_info &operator =(const buffer_info &info) = delete;
-
-		std::vector<boost::asio::const_buffer> buffer;
-		swarm::http_response response;
-		std::function<void (const boost::system::error_code &err)> handler;
-		size_t bytes_sent;
-	};
-
 	void want_more_impl();
 	void send_impl(buffer_info &&info);
 	void write_finished(const boost::system::error_code &err, size_t bytes_written);
+    void send_nolock();
 
 	void close_impl(const boost::system::error_code &err);
 	void process_next();
@@ -113,8 +112,7 @@ private:
 	T m_socket;
 
 	//! Buffer for outgoing data
-	std::list<buffer_info> m_outgoing;
-	buffer_info m_outgoing_info;
+	std::deque<buffer_info> m_outgoing;
 	std::mutex m_outgoing_mutex;
 	bool m_sending;
 

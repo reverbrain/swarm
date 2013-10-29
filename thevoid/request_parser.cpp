@@ -39,7 +39,7 @@ Iterator find_crlf(Iterator begin, Iterator end)
 	while (begin != end) {
 		auto current = begin;
 		auto next = ++begin;
-		if (*current == '\r' && *next == '\n')
+		if (next != end && *current == '\r' && *next == '\n')
 			return next;
 	}
 	return end;
@@ -49,7 +49,12 @@ boost::tuple<boost::tribool, const char *> request_parser::parse(
 	swarm::http_request &request, const char *begin, const char *end)
 {
 	while (begin != end) {
-		auto line_end = find_crlf(begin, end);
+		const char *line_end;
+		if (*begin == '\n' && m_line.size() > 0 && m_line[m_line.size() - 1] == '\r') {
+			line_end = begin;
+		} else {
+			line_end = find_crlf(begin, end);
+		}
 		m_line.append(begin, line_end);
 
 		if (line_end == end)

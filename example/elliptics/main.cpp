@@ -78,6 +78,7 @@ public:
 		} else {
 			on<elliptics::io::on_get<example_server>>("/get");
 		}
+		on<elliptics::io::on_buffered_get<example_server>>("/get-big");
 		on<elliptics::io::on_upload<example_server>>("/upload");
 		on<elliptics::io::on_buffered_upload<example_server>>("/upload-big");
 		on<elliptics::io::on_download_info<example_server>>("/download-info");

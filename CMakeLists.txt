@@ -11,14 +11,14 @@ string(REGEX MATCH "([0-9]+\\.[0-9]+$)" SWARM_VERSION_MINOR "${DEBFULLVERSION}")
 include(cmake/locate_library.cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-locate_library(LIBEV "ev++.hpp" "ev" "libev")
-locate_library(CURL "curl.hpp" "curl" "curl" "libcurl")
-locate_library(URIPARSER "Uri.hpp" "uriparser" "uriparser")
-locate_library(LIBXML2 "libxml/xpath.hpp" "xml2" "libxml2")
+locate_library(LIBEV "ev++.h" "ev" "libev")
+locate_library(CURL "curl.h" "curl" "curl" "libcurl")
+locate_library(URIPARSER "Uri.h" "uriparser" "uriparser")
+locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
 
 find_package(Boost COMPONENTS system thread program_options REQUIRED)
 
-option(BUILD_NETWORK_MANAGER "Build network manager" ON)
+option(BUILD_URLFETCHER "Build url_fetcher" ON)
 
 include_directories(
     ${LIBEV_INCLUDE_DIRS}

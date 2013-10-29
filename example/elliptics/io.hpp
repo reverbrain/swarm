@@ -456,7 +456,7 @@ public:
 		} else if (m_size > 0) {
 			if (flags & buffered_request_stream<T>::first_chunk) {
 				this->log(swarm::LOG_INFO, "prepare, offset: %llu, size: %llu", ull(m_offset), ull(m_size));
-				return sess.write_prepare(m_key, data, m_offset, m_size);
+				return sess.write_prepare(m_key, data, m_offset, m_offset + m_size);
 			} else if (flags & buffered_request_stream<T>::last_chunk) {
 				this->log(swarm::LOG_INFO, "commit, offset: %llu, size: %llu", ull(m_offset), ull(m_offset + data.size()));
 				return sess.write_commit(m_key, data, m_offset, m_offset + data.size());
@@ -472,12 +472,12 @@ public:
 
 	virtual void on_error(const boost::system::error_code &err)
 	{
-		this->log(swarm::LOG_ERROR, "on_error, error: %s", err.message().c_str());
+		this->log(swarm::LOG_DEBUG, "on_error, error: %s", err.message().c_str());
 	}
 
 	virtual void on_write_partial(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error)
 	{
-		this->log(swarm::LOG_ERROR, "on_write_partial, error: %s", error.message().c_str());
+		this->log(swarm::LOG_DEBUG, "on_write_partial, error: %s", error.message().c_str());
 
 		if (error) {
 			on_write_finished(result, error);
@@ -501,7 +501,9 @@ public:
 
 	virtual void on_write_finished(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error)
 	{
-		this->log(swarm::LOG_ERROR, "on_write_finished, error: %s", error.message().c_str());
+		(void) result;
+
+		this->log(swarm::LOG_DEBUG, "on_write_finished, error: %s", error.message().c_str());
 
 		if (error) {
 			this->send_reply(swarm::http_response::internal_server_error);
@@ -646,7 +648,117 @@ struct on_redirectable_get : public on_download_info<T>
 		reply.set_code(swarm::http_response::moved_temporarily);
 		reply.headers().set("Location", url);
 		reply.headers().set_content_length(0);
+
+		this->send_reply(std::move(reply));
 	}
+};
+
+template <typename T>
+class on_buffered_get : public simple_request_stream<T>, public std::enable_shared_from_this<on_buffered_get<T>>
+{
+public:
+	on_buffered_get() : m_buffer_size(5 * 1025 * 1024)
+	{
+	}
+
+	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &)
+	{
+		auto key_ptr = get_key(req);
+		if (!key_ptr) {
+			this->send_reply(swarm::http_response::bad_request);
+			return;
+		}
+
+		m_key = *key_ptr;
+
+		ioremap::elliptics::session sess = this->server()->create_session();
+
+		using namespace std::placeholders;
+		sess.lookup(m_key).connect(std::bind(
+			&on_buffered_get::on_lookup_finished, this->shared_from_this(), _1, _2));
+	}
+
+	void on_lookup_finished(const ioremap::elliptics::sync_lookup_result &result, const ioremap::elliptics::error_info &error)
+	{
+		this->log(swarm::LOG_DEBUG, "%s, error: %s", __FUNCTION__, error.message().c_str());
+		if (error) {
+			if (error.code() == -ENOENT) {
+				this->send_reply(swarm::http_response::not_found);
+				return;
+			} else {
+				this->send_reply(swarm::http_response::internal_server_error);
+				return;
+			}
+		}
+
+		const ioremap::elliptics::lookup_result_entry &entry = result[0];
+		m_size = entry.file_info()->size;
+
+		swarm::http_response reply;
+		reply.set_code(swarm::http_response::ok);
+		reply.headers().set_content_length(m_size);
+		reply.headers().set_content_type("text/plain");
+		reply.headers().set_last_modified(entry.file_info()->mtime.tsec);
+
+		this->send_headers(std::move(reply), std::function<void (const boost::system::error_code &)>());
+
+		read_next(0);
+	}
+
+	virtual void on_read_finished(uint64_t offset, const ioremap::elliptics::sync_read_result &result, const ioremap::elliptics::error_info &error)
+	{
+		this->log(swarm::LOG_DEBUG, "%s, error: %s, offset: %llu", __FUNCTION__, error.message().c_str(), (unsigned long long) offset);
+//		if (offset == 0 && error) {
+//			if (error.code() == -ENOENT) {
+//				this->send_reply(swarm::http_response::not_found);
+//				return;
+//			} else {
+//				this->send_reply(swarm::http_response::internal_server_error);
+//				return;
+//			}
+//		} else
+		if (error) {
+			boost::system::error_code ec(-error.code(), boost::system::generic_category());
+			this->get_reply()->close(ec);
+			return;
+		}
+
+		const ioremap::elliptics::read_result_entry &entry = result[0];
+		ioremap::elliptics::data_pointer file = entry.file();
+
+		using namespace std::placeholders;
+
+		if (offset + file.size() >= m_size) {
+			this->send_data(std::move(file), std::bind(&reply_stream::close, this->get_reply(), _1));
+		} else {
+			auto first_part = file.slice(0, file.size() / 2);
+			auto second_part = file.slice(first_part.size(), file.size() - first_part.size());
+
+			this->send_data(std::move(first_part), std::bind(&on_buffered_get::on_part_sent, this->shared_from_this(), offset + file.size(), _1));
+			this->send_data(std::move(second_part), std::function<void (const boost::system::error_code &)>());
+		}
+	}
+
+	virtual void on_part_sent(size_t offset, const boost::system::error_code &error)
+	{
+		this->log(swarm::LOG_DEBUG, "%s, error: %s, offset: %llu", __FUNCTION__, error.message().c_str(), (unsigned long long) offset);
+		read_next(offset);
+	}
+
+	virtual void read_next(uint64_t offset)
+	{
+		this->log(swarm::LOG_DEBUG, "%s, offset: %llu", __FUNCTION__, (unsigned long long) offset);
+		ioremap::elliptics::session sess = this->server()->create_session();
+
+		using namespace std::placeholders;
+		sess.read_data(m_key, offset, std::min(m_size - offset, m_buffer_size)).connect(std::bind(
+			&on_buffered_get::on_read_finished, this->shared_from_this(), offset, _1, _2));
+	}
+
+protected:
+	ioremap::elliptics::key m_key;
+	uint64_t m_size;
+	uint64_t m_buffer_size;
 };
 
 }}}}	
