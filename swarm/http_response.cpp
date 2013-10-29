@@ -7,13 +7,10 @@ namespace swarm {
 class network_reply_data
 {
 public:
-	network_reply_data()
-		: error(0), code(0)
+	network_reply_data() : code(0)
 	{
 	}
 	network_reply_data(const network_reply_data &o) = default;
-
-	int error;
 
 	int code;
 	boost::optional<std::string> reason;
@@ -75,16 +72,6 @@ boost::optional<std::string> http_response::reason() const
 void http_response::set_reason(const std::string &reason)
 {
 	m_data->reason = reason;
-}
-
-int http_response::error() const
-{
-	return m_data->error;
-}
-
-void http_response::set_error(int error)
-{
-	m_data->error = error;
 }
 
 http_headers &http_response::headers()

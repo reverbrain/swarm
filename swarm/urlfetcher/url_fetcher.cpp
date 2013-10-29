@@ -489,6 +489,10 @@ public:
 class url_fetcher_response_data
 {
 public:
+	url_fetcher_response_data()
+	{
+	}
+
 	swarm::url url;
 };
 

@@ -50,7 +50,6 @@ struct request_handler_functor
 
 	void operator() (const ioremap::swarm::url_fetcher::response &reply) const {
 		std::cout << "HTTP code: " << reply.code() << std::endl;
-		std::cout << "Network error: " << reply.error() << std::endl;
 
 		const auto &headers = reply.headers().all();
 

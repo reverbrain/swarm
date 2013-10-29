@@ -93,10 +93,6 @@ public:
 	boost::optional<std::string> reason() const;
 	void set_reason(const std::string &reason);
 
-	// Errno
-	int error() const;
-	void set_error(int error);
-
 	// HTTP headers
 	http_headers &headers();
 	const http_headers &headers() const;
