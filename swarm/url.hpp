@@ -43,13 +43,18 @@ public:
 	const std::string &original() const;
 	std::string to_string() const;
 
+	swarm::url resolved(const swarm::url &relative) const;
+
 	bool is_valid() const;
+	bool is_relative() const;
 
 	const std::string &scheme() const;
 	const std::string &host() const;
 	const boost::optional<uint16_t> &port() const;
 	const std::string &path() const;
 	const url_query &query() const;
+	void set_query(const std::string &query);
+	void set_query(const swarm::url_query &query);
 	const std::string &raw_query() const;
 	const std::string &fragment() const;
 

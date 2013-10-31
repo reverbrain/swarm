@@ -52,6 +52,16 @@ public:
 	url_private(const url_private &other) = default;
 
 	void ensure_data() const;
+	void set_uri(const UriUriA &uri);
+	void start_modifications()
+	{
+		if (state & has_changes) {
+			return;
+		}
+		ensure_data();
+		state = parsed | has_changes | (state & query_parsed);
+		original = std::string();
+	}
 
 	mutable std::string scheme;
 	mutable std::string user_name;
@@ -150,9 +160,9 @@ void url_private::ensure_data() const
 	if (state & parsed)
 		return;
 
-	UriUriA parser;
+	UriUriA uri;
 	UriParserStateA parser_state;
-	parser_state.uri = &parser;
+	parser_state.uri = &uri;
 	network_url_cleaner cleaner;
 
 	if (uriParseUriA(&parser_state, original.c_str()) != URI_SUCCESS) {
@@ -160,10 +170,22 @@ void url_private::ensure_data() const
 		return;
 	}
 
-	cleaner.reset(&parser);
+	cleaner.reset(&uri);
 
+	const unsigned int dirtyParts = uriNormalizeSyntaxMaskRequiredA(&uri);
+	if (uriNormalizeSyntaxExA(&uri, dirtyParts) != URI_SUCCESS) {
+		state |= (parsed | invalid_original);
+		return;
+	}
+
+	// ensure_data is used for lazy initialization
+	const_cast<url_private *>(this)->set_uri(uri);
+}
+
+void url_private::set_uri(const UriUriA &uri)
+{
 	try {
-		std::string port_text = to_string(parser.portText);
+		std::string port_text = to_string(uri.portText);
 		if (!port_text.empty())
 			port = boost::lexical_cast<int>(port_text);
 		else
@@ -174,20 +196,22 @@ void url_private::ensure_data() const
 		return;
 	}
 
-	if (parser.absolutePath) {
+	path = std::string();
+
+	if (uri.absolutePath) {
 		path += "/";
 	}
 
-	for (auto it = parser.pathHead; it; it = it->next) {
-		if (it != parser.pathHead)
+	for (auto it = uri.pathHead; it; it = it->next) {
+		if (it != uri.pathHead)
 			path += "/";
 		path += to_string(it->text);
 	}
 
-	raw_query = to_string(parser.query);
-	host = to_string(parser.hostText);
-	scheme = to_string(parser.scheme);
-	fragment = to_string(parser.fragment);
+	raw_query = to_string(uri.query);
+	host = to_string(uri.hostText);
+	scheme = to_string(uri.scheme);
+	fragment = to_string(uri.fragment);
 
 	state |= parsed;
 }
@@ -247,16 +271,139 @@ const std::string &url::original() const
 	return p->original;
 }
 
+static UriTextRangeA to_range(const std::string &str)
+{
+	UriTextRangeA range = {
+		str.empty() ? NULL : str.c_str(),
+		str.empty() ? NULL : (str.c_str() + str.size())
+	};
+	return range;
+}
+
+class uri_generator
+{
+public:
+	explicit uri_generator(const swarm::url_private &url)
+	{
+		memset(&m_uri, 0, sizeof(m_uri));
+
+		if (url.port) {
+			m_port = boost::lexical_cast<std::string>(*url.port);
+		}
+
+		if (url.state & url_private::query_parsed) {
+			m_query = url.query.to_string();
+		} else {
+			m_query = url.raw_query;
+		}
+
+		m_uri.scheme = to_range(url.scheme);
+		m_uri.hostText = to_range(url.host);
+		m_uri.portText = to_range(m_port);
+		m_uri.query = to_range(m_query);
+		m_uri.fragment = to_range(url.fragment);
+
+		size_t start;
+		if (url.path.compare(0, 1, "/", 1) == 0) {
+			start = 1;
+			m_uri.absolutePath = true;
+		} else {
+			start = 0;
+			m_uri.absolutePath = false;
+		}
+
+		if (url.path.size() != start) {
+			while (true) {
+				size_t next = url.path.find('/', start);
+
+				UriPathSegmentA segment = {
+					{
+						url.path.c_str() + start,
+						url.path.c_str() + (next == std::string::npos ? url.path.size() : next)
+					},
+					NULL,
+					NULL
+				};
+				m_path_segments.push_back(segment);
+
+				if (next == std::string::npos)
+					break;
+
+				start = next + 1;
+			}
+
+			for (size_t i = 1; i < m_path_segments.size(); ++i) {
+				m_path_segments[i - 1].next = &m_path_segments[i];
+			}
+
+			m_uri.pathHead = &m_path_segments[0];
+		}
+	}
+
+	uri_generator(const uri_generator &other) = delete;
+	uri_generator &operator =(const uri_generator &other) = delete;
+
+	const UriUriA *uri() const
+	{
+		return &m_uri;
+	}
+
+private:
+	UriUriA m_uri;
+	std::string m_query;
+	std::string m_port;
+	std::vector<UriPathSegmentA> m_path_segments;
+};
+
 std::string url::to_string() const
 {
-	if (!is_valid())
+	if (!is_valid()) {
 		return std::string();
-
-	if (p->state & url_private::has_changes) {
-		// FIXME: apply all changes by constructing new string
-		// And don't forget about normalization! We are not stupid bots :)
 	}
-	return p->original;
+
+	uri_generator uri(*p);
+
+	int chars_required = 0;
+
+	int err = uriToStringCharsRequiredA(uri.uri(), &chars_required);
+	if (err) {
+		return std::string();
+	}
+
+	std::string result;
+	result.resize(chars_required + 1);
+	int result_size = 0;
+
+	err = uriToStringA(&result[0], uri.uri(), result.size(), &result_size);
+	if (err) {
+		return std::string();
+	}
+
+	result.resize(result_size - 1);
+
+	return result;
+}
+
+url url::resolved(const url &relative) const
+{
+	p->ensure_data();
+	relative.p->ensure_data();
+
+	uri_generator absolute_uri(*p);
+	uri_generator relative_uri(*relative.p);
+	UriUriA result_uri;
+
+	if (uriAddBaseUriA(&result_uri, relative_uri.uri(), absolute_uri.uri()) != URI_SUCCESS) {
+		return std::move(url());
+	}
+
+	network_url_cleaner cleaner;
+	cleaner.reset(&result_uri);
+
+	url result;
+	result.p->set_uri(result_uri);
+
+	return std::move(result);
 }
 
 bool url::is_valid() const
@@ -265,44 +412,20 @@ bool url::is_valid() const
 	return !((p->state & url_private::invalid_original) || (p->state == url_private::invalid));
 }
 
+bool url::is_relative() const
+{
+	p->ensure_data();
+
+	std::cout << "valid: " << is_valid() << ", path: " << path() << ", compare: " << (path().compare(0, 1, "/", 1) != 0) << std::endl;
+
+	return is_valid() && path().compare(0, 1, "/", 1) != 0;
+}
+
 const std::string &url::scheme() const
 {
 	p->ensure_data();
 	return p->scheme;
 }
-
-//static std::string network_url_normalized(UriUriA *uri)
-//{
-//	const unsigned int dirtyParts = uriNormalizeSyntaxMaskRequiredA(uri);
-//	if (uriNormalizeSyntaxExA(uri, dirtyParts) != URI_SUCCESS) {
-//		return std::string();
-//	}
-
-//	int charsRequired = 0;
-
-//	UriTextRangeA &url_range = uri->fragment;
-//	size_t fragment_size = url_range.afterLast - url_range.first;
-
-//	if (uriToStringCharsRequiredA(uri, &charsRequired) != URI_SUCCESS)
-//		return std::string();
-
-//	std::string result;
-//	result.resize(charsRequired + 1);
-
-//	if (uriToStringA(&result[0], uri, charsRequired + 1, NULL) != URI_SUCCESS)
-//		return std::string();
-
-//	result.resize(charsRequired - fragment_size);
-//	if (result[result.size() - 1] == '#')
-//		result.resize(result.size() - 1);
-
-//	return result;
-//}
-
-//std::string url::normalized()
-//{
-//	return network_url_normalized(&parser);
-//}
 
 const std::string &url::host() const
 {
@@ -332,30 +455,20 @@ const url_query &url::query() const
 	return p->query;
 }
 
-//std::string url::relative(const std::string &other, std::string *other_host) const
-//{
-//	std::string url = p->encode_url(other);
+void url::set_query(const std::string &query)
+{
+	p->start_modifications();
+	p->query = std::move(url_query());
+	p->raw_query = query;
+}
 
-//	UriUriA absolute_destination;
-//	UriUriA relative_source;
-
-//	network_url_cleaner destination_cleaner;
-//	network_url_cleaner source_cleaner;
-
-//	p->state.uri = &relative_source;
-//	if (uriParseUriA(&p->state, url.c_str()) != URI_SUCCESS)
-//		return std::string();
-//	source_cleaner.reset(&relative_source);
-
-//	if (uriAddBaseUriA(&absolute_destination, &relative_source, &parser) != URI_SUCCESS)
-//		return std::string();
-//	destination_cleaner.reset(&absolute_destination);
-
-//	if (other_host)
-//		*other_host = to_string(absolute_destination.hostText);
-//	return network_url_normalized(&absolute_destination);
-//	return std::string();
-//}
+void url::set_query(const url_query &query)
+{
+	p->start_modifications();
+	p->state |= url_private::query_parsed;
+	p->raw_query = std::string();
+	p->query = query;
+}
 
 const std::string &url::raw_query() const
 {

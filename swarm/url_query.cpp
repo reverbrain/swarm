@@ -94,9 +94,9 @@ std::string url_query::to_string() const
 	uriComposeQueryCharsRequiredA(&items[0], &requiredSize);
 
 	std::string result;
-	result.resize(requiredSize);
+	result.resize(requiredSize + 1);
 	uriComposeQueryA(&result[0], &items[0], result.size(), &requiredSize);
-	result.resize(requiredSize);
+	result.resize(requiredSize - 1);
 
 	return result;
 }
