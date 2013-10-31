@@ -49,14 +49,24 @@ public:
 	bool is_relative() const;
 
 	const std::string &scheme() const;
+	void set_scheme(const std::string &scheme);
+
 	const std::string &host() const;
+	void set_host(const std::string &host);
+
 	const boost::optional<uint16_t> &port() const;
+	void set_port(uint16_t port);
+
 	const std::string &path() const;
+	void set_path(const std::string &path);
+
 	const url_query &query() const;
 	void set_query(const std::string &query);
 	void set_query(const swarm::url_query &query);
 	const std::string &raw_query() const;
+
 	const std::string &fragment() const;
+	void set_fragment(const std::string &fragment);
 
 
 private:

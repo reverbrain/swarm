@@ -427,10 +427,22 @@ const std::string &url::scheme() const
 	return p->scheme;
 }
 
+void url::set_scheme(const std::string &scheme)
+{
+	p->start_modifications();
+	p->scheme = scheme;
+}
+
 const std::string &url::host() const
 {
 	p->ensure_data();
 	return p->host;
+}
+
+void url::set_host(const std::string &host)
+{
+	p->start_modifications();
+	p->host = host;
 }
 
 const boost::optional<uint16_t> &url::port() const
@@ -439,10 +451,22 @@ const boost::optional<uint16_t> &url::port() const
 	return p->port;
 }
 
+void url::set_port(uint16_t port)
+{
+	p->start_modifications();
+	p->port = port;
+}
+
 const std::string &url::path() const
 {
 	p->ensure_data();
 	return p->path;
+}
+
+void url::set_path(const std::string &path)
+{
+	p->start_modifications();
+	p->path = path;
 }
 
 const url_query &url::query() const
@@ -480,6 +504,12 @@ const std::string &url::fragment() const
 {
 	p->ensure_data();
 	return p->fragment;
+}
+
+void url::set_fragment(const std::string &fragment)
+{
+	p->start_modifications();
+	p->fragment = fragment;
 }
 
 } // namespace crawler
