@@ -5,6 +5,7 @@ set(SWARM_ELLIPTICS_HEADERS
 	asio.hpp
 	common.hpp
 	elliptics_logger.hpp
+	elliptics_cache.hpp
 	index.hpp
 	io.hpp
 	jsonvalue.hpp
@@ -13,6 +14,7 @@ set(SWARM_ELLIPTICS_HEADERS
 )
 
 set(SWARM_ELLIPTICS_SOURCES
+	elliptics_cache.cpp
 	server.cpp
 	signature_base.cpp
 )

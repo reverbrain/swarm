@@ -81,6 +81,8 @@ bool elliptics_base::process(const swarm::http_request &request, ioremap::ellipt
 		return false;
 	}
 
+	session.transform(key);
+
 	(void) session;
 
 	return true;

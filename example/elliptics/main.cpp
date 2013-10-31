@@ -14,6 +14,8 @@
  */
 
 #include "server.hpp"
+#include "elliptics_cache.hpp"
+#include "signature_base.hpp"
 
 using namespace ioremap::thevoid;
 
@@ -25,6 +27,18 @@ public:
 		std::string key;
 		std::string path;
 	};
+
+	example_server() : m_elliptics(this)
+	{
+	}
+
+	~example_server()
+	{
+		if (m_cache) {
+			m_cache->stop();
+			m_cache.reset();
+		}
+	}
 
 	virtual bool initialize(const rapidjson::Value &config)
 	{
@@ -50,6 +64,11 @@ public:
 
 				m_signatures.emplace_back(std::move(info));
 			}
+		}
+
+		if (config.HasMember("cache")) {
+			m_cache = std::make_shared<elliptics::elliptics_cache>();
+			m_cache->initialize(config, m_elliptics.node(), logger());
 		}
 
 		if (config.HasMember("redirect")) {
@@ -143,17 +162,48 @@ public:
 		return std::move(url);
 	}
 
-	const elliptics_base &elliptics()
+	const elliptics_base *elliptics()
 	{
-		return m_elliptics;
+		return &m_elliptics;
 	}
+
+	class elliptics_impl : public elliptics_base
+	{
+	public:
+		elliptics_impl(example_server *server) : m_server(server)
+		{
+		}
+
+		virtual bool process(const ioremap::swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
+		{
+			if (!elliptics_base::process(request, key, session)) {
+				return false;
+			}
+
+			if (m_server->m_cache) {
+				auto cache_groups = m_server->m_cache->groups(key);
+				if (!cache_groups.empty()) {
+					auto groups = session.get_groups();
+					groups.insert(groups.end(), cache_groups.begin(), cache_groups.end());
+					session.set_groups(groups);
+				}
+			}
+
+			return true;
+		}
+
+	private:
+		example_server *m_server;
+	};
 
 private:
 	std::vector<signature_info> m_signatures;
 	bool m_redirect_read;
 	int m_redirect_port;
 	bool m_secured_http;
-	elliptics_base m_elliptics;
+	std::shared_ptr<elliptics::elliptics_cache> m_cache;
+	elliptics_impl m_elliptics;
+	elliptics::signature_base m_signature;
 };
 
 int main(int argc, char **argv)

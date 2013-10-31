@@ -51,10 +51,10 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		const auto &query = req.url().query();
 
-		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 		ioremap::elliptics::key key;
 
-		if (!this->server()->elliptics().process(req, key, sess)) {
+		if (!this->server()->elliptics()->process(req, key, sess)) {
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
@@ -272,10 +272,10 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 	ioremap::elliptics::async_write_result write_data(const swarm::http_request &req, const ioremap::elliptics::data_pointer &data) {
 		const auto &query = req.url().query();
 
-		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 		ioremap::elliptics::key key;
 
-		if (!this->server()->elliptics().process(req, key, sess)) {
+		if (!this->server()->elliptics()->process(req, key, sess)) {
 			throw std::runtime_error("failed to get file name");
 		}
 
@@ -374,9 +374,9 @@ public:
 		const auto &query = request.url().query();
 		this->set_chunk_size(10 * 1024 * 1024);
 
-		m_session.reset(new ioremap::elliptics::session(this->server()->elliptics().session()));
+		m_session.reset(new ioremap::elliptics::session(this->server()->elliptics()->session()));
 
-		if (!this->server()->elliptics().process(request, m_key, *m_session)) {
+		if (!this->server()->elliptics()->process(request, m_key, *m_session)) {
 			m_session.reset();
 			this->send_reply(swarm::http_response::bad_request);
 			return;
@@ -498,10 +498,10 @@ template <typename T>
 struct on_download_info : public simple_request_stream<T>, public std::enable_shared_from_this<on_download_info<T>>
 {
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &) {
-		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 		ioremap::elliptics::key key;
 
-		if (!this->server()->elliptics().process(req, key, sess)) {
+		if (!this->server()->elliptics()->process(req, key, sess)) {
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
@@ -540,7 +540,7 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		}
 
 		dnet_raw_id signature_id;
-		dnet_transform_node(this->server()->elliptics().node().get_native(),
+		dnet_transform_node(this->server()->elliptics()->node().get_native(),
 					sign_input.c_str(), sign_input.size(),
 					signature_id.id, sizeof(signature_id.id));
 
@@ -633,9 +633,9 @@ public:
 
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &)
 	{
-		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 
-		if (!this->server()->elliptics().process(req, m_key, sess)) {
+		if (!this->server()->elliptics()->process(req, m_key, sess)) {
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
@@ -715,7 +715,7 @@ public:
 	virtual void read_next(uint64_t offset)
 	{
 		this->log(swarm::LOG_DEBUG, "%s, offset: %llu", __FUNCTION__, (unsigned long long) offset);
-		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 
 		using namespace std::placeholders;
 		sess.read_data(m_key, offset, std::min(m_size - offset, m_buffer_size)).connect(std::bind(
