@@ -72,8 +72,6 @@ class server_data;
 template <typename T> class connection;
 class monitor_connection;
 
-typedef std::function<std::map<std::string, std::string> ()> statistics_function;
-
 class base_server : private boost::noncopyable
 {
 public:
@@ -86,12 +84,12 @@ public:
 	void set_logger(const swarm::logger &logger);
 	swarm::logger logger() const;
 
-	void set_statisitcs_handler(const statistics_function &handler);
-	std::map<std::string, std::string> get_statistics();
+	virtual std::map<std::string, std::string> get_statistics() const;
 
-	unsigned int get_threads_count() const;
+	unsigned int threads_count() const;
 
 	virtual bool initialize(const rapidjson::Value &config) = 0;
+	virtual bool initialize_logger(const rapidjson::Value &config);
 
 protected:
 	void on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory);
@@ -104,7 +102,7 @@ private:
 	friend class monitor_connection;
 
 	void set_server(const std::weak_ptr<base_server> &server);
-	std::shared_ptr<base_stream_factory> get_factory(const swarm::url &url);
+	std::shared_ptr<base_stream_factory> factory(const swarm::url &url);
 
 	server_data *m_data;
 };

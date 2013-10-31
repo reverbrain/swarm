@@ -11,9 +11,11 @@
     "backlog": 128,
     "threads": 2,
     "buffer_size": 65536,
+    "logger": {
+        "file": "/dev/stderr",
+        "level": 4
+    },
     "application": {
-	"log": "/dev/stderr",
-        "loglevel": 4,
         "remotes": [
             "localhost:1025:2"
         ],

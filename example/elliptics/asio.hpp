@@ -24,7 +24,7 @@
 
 namespace boost { namespace asio {
 
-const_buffer buffer(const ioremap::elliptics::data_pointer &data)
+inline const_buffer buffer(const ioremap::elliptics::data_pointer &data)
 {
 	return buffer(data.data(), data.size());
 }

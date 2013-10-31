@@ -116,21 +116,49 @@ swarm::logger base_server::logger() const
 	return m_data->logger;
 }
 
-void base_server::set_statisitcs_handler(const statistics_function &handler)
+std::map<std::string, std::string> base_server::get_statistics() const
 {
-	m_data->statistics_handler = handler;
-}
-
-std::map<std::string, std::string> base_server::get_statistics()
-{
-	if (m_data->statistics_handler)
-		return m_data->statistics_handler();
 	return std::map<std::string, std::string>();
 }
 
-unsigned int base_server::get_threads_count() const
+unsigned int base_server::threads_count() const
 {
 	return m_data->threads_count;
+}
+
+bool base_server::initialize_logger(const rapidjson::Value &config)
+{
+	if (!config.HasMember("logger")) {
+		set_logger(swarm::logger("/dev/stderr", swarm::LOG_INFO));
+		logger().log(swarm::LOG_ERROR, "\"logger\" field is missed, use default logger");
+		return true;
+	}
+
+	const rapidjson::Value &logger_config = config["logger"];
+
+	std::string type;
+	if (logger_config.HasMember("type")) {
+		type = logger_config["type"].GetString();
+	} else {
+		type = "file";
+	}
+
+	if (type == "file") {
+		const char *file = "/dev/stderr";
+		int level = swarm::LOG_INFO;
+
+		if (logger_config.HasMember("file"))
+			file = logger_config["file"].GetString();
+
+		if (logger_config.HasMember("level"))
+			level = logger_config["level"].GetInt();
+
+		set_logger(swarm::logger(file, level));
+	} else {
+		set_logger(swarm::logger("/dev/stderr", swarm::LOG_INFO));
+		logger().log(swarm::LOG_ERROR, "unknown logger type \"%s\", use default, possible values are: file", type.c_str());
+	}
+	return true;
 }
 
 void base_server::listen(const std::string &host)
@@ -220,11 +248,17 @@ int base_server::run(int argc, char **argv)
 	rapidjson::Document config;
 	int err = read_config(config, config_path.c_str());
 
-	if (err)
+	if (err) {
 		return err;
+	}
+
+	if (!initialize_logger(config)) {
+		std::cerr << "Failed to initialize logger" << std::endl;
+		return -8;
+	}
 
 	if (!config.HasMember("application")) {
-		std::cerr << "\"application\" field is missed" << std::endl;
+		logger().log(swarm::LOG_ERROR, "\"application\" field is missed");
 		return -5;
 	}
 
@@ -233,8 +267,8 @@ int base_server::run(int argc, char **argv)
 	}
 
 	try {
-		if (!initialize(config.FindMember("application")->value)) {
-			std::cerr << "Failed to initialize application" << std::endl;
+		if (!initialize(config["application"])) {
+			logger().log(swarm::LOG_ERROR, "Failed to initialize application");
 			return -5;
 		}
 	} catch (std::exception &exc) {
@@ -245,12 +279,12 @@ int base_server::run(int argc, char **argv)
 	auto endpoints = config.FindMember("endpoints");
 
 	if (!endpoints) {
-		std::cerr << "\"endpoints\" field is missed" << std::endl;
+		logger().log(swarm::LOG_ERROR, "\"endpoints\" field is missed");
 		return -4;
 	}
 
 	if (!endpoints->value.IsArray()) {
-		std::cerr << "\"endpoints\" field is not an array" << std::endl;
+		logger().log(swarm::LOG_ERROR, "\"endpoints\" field is not an array");
 		return -4;
 	}
 
@@ -347,7 +381,7 @@ void base_server::set_server(const std::weak_ptr<base_server> &server)
 	m_data->server = server;
 }
 
-std::shared_ptr<base_stream_factory> base_server::get_factory(const swarm::url &url)
+std::shared_ptr<base_stream_factory> base_server::factory(const swarm::url &url)
 {
 	const std::string &path = url.path();
 

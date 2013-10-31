@@ -64,7 +64,7 @@ session elliptics_base::session() const
 	return m_session->clone();
 }
 
-bool elliptics_base::process_request(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
+bool elliptics_base::process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
 {
 	const auto &query = request.url().query();
 
@@ -136,72 +136,4 @@ bool elliptics_base::prepare_session(const rapidjson::Value &config, ioremap::el
 ioremap::swarm::logger elliptics_base::logger() const
 {
 	return m_logger;
-}
-
-elliptics_server::elliptics_server()
-{
-}
-
-bool elliptics_server::initialize(const rapidjson::Value &config)
-{
-	std::string logfile = "/dev/stderr";
-	int loglevel = DNET_LOG_INFO;
-
-	if (config.HasMember("logfile"))
-		logfile = config["logfile"].GetString();
-
-	if (config.HasMember("loglevel"))
-		loglevel = config["loglevel"].GetInt();
-
-	swarm::logger logger(logfile.c_str(), loglevel);
-
-	if (!config.HasMember("remotes")) {
-		logger.log(swarm::LOG_ERROR, "\"remotes\" field is missed");
-		return false;
-	}
-
-	if (!config.HasMember("groups")) {
-		logger.log(swarm::LOG_ERROR, "\"groups\" field is missed");
-		return false;
-	}
-
-	std::vector<std::string> remotes;
-	std::vector<int> groups;
-
-	m_logger.reset(new swarm::logger(logger));
-	m_node.reset(new node(swarm_logger(logger)));
-	m_session.reset(new session(*m_node));
-
-	auto &remotesArray = config["remotes"];
-	std::transform(remotesArray.Begin(), remotesArray.End(),
-		std::back_inserter(remotes),
-		std::bind(&rapidjson::Value::GetString, std::placeholders::_1));
-
-	for (auto it = remotes.begin(); it != remotes.end(); ++it) {
-		m_node->add_remote(it->c_str());
-	}
-
-	auto &groupsArray = config["groups"];
-	std::transform(groupsArray.Begin(), groupsArray.End(),
-		std::back_inserter(groups),
-		std::bind(&rapidjson::Value::GetInt, std::placeholders::_1));
-
-	m_session->set_groups(groups);
-
-	return true;
-}
-
-session elliptics_server::create_session()
-{
-	return m_session->clone();
-}
-
-ioremap::swarm::logger elliptics_server::logger_impl()
-{
-	return *m_logger;
-}
-
-node elliptics_server::get_node()
-{
-	return *m_node;
 }

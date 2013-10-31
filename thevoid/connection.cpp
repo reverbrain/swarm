@@ -359,7 +359,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 		} else if (result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
-			auto factory = m_server->get_factory(m_request.url());
+			auto factory = m_server->factory(m_request.url());
 			if (!factory) {
 				send_error(swarm::http_response::not_found);
 				return;

@@ -62,7 +62,6 @@ public:
     //! Logger instance
     swarm::logger logger;
     //! Statistics
-    statistics_function statistics_handler;
     std::atomic_int connections_counter;
     std::atomic_int active_connections_counter;
 	//! Weak pointer to server itself

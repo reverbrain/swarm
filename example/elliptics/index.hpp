@@ -44,7 +44,7 @@ struct on_update : public simple_request_stream<T>, public std::enable_shared_fr
 			return;
 		}
 
-		ioremap::elliptics::session sess = this->server()->create_session();
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
 
 		std::string id = doc["id"].GetString();
 		std::vector<ioremap::elliptics::index_entry> indexes_entries;
@@ -180,7 +180,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 		if (data.HasMember("view"))
 			m_view = data["view"].GetString();
 
-		ioremap::elliptics::session sess = this->server()->create_session();
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
 
 		const std::string type = data["type"].GetString();
 
@@ -220,7 +220,7 @@ struct on_find : public simple_request_stream<T>, public std::enable_shared_from
 
 			m_result = result;
 
-			ioremap::elliptics::session sess = this->server()->create_session();
+			ioremap::elliptics::session sess = this->server()->elliptics().session();
 			sess.bulk_read(ids).connect(std::bind(&on_find::on_ready_to_parse_indexes,
 					this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 		} else {

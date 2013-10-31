@@ -32,24 +32,6 @@
 
 namespace ioremap { namespace thevoid { namespace elliptics { namespace io {
 
-static boost::optional<ioremap::elliptics::key> get_key(const swarm::http_request &request)
-{
-	const auto &query = request.url().query();
-
-	if (auto name = query.item_value("name")) {
-		return ioremap::elliptics::key(*name);
-	} else if (auto sid = query.item_value("id")) {
-		struct dnet_id id;
-		memset(&id, 0, sizeof(struct dnet_id));
-
-		dnet_parse_numeric_id(sid->c_str(), id.id);
-
-		return ioremap::elliptics::key(id);
-	} else {
-		return boost::none;
-	}
-}
-
 static ioremap::elliptics::data_pointer create_data(const boost::asio::const_buffer &buffer)
 {
 	return ioremap::elliptics::data_pointer::from_raw(
@@ -69,38 +51,28 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		const auto &query = req.url().query();
 
-		ioremap::elliptics::session sess = this->server()->create_session();
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::key key;
+
+		if (!this->server()->elliptics().process(req, key, sess)) {
+			this->send_reply(swarm::http_response::bad_request);
+			return;
+		}
 
 		size_t offset = 0;
 		size_t size = 0;
 
 		try {
-			if (auto tmp = query.item_value("offset"))
-				offset = boost::lexical_cast<size_t>(*tmp);
-
-			if (auto tmp = query.item_value("size"))
-				size = boost::lexical_cast<size_t>(*tmp);
+			offset = query.item_value("offset", 0llu);
+			size = query.item_value("size", 0llu);
 		} catch (std::exception &e) {
 			this->log(swarm::LOG_ERROR, "GET request, invalid cast: %s", e.what());
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
-		if (auto name = query.item_value("name")) {
-			this->log(swarm::LOG_DEBUG, "GET request, name: \"%s\"", name->c_str());
-
-			sess.read_data(*name, offset, size).connect(
-					std::bind(&on_get::on_read_finished, this->shared_from_this(), _1, _2));
-		} else if (auto sid = query.item_value("id")) {
-			struct dnet_id id;
-			memset(&id, 0, sizeof(struct dnet_id));
-
-			dnet_parse_numeric_id(sid->c_str(), id.id);
-			sess.read_data(id, 0, 0).connect(
-					std::bind(&on_get::on_read_finished, this->shared_from_this(), _1, _2));
-		} else {
-			this->send_reply(swarm::http_response::bad_request);
-		}
+		sess.read_data(key, offset, size).connect(std::bind(
+			&on_get::on_read_finished, this->shared_from_this(), _1, _2));
 	}
 
 	virtual void on_read_finished(const ioremap::elliptics::sync_read_result &result,
@@ -300,30 +272,26 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 	ioremap::elliptics::async_write_result write_data(const swarm::http_request &req, const ioremap::elliptics::data_pointer &data) {
 		const auto &query = req.url().query();
 
-		auto possible_name = query.item_value("name");
-		if (!possible_name) {
-			throw std::runtime_error("invalid name");
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::key key;
+
+		if (!this->server()->elliptics().process(req, key, sess)) {
+			throw std::runtime_error("failed to get file name");
 		}
 
-		auto name = *possible_name;
-
-		ioremap::elliptics::session sess = this->server()->create_session();
-
-		size_t offset = 0;
-		if (auto tmp = query.item_value("offset"))
-			offset = boost::lexical_cast<size_t>(*tmp);
+		size_t offset = query.item_value("offset", 0llu);
 
 		if (auto tmp = query.item_value("prepare")) {
-				size_t size = boost::lexical_cast<size_t>(*tmp);
-				return sess.write_prepare(name, data, offset, size);
-			} else if (auto tmp = query.item_value("commit")) {
-				size_t size = boost::lexical_cast<size_t>(*tmp);
-				return sess.write_commit(name, data, offset, size);
-			} else if (query.has_item("plain-write")) {
-				return sess.write_plain(name, data, offset);
-			} else {
-				return sess.write_data(name, data, offset);
-			}
+			size_t size = boost::lexical_cast<size_t>(*tmp);
+			return sess.write_prepare(key, data, offset, size);
+		} else if (auto tmp = query.item_value("commit")) {
+			size_t size = boost::lexical_cast<size_t>(*tmp);
+			return sess.write_commit(key, data, offset, size);
+		} else if (query.has_item("plain-write")) {
+			return sess.write_plain(key, data, offset);
+		} else {
+			return sess.write_data(key, data, offset);
+		}
 	}
 
 	template <typename Allocator>
@@ -406,9 +374,10 @@ public:
 		const auto &query = request.url().query();
 		this->set_chunk_size(10 * 1024 * 1024);
 
-		auto key = get_key(request);
+		m_session.reset(new ioremap::elliptics::session(this->server()->elliptics().session()));
 
-		if (!key) {
+		if (!this->server()->elliptics().process(request, m_key, *m_session)) {
+			m_session.reset();
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
@@ -418,12 +387,15 @@ public:
 			m_size = *size;
 		else
 			m_size = 0;
-		m_key = *key;
 	}
 
 	virtual void on_chunk(const boost::asio::const_buffer &buffer, unsigned int flags)
 	{
-		ioremap::elliptics::session sess = this->server()->create_session();
+		if (!m_session) {
+			return;
+		}
+
+		ioremap::elliptics::session sess = m_session->clone();
 		const auto data = create_data(buffer);
 
 		this->log(swarm::LOG_INFO, "on_chunk: size: %zu, m_offset: %llu, flags: %u", data.size(), (unsigned long long)m_offset, flags);
@@ -515,6 +487,7 @@ public:
 
 private:
 	std::vector<int> m_groups;
+	std::unique_ptr<ioremap::elliptics::session> m_session;
 	ioremap::elliptics::key m_key;
 	uint64_t m_offset;
 	uint64_t m_size;
@@ -525,18 +498,16 @@ template <typename T>
 struct on_download_info : public simple_request_stream<T>, public std::enable_shared_from_this<on_download_info<T>>
 {
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &) {
-		const auto &query = req.url().query();
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
+		ioremap::elliptics::key key;
 
-		ioremap::elliptics::session sess = this->server()->create_session();
-
-		auto name = query.item_value("name");
-		if (!name) {
+		if (!this->server()->elliptics().process(req, key, sess)) {
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
 
 		using namespace std::placeholders;
-		sess.lookup(*name).connect(std::bind(&on_download_info::on_lookup_finished, this->shared_from_this(), _1, _2));
+		sess.lookup(key).connect(std::bind(&on_download_info::on_lookup_finished, this->shared_from_this(), _1, _2));
 	}
 
 	std::string generate_signature(const ioremap::elliptics::lookup_result_entry &entry, const std::string &time, std::string *url_ptr) {
@@ -567,7 +538,7 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		}
 
 		dnet_raw_id signature_id;
-		dnet_transform_node(this->server()->get_node().get_native(),
+		dnet_transform_node(this->server()->elliptics().node().get_native(),
 					sign_input.c_str(), sign_input.size(),
 					signature_id.id, sizeof(signature_id.id));
 
@@ -626,9 +597,9 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 
 // perform lookup, redirect in response
 template <typename T>
-struct on_redirectable_get : public on_download_info<T>
+class on_redirectable_get : public on_download_info<T>
 {
-
+public:
 	virtual void on_lookup_finished(const ioremap::elliptics::sync_lookup_result &result,
 		const ioremap::elliptics::error_info &error) {
 		if (error) {
@@ -663,15 +634,12 @@ public:
 
 	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &)
 	{
-		auto key_ptr = get_key(req);
-		if (!key_ptr) {
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
+
+		if (!this->server()->elliptics().process(req, m_key, sess)) {
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
-
-		m_key = *key_ptr;
-
-		ioremap::elliptics::session sess = this->server()->create_session();
 
 		using namespace std::placeholders;
 		sess.lookup(m_key).connect(std::bind(
@@ -748,7 +716,7 @@ public:
 	virtual void read_next(uint64_t offset)
 	{
 		this->log(swarm::LOG_DEBUG, "%s, offset: %llu", __FUNCTION__, (unsigned long long) offset);
-		ioremap::elliptics::session sess = this->server()->create_session();
+		ioremap::elliptics::session sess = this->server()->elliptics().session();
 
 		using namespace std::placeholders;
 		sess.read_data(m_key, offset, std::min(m_size - offset, m_buffer_size)).connect(std::bind(

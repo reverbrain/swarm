@@ -39,7 +39,7 @@ public:
 
 	ioremap::elliptics::node node() const;
 	ioremap::elliptics::session session() const;
-	bool process_request(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const;
+	bool process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const;
 
 protected:
 	virtual bool prepare_config(const rapidjson::Value &config, dnet_config &node_config);
@@ -50,25 +50,6 @@ protected:
 
 private:
 	swarm::logger m_logger;
-	std::unique_ptr<ioremap::elliptics::node> m_node;
-	std::unique_ptr<ioremap::elliptics::session> m_session;
-};
-
-class elliptics_server
-{
-public:
-	elliptics_server();
-
-	virtual bool initialize(const rapidjson::Value &config);
-
-	ioremap::elliptics::session create_session();
-	ioremap::elliptics::node get_node();
-
-protected:
-	ioremap::swarm::logger logger_impl();
-
-private:
-	std::unique_ptr<ioremap::swarm::logger> m_logger;
 	std::unique_ptr<ioremap::elliptics::node> m_node;
 	std::unique_ptr<ioremap::elliptics::session> m_session;
 };

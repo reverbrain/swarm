@@ -17,7 +17,7 @@
 
 using namespace ioremap::thevoid;
 
-class example_server : public server<example_server>, public elliptics_server
+class example_server : public server<example_server>
 {
 public:
 	struct signature_info
@@ -26,11 +26,10 @@ public:
 		std::string path;
 	};
 
-	virtual bool initialize(const rapidjson::Value &config) {
-		if (!elliptics_server::initialize(config))
+	virtual bool initialize(const rapidjson::Value &config)
+	{
+		if (!m_elliptics.initialize(config, logger()))
 			return false;
-
-		set_logger(logger_impl());
 
 		if (config.HasMember("signatures")) {
 			auto &signatures = config["signatures"];
@@ -112,11 +111,17 @@ public:
 		return url;
 	}
 
+	const elliptics_base &elliptics()
+	{
+		return m_elliptics;
+	}
+
 private:
 	std::vector<signature_info> m_signatures;
 	bool m_redirect_read;
 	int m_redirect_port;
 	bool m_secured_http;
+	elliptics_base m_elliptics;
 };
 
 int main(int argc, char **argv)

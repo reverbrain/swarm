@@ -9,9 +9,15 @@ set(SWARM_ELLIPTICS_HEADERS
 	io.hpp
 	jsonvalue.hpp
 	server.hpp
+	signature_base.hpp
 )
 
-add_library(elliptics-thevoid SHARED server.cpp ${SWARM_ELLIPTICS_HEADERS})
+set(SWARM_ELLIPTICS_SOURCES
+	server.cpp
+	signature_base.cpp
+)
+
+add_library(elliptics-thevoid SHARED ${SWARM_ELLIPTICS_SOURCES} ${SWARM_ELLIPTICS_HEADERS})
 target_link_libraries(elliptics-thevoid thevoid ${elliptics_cpp_LIBRARY} ${elliptics_client_LIBRARY} pthread)
 set_target_properties(elliptics-thevoid PROPERTIES
 	VERSION ${DEBFULLVERSION}
@@ -29,6 +35,7 @@ install(FILES
 		io.hpp
 		server.hpp
 		elliptics_logger.hpp
+		signature_base.hpp
 	DESTINATION include/thevoid/elliptics)
 install(TARGETS elliptics-thevoid
 	LIBRARY DESTINATION lib${LIB_SUFFIX}
