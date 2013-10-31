@@ -24,6 +24,7 @@
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/variant.hpp>
 
 #include <string>
 #include <vector>
@@ -71,6 +72,7 @@ public:
 class server_data;
 template <typename T> class connection;
 class monitor_connection;
+class server_options_private;
 
 class base_server : private boost::noncopyable
 {
@@ -92,19 +94,105 @@ public:
 	virtual bool initialize_logger(const rapidjson::Value &config);
 
 protected:
-	void on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory);
-	void on_prefix(const std::string &url, const std::shared_ptr<base_stream_factory> &factory);
+	class options
+	{
+	public:
+		class exact_match : private boost::noncopyable
+		{
+		public:
+			exact_match(const std::string &str) : m_str(str)
+			{
+			}
+
+			void apply(options &opt)
+			{
+				opt.set_exact_match(m_str);
+			}
+
+		private:
+			std::string m_str;
+		};
+
+		class prefix_match : private boost::noncopyable
+		{
+		public:
+			prefix_match(const std::string &str) : m_str(str)
+			{
+			}
+
+			void apply(options &opt)
+			{
+				opt.set_prefix_match(m_str);
+			}
+
+		private:
+			std::string m_str;
+		};
+
+		class methods : private boost::noncopyable
+		{
+		public:
+			enum special_value {
+				all
+			};
+
+			methods(special_value value) : m_methods(value)
+			{
+			}
+
+			template <typename... String>
+			methods(String &&...args) : m_methods(std::vector<std::string>{ std::forward<std::string>(args)... })
+			{
+			}
+
+			void apply(options &opt)
+			{
+				if (auto tmp = boost::get<std::vector<std::string>>(&m_methods)) {
+					opt.set_methods(*tmp);
+				} else if (auto tmp = boost::get<special_value>(&m_methods)) {
+					opt.set_methods(*tmp);
+				}
+			}
+
+		private:
+			boost::variant<std::vector<std::string>, special_value> m_methods;
+		};
+
+		options();
+
+		options(options &&other);
+		options(const options &other) = delete;
+		options &operator =(options &&other);
+		options &operator =(const options &other) = delete;
+
+		~options();
+
+		void set_exact_match(const std::string &str);
+		void set_prefix_match(const std::string &str);
+		void set_methods(const std::vector<std::string> &methods);
+		void set_methods(methods::special_value value);
+
+		bool check(const swarm::http_request &request) const;
+
+		void swap(options &other);
+
+	private:
+		std::unique_ptr<server_options_private> m_data;
+	};
+
+	void on(options &&opts, const std::shared_ptr<base_stream_factory> &factory);
 
 private:
 	template <typename Server, typename... Args>
 	friend std::shared_ptr<Server> ioremap::thevoid::create_server(Args &&...args);
 	template <typename T> friend class connection;
 	friend class monitor_connection;
+	friend class server_data;
 
 	void set_server(const std::weak_ptr<base_server> &server);
-	std::shared_ptr<base_stream_factory> factory(const swarm::url &url);
+	std::shared_ptr<base_stream_factory> factory(const swarm::http_request &request);
 
-	server_data *m_data;
+	std::unique_ptr<server_data> m_data;
 };
 
 template <typename Server>
@@ -115,26 +203,25 @@ public:
 	~server() {}
 
 protected:
-	void on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
+	template <typename T, typename... Options>
+	void on(Options &&...args)
 	{
-		base_server::on(url, factory);
+		options opts;
+		options_pass(apply_option(opts, args)...);
+		base_server::on(std::move(opts), std::make_shared<stream_factory<Server, T>>(this->shared_from_this()));
 	}
 
-	void on_prefix(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
+private:
+	template <typename Option>
+	Option &&apply_option(options &opt, Option &&option)
 	{
-		base_server::on_prefix(url, factory);
+		option.apply(opt);
+		return std::forward<Option>(option);
 	}
 
-	template <typename T>
-	void on(const std::string &url)
+	template <typename... Options>
+	void options_pass(Options &&...)
 	{
-		on(url, std::make_shared<stream_factory<Server, T>>(this->shared_from_this()));
-	}
-
-	template <typename T>
-	void on_prefix(const std::string &url)
-	{
-		on_prefix(url, std::make_shared<stream_factory<Server, T>>(this->shared_from_this()));
 	}
 };
 

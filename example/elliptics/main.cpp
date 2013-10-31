@@ -70,19 +70,49 @@ public:
 			m_secured_http = false;
 		}
 
-		on<elliptics::index::on_update<example_server>>("/update");
-		on<elliptics::index::on_find<example_server>>("/find");
+		on<elliptics::index::on_update<example_server>>(
+			options::exact_match("/update"),
+			options::methods("POST")
+		);
+		on<elliptics::index::on_find<example_server>>(
+			options::exact_match("/find"),
+			options::methods("GET")
+		);
 		if (m_redirect_read) {
-			on<elliptics::io::on_redirectable_get<example_server>>("/get");
+			on<elliptics::io::on_redirectable_get<example_server>>(
+				options::exact_match("/get"),
+				options::methods("GET")
+			);
 		} else {
-			on<elliptics::io::on_get<example_server>>("/get");
+			on<elliptics::io::on_get<example_server>>(
+				options::exact_match("/get"),
+				options::methods("GET")
+			);
 		}
-		on<elliptics::io::on_buffered_get<example_server>>("/get-big");
-		on<elliptics::io::on_upload<example_server>>("/upload");
-		on<elliptics::io::on_buffered_upload<example_server>>("/upload-big");
-		on<elliptics::io::on_download_info<example_server>>("/download-info");
-		on<elliptics::common::on_ping<example_server>>("/ping");
-		on<elliptics::common::on_echo<example_server>>("/echo");
+		on<elliptics::io::on_buffered_get<example_server>>(
+			options::exact_match("/get-big"),
+			options::methods("GET")
+		);
+		on<elliptics::io::on_upload<example_server>>(
+			options::exact_match("/upload"),
+			options::methods("POST")
+		);
+		on<elliptics::io::on_buffered_upload<example_server>>(
+			options::exact_match("/upload-big"),
+			options::methods("POST")
+		);
+		on<elliptics::io::on_download_info<example_server>>(
+			options::exact_match("/download-info"),
+			options::methods("GET")
+		);
+		on<elliptics::common::on_ping<example_server>>(
+			options::exact_match("/ping"),
+			options::methods("GET")
+		);
+		on<elliptics::common::on_echo<example_server>>(
+			options::exact_match("/echo"),
+			options::methods("GET")
+		);
 	
 		return true;
 	}

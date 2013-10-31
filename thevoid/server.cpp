@@ -103,7 +103,6 @@ base_server::base_server() : m_data(new server_data)
 
 base_server::~base_server()
 {
-	delete m_data;
 }
 
 void base_server::set_logger(const swarm::logger &logger)
@@ -159,6 +158,11 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 		logger().log(swarm::LOG_ERROR, "unknown logger type \"%s\", use default, possible values are: file", type.c_str());
 	}
 	return true;
+}
+
+void base_server::on(base_server::options &&opts, const std::shared_ptr<base_stream_factory> &factory)
+{
+	m_data->handlers.emplace_back(std::move(opts), factory);
 }
 
 void base_server::listen(const std::string &host)
@@ -355,49 +359,123 @@ int base_server::run(int argc, char **argv)
 	return 0;
 }
 
-void base_server::on(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
-{
-	if (m_data->handlers.find(url) != m_data->handlers.end()) {
-		throw std::logic_error("Handler \"" + url + "\" is already registered");
-	}
-
-	m_data->handlers[url] = factory;
-}
-
-void base_server::on_prefix(const std::string &url, const std::shared_ptr<base_stream_factory> &factory)
-{
-	for (auto it = m_data->prefix_handlers.begin(); it != m_data->prefix_handlers.end(); ++it) {
-		if (it->first == url) {
-			throw std::logic_error("Prefix handler \"" + url + "\" is already registered");
-		} else if (url.compare(0, it->first.size(), it->first) == 0) {
-			throw std::logic_error("Prefix handler \"" + url + "\" is not accessable because \"" + it->first + "\" already registered");
-		}
-	}
-	m_data->prefix_handlers.emplace_back(url, factory);
-}
-
 void base_server::set_server(const std::weak_ptr<base_server> &server)
 {
 	m_data->server = server;
 }
 
-std::shared_ptr<base_stream_factory> base_server::factory(const swarm::url &url)
+std::shared_ptr<base_stream_factory> base_server::factory(const swarm::http_request &request)
 {
-	const std::string &path = url.path();
-
-	auto it = m_data->handlers.find(path);
-
-	if (it != m_data->handlers.end())
-		return it->second;
-
-	for (auto jt = m_data->prefix_handlers.begin(); jt != m_data->prefix_handlers.end(); ++jt) {
-		if (path.compare(0, jt->first.size(), jt->first) == 0) {
-			return jt->second;
+	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
+		if (it->first.check(request)) {
+			return it->second;
 		}
 	}
 
 	return std::shared_ptr<base_stream_factory>();
 }
 
+class server_options_private
+{
+public:
+	enum flag : uint64_t {
+		check_methods           = 0x01,
+		check_exact_match       = 0x02,
+		check_prefix_match      = 0x04,
+		check_string_match      = 0x08,
+		check_regexp_match      = 0x10,
+		check_all_match         = check_exact_match | check_prefix_match | check_string_match | check_regexp_match
+	};
+
+	server_options_private() : flags(0)
+	{
+	}
+
+	uint64_t flags;
+	std::string match_string;
+	std::vector<std::string> methods;
+};
+
+base_server::options::options() : m_data(new server_options_private)
+{
+}
+
+base_server::options::options(options &&other) : m_data(std::move(other.m_data))
+{
+}
+
+base_server::options &base_server::options::operator =(options &&other)
+{
+	m_data = std::move(other.m_data);
+	return *this;
+}
+
+base_server::options::~options()
+{
+}
+
+void base_server::options::set_exact_match(const std::string &str)
+{
+	if (m_data->flags & server_options_private::check_all_match) {
+		throw std::runtime_error("trying to set_exact_match(" + str + "), while another was already set");
+	}
+	m_data->flags |= server_options_private::check_exact_match | server_options_private::check_string_match;
+	m_data->match_string = str;
+}
+
+void base_server::options::set_prefix_match(const std::string &str)
+{
+	if (m_data->flags & server_options_private::check_all_match) {
+		throw std::runtime_error("trying to set_prefix_match(" + str + "), while another was already set");
+	}
+	m_data->flags |= server_options_private::check_prefix_match | server_options_private::check_string_match;
+	m_data->match_string = str;
+}
+
+void base_server::options::set_methods(const std::vector<std::string> &methods)
+{
+	m_data->flags |= server_options_private::check_methods;
+	m_data->methods = methods;
+}
+
+void base_server::options::set_methods(base_server::options::methods::special_value value)
+{
+	if (value == methods::all) {
+		m_data->flags &= ~server_options_private::check_methods;
+	} else {
+		throw std::runtime_error("unknown options::methods::special_value: " + boost::lexical_cast<std::string>(value));
+	}
+}
+
+bool base_server::options::check(const swarm::http_request &request) const
+{
+	if (m_data->flags & server_options_private::check_methods) {
+		const auto &methods = m_data->methods;
+		if (std::find(methods.begin(), methods.end(), request.method()) == methods.end())
+			return false;
+	}
+
+	if (m_data->flags & server_options_private::check_string_match) {
+		const std::string &match = m_data->match_string;
+
+		if (m_data->flags & server_options_private::check_exact_match) {
+			if (match != request.url().path()) {
+				return false;
+			}
+		} else if (m_data->flags & server_options_private::check_prefix_match) {
+			if (request.url().path().compare(0, match.size(), match) != 0) {
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+void base_server::options::swap(base_server::options &other)
+{
+	using std::swap;
+	swap(m_data, other.m_data);
+}
 
 } } // namespace ioremap::thevoid
