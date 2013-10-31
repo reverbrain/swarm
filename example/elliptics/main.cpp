@@ -129,16 +129,18 @@ public:
 		return NULL;
 	}
 
-	std::string generate_url_base(dnet_addr *addr)
+	ioremap::swarm::url generate_url_base(dnet_addr *addr)
 	{
-		std::string url = m_secured_http ? "https://" : "http://";
-		url += dnet_state_dump_addr_only(addr);
+		char buffer[128];
+
+		ioremap::swarm::url url;
+		url.set_scheme(m_secured_http ? "https" : "http");
+		url.set_host(dnet_server_convert_dnet_addr_raw(addr, buffer, sizeof(buffer)));
 		if (m_redirect_port > 0) {
-			url += ":";
-			url += boost::lexical_cast<std::string>(m_redirect_port);
+			url.set_port(m_redirect_port);
 		}
-		url += "/";
-		return url;
+
+		return std::move(url);
 	}
 
 	const elliptics_base &elliptics()

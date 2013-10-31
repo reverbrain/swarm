@@ -520,8 +520,8 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 
 		const dnet_file_info *info = entry.file_info();
 
-		std::string url = this->server()->generate_url_base(entry.address());
-		swarm::url_query query;
+		swarm::url url = this->server()->generate_url_base(entry.address());
+		swarm::url_query &query = url.query();
 		query.add_item("file-path", entry.file_path());
 		if (key) {
 			query.add_item("key", *key);
@@ -530,7 +530,9 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		query.add_item("size", boost::lexical_cast<std::string>(info->size));
 		query.add_item("time", time);
 
-		auto sign_input = url + "?" + query.to_string();
+		url.set_query(query);
+
+		auto sign_input = url.to_string();
 
 		if (!key) {
 			*url_ptr = std::move(sign_input);
@@ -547,15 +549,12 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 
 		const std::string signature(signature_str, 2 * DNET_ID_SIZE);
 
-		query.add_item("signature", signature);
+		url.query().add_item("signature", signature);
 
 		if (url_ptr) {
 			// index of "key"
-			query.remove_item(1);
-
-			url += "?";
-			url += query.to_string();
-			*url_ptr = std::move(url);
+			url.query().remove_item(1);
+			*url_ptr = std::move(url.to_string());
 		}
 
 		return std::move(signature);

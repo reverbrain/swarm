@@ -153,7 +153,7 @@ public:
 
 	void process_info(request_info::ptr request)
 	{
-		auto tmp = clock::now();
+//		auto tmp = clock::now();
 
 		network_connection_info::ptr info(new network_connection_info);
 		info->easy = curl_easy_init();
@@ -212,7 +212,7 @@ public:
 
 		CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
 
-		auto end = clock::now();
+//		auto end = clock::now();
 //		std::cout << "process_info: " << std::chrono::duration_cast<std::chrono::microseconds>(tmp - request->begin).count() / 1000. << " ms"
 //			  << ", add_handle: " << std::chrono::duration_cast<std::chrono::microseconds>(end - tmp).count() / 1000. << " ms"
 //			  << std::endl;

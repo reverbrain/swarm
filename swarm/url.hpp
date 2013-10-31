@@ -61,6 +61,7 @@ public:
 	void set_path(const std::string &path);
 
 	const url_query &query() const;
+	url_query &query();
 	void set_query(const std::string &query);
 	void set_query(const swarm::url_query &query);
 	const std::string &raw_query() const;

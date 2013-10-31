@@ -479,6 +479,18 @@ const url_query &url::query() const
 	return p->query;
 }
 
+url_query &url::query()
+{
+	if (is_valid() && !(p->state & url_private::query_parsed)) {
+		p->query = std::move(url_query(p->raw_query));
+		p->state |= url_private::query_parsed;
+	}
+
+	p->start_modifications();
+
+	return p->query;
+}
+
 void url::set_query(const std::string &query)
 {
 	p->start_modifications();
