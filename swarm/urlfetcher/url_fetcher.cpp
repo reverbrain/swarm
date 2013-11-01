@@ -60,7 +60,6 @@ public:
 	CURL *easy;
 	swarm::logger logger;
 	url_fetcher::response reply;
-	url_fetcher::request request;
 	std::shared_ptr<base_stream> stream;
 	std::string body;
 
@@ -158,8 +157,8 @@ public:
 
 		network_connection_info::ptr info(new network_connection_info);
 		info->easy = curl_easy_init();
-		info->request = std::move(request->request);
-		info->reply.set_url(info->request.url());
+		info->reply.set_request(std::move(request->request));
+		info->reply.set_url(info->reply.request().url());
 		info->reply.set_code(200);
 		info->stream = request->stream;
 		info->body = std::move(request->body);
@@ -190,8 +189,8 @@ public:
 		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
 //		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
-		curl_easy_setopt(info->easy, CURLOPT_URL, info->request.url().to_string().c_str());
-		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->request.timeout());
+		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
+		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
 		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETFUNCTION, network_manager_private::open_callback);
 		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETDATA, &loop);
 		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETFUNCTION, network_manager_private::close_callback);
@@ -208,7 +207,7 @@ public:
 		curl_easy_setopt(info->easy, CURLOPT_WRITEDATA, info.get());
 		curl_easy_setopt(info->easy, CURLOPT_PRIVATE, info.get());
 
-		if (info->request.follow_location())
+		if (info->reply.request().follow_location())
 			curl_easy_setopt(info->easy, CURLOPT_FOLLOWLOCATION, 1L);
 
 		CURLMcode err = curl_multi_add_handle(multi, info.get()->easy);
@@ -495,6 +494,7 @@ public:
 	}
 
 	swarm::url url;
+	url_fetcher::request request;
 };
 
 url_fetcher::request::request() : m_data(new url_fetcher_request_data)
@@ -605,6 +605,21 @@ void url_fetcher::response::set_url(const swarm::url &url)
 void url_fetcher::response::set_url(const std::string &url)
 {
 	m_data->url = std::move(swarm::url(url));
+}
+
+const url_fetcher::request &url_fetcher::response::request() const
+{
+	return m_data->request;
+}
+
+void url_fetcher::response::set_request(const url_fetcher::request &request)
+{
+	m_data->request = request;
+}
+
+void url_fetcher::response::set_request(url_fetcher::request &&request)
+{
+	m_data->request = std::move(request);
 }
 
 } // namespace service

@@ -156,7 +156,7 @@ int boost_event_loop::timer_request(long timeout_ms)
 void boost_event_loop::post(const std::function<void ()> &func)
 {
 	logger().log(LOG_DEBUG, "post");
-	m_service.post(func);
+	m_service.dispatch(func);
 }
 
 void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_info, int what, const boost::system::error_code &error)

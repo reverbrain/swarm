@@ -64,7 +64,7 @@ session elliptics_base::session() const
 	return m_session->clone();
 }
 
-bool elliptics_base::process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
+ioremap::swarm::http_response::status_type elliptics_base::process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
 {
 	const auto &query = request.url().query();
 
@@ -78,14 +78,14 @@ bool elliptics_base::process(const swarm::http_request &request, ioremap::ellipt
 
 		key = id;
 	} else {
-		return false;
+		return ioremap::swarm::http_response::bad_request;
 	}
 
 	session.transform(key);
 
 	(void) session;
 
-	return true;
+	return ioremap::swarm::http_response::ok;
 }
 
 bool elliptics_base::prepare_config(const rapidjson::Value &config, dnet_config &node_config)

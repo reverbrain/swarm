@@ -11,8 +11,6 @@ set_target_properties(thevoid PROPERTIES
     )
 
 install(FILES
-	acceptorlist.hpp
-	connection.hpp
 	server.hpp
 	stream.hpp
 	streamfactory.hpp

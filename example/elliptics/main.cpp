@@ -176,10 +176,11 @@ public:
 		{
 		}
 
-		virtual bool process(const ioremap::swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
+		virtual ioremap::swarm::http_response::status_type process(const ioremap::swarm::http_request &request,
+			ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
 		{
 			if (!elliptics_base::process(request, key, session)) {
-				return false;
+				return ioremap::swarm::http_response::bad_request;
 			}
 
 			if (m_server->m_cache) {
@@ -191,7 +192,7 @@ public:
 				}
 			}
 
-			return true;
+			return ioremap::swarm::http_response::ok;
 		}
 
 	private:

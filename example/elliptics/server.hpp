@@ -39,7 +39,7 @@ public:
 
 	ioremap::elliptics::node node() const;
 	ioremap::elliptics::session session() const;
-	virtual bool process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const;
+	virtual swarm::http_response::status_type process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const;
 
 protected:
 	virtual bool prepare_config(const rapidjson::Value &config, dnet_config &node_config);

@@ -25,7 +25,7 @@ set_target_properties(swarm_urlfetcher PROPERTIES
 
 install(FILES
     ${SWARM_ACCESS_MANAGER_HDR_LIST}
-    DESTINATION include/swarm/manager/
+    DESTINATION include/swarm/urlfetcher/
     )
 
 install(TARGETS swarm_urlfetcher

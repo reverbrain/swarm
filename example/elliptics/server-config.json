@@ -33,6 +33,14 @@
                 "path": ""
             }
         ],
-        "redirect": false
+        "redirect": false,
+        "users": [
+            {
+                "name": "qwerty",
+                "namespace": "qwerty",
+                "password": "trello"
+            }
+
+        ]
     }
 }

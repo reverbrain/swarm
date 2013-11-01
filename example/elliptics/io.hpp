@@ -54,8 +54,9 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 		ioremap::elliptics::key key;
 
-		if (!this->server()->elliptics()->process(req, key, sess)) {
-			this->send_reply(swarm::http_response::bad_request);
+		auto status = this->server()->elliptics()->process(req, key, sess);
+		if (status != swarm::http_response::ok) {
+			this->send_reply(status);
 			return;
 		}
 
@@ -275,7 +276,8 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 		ioremap::elliptics::key key;
 
-		if (!this->server()->elliptics()->process(req, key, sess)) {
+		auto status = this->server()->elliptics()->process(req, key, sess);
+		if (status != swarm::http_response::ok) {
 			throw std::runtime_error("failed to get file name");
 		}
 
@@ -376,9 +378,10 @@ public:
 
 		m_session.reset(new ioremap::elliptics::session(this->server()->elliptics()->session()));
 
-		if (!this->server()->elliptics()->process(request, m_key, *m_session)) {
+		auto status = this->server()->elliptics()->process(request, m_key, *m_session);
+		if (status != swarm::http_response::ok) {
 			m_session.reset();
-			this->send_reply(swarm::http_response::bad_request);
+			this->send_reply(status);
 			return;
 		}
 
@@ -501,8 +504,9 @@ struct on_download_info : public simple_request_stream<T>, public std::enable_sh
 		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 		ioremap::elliptics::key key;
 
-		if (!this->server()->elliptics()->process(req, key, sess)) {
-			this->send_reply(swarm::http_response::bad_request);
+		auto status = this->server()->elliptics()->process(req, key, sess);
+		if (status != swarm::http_response::ok) {
+			this->send_reply(status);
 			return;
 		}
 
@@ -635,8 +639,9 @@ public:
 	{
 		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 
-		if (!this->server()->elliptics()->process(req, m_key, sess)) {
-			this->send_reply(swarm::http_response::bad_request);
+		auto status = this->server()->elliptics()->process(req, m_key, sess);
+		if (status != swarm::http_response::ok) {
+			this->send_reply(status);
 			return;
 		}
 
