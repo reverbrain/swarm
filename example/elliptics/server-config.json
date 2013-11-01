@@ -1,13 +1,11 @@
 {
     "endpoints": [
-        "0.0.0.0:8080"
+        "0.0.0.0:8080",
+        "0.0.0.0:80"
     ],
     "also-possible-endpoints": [
         "unix:test.sock"
     ],
-    "daemon": {
-        "monitor-port": 20000
-    },
     "backlog": 128,
     "threads": 2,
     "buffer_size": 65536,
@@ -15,6 +13,11 @@
         "file": "/dev/stderr",
         "level": 4
     },
+    "daemon": {
+        "fork": false,
+        "uid": 1000
+    },
+    "monitor-port": 20000,
     "application": {
         "remotes": [
             "localhost:1025:2"

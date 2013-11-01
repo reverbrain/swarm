@@ -1,5 +1,6 @@
 /*
  * Copyright 2013+ Ruslan Nigmatullin <euroelessar@yandex.ru>
+ * Copyright 2013+ Evgeniy Polyakov <zbr@ioremap.net>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +31,8 @@
 #include <swarm/logger.hpp>
 #include <thevoid/rapidjson/filereadstream.h>
 
+#include <sys/wait.h>
+
 #ifdef __linux__
 # include <sys/prctl.h>
 #endif
@@ -54,7 +57,8 @@ server_data::server_data() :
 	local_acceptors(*this),
 	tcp_acceptors(*this),
 	monitor_acceptors(*this),
-	signal_set(global_signal_set.lock())
+	signal_set(global_signal_set.lock()),
+	daemonize(false)
 {
 	if (!signal_set) {
 		signal_set = std::make_shared<signal_handler>();
@@ -166,6 +170,57 @@ void base_server::on(base_server::options &&opts, const std::shared_ptr<base_str
 	m_data->handlers.emplace_back(std::move(opts), factory);
 }
 
+static int start_daemon()
+{
+	pid_t pid;
+
+	pid = fork();
+	if (pid == -1) {
+		fprintf(stderr, "Failed to fork to background: %s.\n", strerror(errno));
+		throw daemon_exception();
+	}
+
+	if (pid != 0) {
+		printf("Children pid: %d\n", pid);
+		return pid;
+	}
+	setsid();
+
+	return 0;
+}
+
+void base_server::daemonize()
+{
+	if (!m_data->daemonize) {
+		return;
+	}
+
+	while (1) {
+		int err = start_daemon();
+		if (err > 0) {
+			int status;
+
+			waitpid(err, &status, 0);
+
+			err = WEXITSTATUS(status);
+			fprintf(stderr, "child exited with status: %d\n", err);
+			if (WIFEXITED(status)) {
+				printf("exited, status=%d\n", WEXITSTATUS(status));
+			} else if (WIFSIGNALED(status)) {
+				printf("killed by signal %d\n", WTERMSIG(status));
+			} else if (WIFSTOPPED(status)) {
+				printf("stopped by signal %d\n", WSTOPSIG(status));
+			} else if (WIFCONTINUED(status)) {
+				printf("continued\n");
+			}
+		} else {
+			return;
+		}
+
+		sleep(1);
+	}
+}
+
 void base_server::listen(const std::string &host)
 {
 	if (host.compare(0, UNIX_PREFIX_LEN, UNIX_PREFIX) == 0) {
@@ -267,6 +322,18 @@ int base_server::run(int argc, char **argv)
 		return -5;
 	}
 
+	if (config.HasMember("daemon")) {
+		const rapidjson::Value &daemon = config["daemon"];
+
+		if (daemon.HasMember("fork")) {
+			m_data->daemonize = daemon["fork"].GetBool();
+
+			if (daemon.HasMember("uid")) {
+				m_data->user_id = daemon["uid"].GetUint();
+			}
+		}
+	}
+
 	if (config.HasMember("threads")) {
 		m_data->threads_count = config["threads"].GetUint();
 	}
@@ -310,14 +377,14 @@ int base_server::run(int argc, char **argv)
 		return -6;
 	}
 
+	if (m_data->daemonize && m_data->user_id) {
+		setuid(*m_data->user_id);
+	}
+
 	int monitor_port = -1;
 
-	if (config.HasMember("daemon")) {
-		auto &daemon = config["daemon"];
-
-		if (daemon.HasMember("monitor-port")) {
-			monitor_port = daemon["monitor-port"].GetInt();
-		}
+	if (config.HasMember("monitor-port")) {
+		monitor_port = config["monitor-port"].GetInt();
 	}
 
 	if (config.HasMember("backlog"))
@@ -480,3 +547,9 @@ void base_server::options::swap(base_server::options &other)
 }
 
 } } // namespace ioremap::thevoid
+
+
+const char *ioremap::thevoid::daemon_exception::what() const noexcept
+{
+	return "daemon initialization failed";
+}

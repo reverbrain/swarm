@@ -103,6 +103,9 @@ public:
 	std::shared_ptr<signal_handler> signal_set;
 	//! User handlers for urls
 	std::vector<std::pair<base_server::options, factory_ptr>> handlers;
+    //! User id change to during deamonization
+    boost::optional<uid_t> user_id;
+    bool daemonize;
 };
 
 }}

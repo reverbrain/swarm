@@ -42,6 +42,8 @@ public:
 
 	virtual bool initialize(const rapidjson::Value &config)
 	{
+		daemonize();
+
 		if (!m_elliptics.initialize(config, logger()))
 			return false;
 

@@ -90,6 +90,12 @@ template <typename T> class connection;
 class monitor_connection;
 class server_options_private;
 
+class daemon_exception : public std::exception
+{
+public:
+	virtual const char *what() const noexcept;
+};
+
 class base_server : private boost::noncopyable
 {
 public:
@@ -197,6 +203,9 @@ protected:
 	};
 
 	void on(options &&opts, const std::shared_ptr<base_stream_factory> &factory);
+
+	// This is a subject of change, don't use it
+	void daemonize();
 
 private:
 	template <typename Server, typename... Args>
