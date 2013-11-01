@@ -40,7 +40,5 @@ install(TARGETS swarm
     BUNDLE DESTINATION library
     )
 
-# Disable for current
-# add_subdirectory(xml)
-
+add_subdirectory(xml)
 add_subdirectory(urlfetcher)
