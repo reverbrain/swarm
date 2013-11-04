@@ -96,6 +96,9 @@ public:
 	virtual const char *what() const noexcept;
 };
 
+template <typename Server, typename... Args>
+std::shared_ptr<Server> create_server(Args &&...args);
+
 class base_server : private boost::noncopyable
 {
 public:
@@ -182,7 +185,7 @@ protected:
 
 		options();
 
-		options(options &&other);
+		options(options &&other) noexcept;
 		options(const options &other) = delete;
 		options &operator =(options &&other);
 		options &operator =(const options &other) = delete;

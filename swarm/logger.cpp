@@ -71,7 +71,8 @@ public:
 		localtime_r((time_t *)&tv.tv_sec, &tm);
 		strftime(str, sizeof(str), "%F %R:%S", &tm);
 
-		snprintf(usecs_and_id, sizeof(usecs_and_id), ".%06lu %ld/%d : ", tv.tv_usec, get_thread_id(), getpid());
+		snprintf(usecs_and_id, sizeof(usecs_and_id), ".%06ld %ld/%d : ",
+			(long)tv.tv_usec, get_thread_id(), getpid());
 
 		if (m_stream) {
 			size_t len = strlen(msg);

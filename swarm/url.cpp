@@ -18,6 +18,8 @@
 #include <uriparser/Uri.h>
 #include <stdexcept>
 #include <iostream>
+#include <vector>
+
 #include <boost/lexical_cast.hpp>
 
 namespace ioremap {

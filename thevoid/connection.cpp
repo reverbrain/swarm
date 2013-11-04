@@ -19,11 +19,15 @@
 #include <boost/bind.hpp>
 #include <iostream>
 
+#if __clang__
+#include <atomic>
+#else
 #if __GNUC__ == 4 && __GNUC_MINOR__ < 5
 #  include <cstdatomic>
 #else
 #  include <atomic>
-#endif
+#endif // gnuc check
+#endif // clang
 
 #include "server_p.hpp"
 #include "stockreplies_p.hpp"

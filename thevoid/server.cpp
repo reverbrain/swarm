@@ -468,7 +468,7 @@ base_server::options::options() : m_data(new server_options_private)
 {
 }
 
-base_server::options::options(options &&other) : m_data(std::move(other.m_data))
+base_server::options::options(options &&other) noexcept : m_data(std::move(other.m_data))
 {
 }
 

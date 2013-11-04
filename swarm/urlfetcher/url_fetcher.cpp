@@ -22,11 +22,16 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
+#if __clang__
+#  include <atomic>
+#else
 #if __GNUC__ == 4 && __GNUC_MINOR__ < 5
 #  include <cstdatomic>
 #else
 #  include <atomic>
-#endif
+#endif // gnuc check
+#endif // clang
+
 #include <list>
 #include <algorithm>
 
@@ -130,7 +135,7 @@ public:
 	struct multi_error_category : public boost::system::error_category
 	{
 	public:
-		const char *name() const
+		const char *name() const BOOST_SYSTEM_NOEXCEPT
 		{
 			return "curl_multi_code";
 		}
