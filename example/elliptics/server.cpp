@@ -98,7 +98,7 @@ bool elliptics_base::prepare_config(const rapidjson::Value &config, dnet_config 
 bool elliptics_base::prepare_node(const rapidjson::Value &config, ioremap::elliptics::node &node)
 {
 	if (!config.HasMember("remotes")) {
-		m_logger.log(swarm::LOG_ERROR, "\"remotes\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"remotes\" field is missed");
 		return false;
 	}
 
@@ -119,7 +119,7 @@ bool elliptics_base::prepare_node(const rapidjson::Value &config, ioremap::ellip
 bool elliptics_base::prepare_session(const rapidjson::Value &config, ioremap::elliptics::session &session)
 {
 	if (!config.HasMember("groups")) {
-		m_logger.log(swarm::LOG_ERROR, "\"groups\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"groups\" field is missed");
 		return false;
 	}
 

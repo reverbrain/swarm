@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 	else
 		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::LOG_ERROR);
+	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_ERROR);
 
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
 

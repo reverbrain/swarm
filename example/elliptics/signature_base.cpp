@@ -28,13 +28,13 @@ bool signature_base::initialize(const rapidjson::Value &config, const ioremap::e
 	m_logger = logger;
 
 	if (!config.HasMember("signature")) {
-		m_logger.log(swarm::LOG_ERROR, "\"signature\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"signature\" field is missed");
 		return false;
 	}
 
 	const rapidjson::Value &signature_config = config["signature"];
 	if (!signature_config.HasMember("key")) {
-		m_logger.log(swarm::LOG_ERROR, "\"signature.key\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"signature.key\" field is missed");
 		return false;
 	}
 

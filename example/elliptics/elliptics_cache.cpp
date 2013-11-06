@@ -64,19 +64,19 @@ bool elliptics_cache::initialize(const rapidjson::Value &application_config, con
 	m_logger = logger;
 
 	if (!application_config.HasMember("cache")) {
-		m_logger.log(swarm::LOG_ERROR, "\"application.cache\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.cache\" field is missed");
 		return false;
 	}
 
 	const rapidjson::Value &config = application_config["cache"];
 
 	if (!config.HasMember("groups")) {
-		m_logger.log(swarm::LOG_ERROR, "\"application.cache.groups\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.cache.groups\" field is missed");
 		return false;
 	}
 
 	if (!config.HasMember("name")) {
-		m_logger.log(swarm::LOG_ERROR, "\"application.cache.groups\" field is missed");
+		m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.cache.groups\" field is missed");
 		return false;
 	}
 
@@ -133,7 +133,7 @@ void elliptics_cache::sync_thread()
 void elliptics_cache::on_read_finished(const ioremap::elliptics::sync_read_result &result, const ioremap::elliptics::error_info &error)
 {
 	if (error) {
-		m_logger.log(swarm::LOG_ERROR, "Failed to access groups file: %s", error.message().c_str());
+		m_logger.log(swarm::SWARM_LOG_ERROR, "Failed to access groups file: %s", error.message().c_str());
 		return;
 	}
 

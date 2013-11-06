@@ -31,11 +31,11 @@ public:
 };
 
 enum log_level {
-	LOG_DATA = 0,
-	LOG_ERROR = 1,
-	LOG_INFO = 2,
-	LOG_NOTICE = 3,
-	LOG_DEBUG = 4
+	SWARM_LOG_DATA = 0,
+	SWARM_LOG_ERROR = 1,
+	SWARM_LOG_INFO = 2,
+	SWARM_LOG_NOTICE = 3,
+	SWARM_LOG_DEBUG = 4
 };
 
 class logger_data;

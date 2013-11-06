@@ -32,7 +32,7 @@ int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 	ev::io *io = reinterpret_cast<ev::io *>(data);
 
 	if (what == poll_remove) {
-		logger().log(LOG_DEBUG, "socket_callback, destroying io: %p, socket: %d, what: %d", io, socket, what);
+		logger().log(SWARM_LOG_DEBUG, "socket_callback, destroying io: %p, socket: %d, what: %d", io, socket, what);
 		listener()->set_socket_data(socket, NULL);
 		delete io;
 		return 0;
@@ -40,7 +40,7 @@ int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 
 	if (!io) {
 		io = new ev::io(m_loop);
-		logger().log(LOG_DEBUG, "socket_callback, created io: %p, socket: %d, what: %d", io, socket, what);
+		logger().log(SWARM_LOG_DEBUG, "socket_callback, created io: %p, socket: %d, what: %d", io, socket, what);
 		io->set<ev_event_loop, &ev_event_loop::on_socket_event>(this);
 
 		listener()->set_socket_data(socket, io);
@@ -51,7 +51,7 @@ int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 		events |= EV_READ;
 	if (what & poll_out)
 		events |= EV_WRITE;
-	logger().log(LOG_DEBUG, "socket_callback, set io: %p, socket: %d, what: %d", io, socket, what);
+	logger().log(SWARM_LOG_DEBUG, "socket_callback, set io: %p, socket: %d, what: %d", io, socket, what);
 	bool active = io->is_active();
 	io->set(socket, events);
 	if (!active)
@@ -78,7 +78,7 @@ void ev_event_loop::post(const std::function<void ()> &func)
 
 void ev_event_loop::on_socket_event(ev::io &io, int revent)
 {
-        logger().log(LOG_DEBUG, "on_socket_event, io: %p, socket: %d, revent: %d", &io, io.fd, revent);
+        logger().log(SWARM_LOG_DEBUG, "on_socket_event, io: %p, socket: %d, revent: %d", &io, io.fd, revent);
 
 
         int action = 0;
@@ -92,13 +92,13 @@ void ev_event_loop::on_socket_event(ev::io &io, int revent)
 
 void ev_event_loop::on_timer(ev::timer &, int)
 {
-        logger().log(LOG_DEBUG, "on_timer");
+        logger().log(SWARM_LOG_DEBUG, "on_timer");
 	listener()->on_timer();
 }
 
 void ev_event_loop::on_async(ev::async &, int)
 {
-	logger().log(LOG_DEBUG, "on_async");
+	logger().log(SWARM_LOG_DEBUG, "on_async");
 
 	for (;;) {
 		std::function<void ()> event;

@@ -67,7 +67,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 			offset = query.item_value("offset", 0llu);
 			size = query.item_value("size", 0llu);
 		} catch (std::exception &e) {
-			this->log(swarm::LOG_ERROR, "GET request, invalid cast: %s", e.what());
+			this->log(swarm::SWARM_LOG_ERROR, "GET request, invalid cast: %s", e.what());
 			this->send_reply(swarm::http_response::bad_request);
 			return;
 		}
@@ -102,7 +102,7 @@ struct on_get : public simple_request_stream<T>, public std::enable_shared_from_
 
 		if (auto tmp = request.headers().get("Range")) {
 			std::string range = *tmp;
-			this->log(swarm::LOG_DATA, "GET, Range: \"%s\"", range.c_str());
+			this->log(swarm::SWARM_LOG_DATA, "GET, Range: \"%s\"", range.c_str());
 			if (range.compare(0, 6, "bytes=") == 0) {
 				range.erase(range.begin(), range.begin() + 6);
 				std::vector<std::string> ranges;
@@ -265,7 +265,7 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 				std::bind(&on_upload::on_write_finished, this->shared_from_this(),
 				std::placeholders::_1, std::placeholders::_2));
 		} catch (std::exception &e) {
-			this->log(swarm::LOG_ERROR, "GET request, invalid cast: %s", e.what());
+			this->log(swarm::SWARM_LOG_ERROR, "GET request, invalid cast: %s", e.what());
 			this->send_reply(swarm::http_response::bad_request);
 		}
 	}
@@ -401,7 +401,7 @@ public:
 		ioremap::elliptics::session sess = m_session->clone();
 		const auto data = create_data(buffer);
 
-		this->log(swarm::LOG_INFO, "on_chunk: size: %zu, m_offset: %llu, flags: %u", data.size(), (unsigned long long)m_offset, flags);
+		this->log(swarm::SWARM_LOG_INFO, "on_chunk: size: %zu, m_offset: %llu, flags: %u", data.size(), (unsigned long long)m_offset, flags);
 
 		if (flags & buffered_request_stream<T>::first_chunk) {
 			m_groups = sess.get_groups();
@@ -430,29 +430,29 @@ public:
 			return sess.write_data(m_key, data, m_offset);
 		} else if (m_size > 0) {
 			if (flags & buffered_request_stream<T>::first_chunk) {
-				this->log(swarm::LOG_INFO, "prepare, offset: %llu, size: %llu", ull(m_offset), ull(m_size));
+				this->log(swarm::SWARM_LOG_INFO, "prepare, offset: %llu, size: %llu", ull(m_offset), ull(m_size));
 				return sess.write_prepare(m_key, data, m_offset, m_offset + m_size);
 			} else if (flags & buffered_request_stream<T>::last_chunk) {
-				this->log(swarm::LOG_INFO, "commit, offset: %llu, size: %llu", ull(m_offset), ull(m_offset + data.size()));
+				this->log(swarm::SWARM_LOG_INFO, "commit, offset: %llu, size: %llu", ull(m_offset), ull(m_offset + data.size()));
 				return sess.write_commit(m_key, data, m_offset, m_offset + data.size());
 			} else {
-				this->log(swarm::LOG_INFO, "plain, offset: %llu", ull(m_offset));
+				this->log(swarm::SWARM_LOG_INFO, "plain, offset: %llu", ull(m_offset));
 				return sess.write_plain(m_key, data, m_offset);
 			}
 		} else {
-			this->log(swarm::LOG_INFO, "write_data, offset: %llu", ull(m_offset));
+			this->log(swarm::SWARM_LOG_INFO, "write_data, offset: %llu", ull(m_offset));
 			return sess.write_data(m_key, data, m_offset);
 		}
 	}
 
 	virtual void on_error(const boost::system::error_code &err)
 	{
-		this->log(swarm::LOG_DEBUG, "on_error, error: %s", err.message().c_str());
+		this->log(swarm::SWARM_LOG_DEBUG, "on_error, error: %s", err.message().c_str());
 	}
 
 	virtual void on_write_partial(const ioremap::elliptics::sync_write_result &result, const ioremap::elliptics::error_info &error)
 	{
-		this->log(swarm::LOG_DEBUG, "on_write_partial, error: %s", error.message().c_str());
+		this->log(swarm::SWARM_LOG_DEBUG, "on_write_partial, error: %s", error.message().c_str());
 
 		if (error) {
 			on_write_finished(result, error);
@@ -478,7 +478,7 @@ public:
 	{
 		(void) result;
 
-		this->log(swarm::LOG_DEBUG, "on_write_finished, error: %s", error.message().c_str());
+		this->log(swarm::SWARM_LOG_DEBUG, "on_write_finished, error: %s", error.message().c_str());
 
 		if (error) {
 			this->send_reply(swarm::http_response::internal_server_error);
@@ -652,7 +652,7 @@ public:
 
 	void on_lookup_finished(const ioremap::elliptics::sync_lookup_result &result, const ioremap::elliptics::error_info &error)
 	{
-		this->log(swarm::LOG_DEBUG, "%s, error: %s", __FUNCTION__, error.message().c_str());
+		this->log(swarm::SWARM_LOG_DEBUG, "%s, error: %s", __FUNCTION__, error.message().c_str());
 		if (error) {
 			if (error.code() == -ENOENT) {
 				this->send_reply(swarm::http_response::not_found);
@@ -679,7 +679,7 @@ public:
 
 	virtual void on_read_finished(uint64_t offset, const ioremap::elliptics::sync_read_result &result, const ioremap::elliptics::error_info &error)
 	{
-		this->log(swarm::LOG_DEBUG, "%s, error: %s, offset: %llu", __FUNCTION__, error.message().c_str(), (unsigned long long) offset);
+		this->log(swarm::SWARM_LOG_DEBUG, "%s, error: %s, offset: %llu", __FUNCTION__, error.message().c_str(), (unsigned long long) offset);
 //		if (offset == 0 && error) {
 //			if (error.code() == -ENOENT) {
 //				this->send_reply(swarm::http_response::not_found);
@@ -713,13 +713,13 @@ public:
 
 	virtual void on_part_sent(size_t offset, const boost::system::error_code &error)
 	{
-		this->log(swarm::LOG_DEBUG, "%s, error: %s, offset: %llu", __FUNCTION__, error.message().c_str(), (unsigned long long) offset);
+		this->log(swarm::SWARM_LOG_DEBUG, "%s, error: %s, offset: %llu", __FUNCTION__, error.message().c_str(), (unsigned long long) offset);
 		read_next(offset);
 	}
 
 	virtual void read_next(uint64_t offset)
 	{
-		this->log(swarm::LOG_DEBUG, "%s, offset: %llu", __FUNCTION__, (unsigned long long) offset);
+		this->log(swarm::SWARM_LOG_DEBUG, "%s, offset: %llu", __FUNCTION__, (unsigned long long) offset);
 		ioremap::elliptics::session sess = this->server()->elliptics()->session();
 
 		using namespace std::placeholders;

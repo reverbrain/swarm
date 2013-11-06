@@ -93,7 +93,7 @@ public:
 
 	void on_socket_event(int fd, int revent)
 	{
-		logger.log(LOG_DEBUG, "on_socket_event, fd: %d, revent: %d", fd, revent);
+		logger.log(SWARM_LOG_DEBUG, "on_socket_event, fd: %d, revent: %d", fd, revent);
 
 		int action = 0;
 		if (revent & socket_read)
@@ -105,7 +105,7 @@ public:
 		do {
 			rc = curl_multi_socket_action(multi, fd, action, &still_running);
 		} while (rc == CURLM_CALL_MULTI_PERFORM);
-		logger.log(LOG_DEBUG, "on_socket_event, socket: %d, rc: %d", fd, int(rc));
+		logger.log(SWARM_LOG_DEBUG, "on_socket_event, socket: %d, rc: %d", fd, int(rc));
 
 		check_run_count();
 	}
@@ -116,7 +116,7 @@ public:
 		do {
 			rc = curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
 		} while (rc == CURLM_CALL_MULTI_PERFORM);
-		logger.log(LOG_DEBUG, "on_timer, rc: %d", int(rc));
+		logger.log(SWARM_LOG_DEBUG, "on_timer, rc: %d", int(rc));
 
 		check_run_count();
 	}
@@ -342,7 +342,7 @@ public:
 				option = event_loop::poll_all;
 				break;
 			default:
-				manager->p->logger.log(LOG_INFO, "socket_callback, unknown what: %d", what);
+				manager->p->logger.log(SWARM_LOG_INFO, "socket_callback, unknown what: %d", what);
 				return 0;
 		}
 
@@ -358,7 +358,7 @@ public:
 
 	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
 	{
-		info->logger.log(LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
+		info->logger.log(SWARM_LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
 		const size_t real_size = size * nmemb;
 		info->stream->on_data(boost::asio::buffer(data, real_size));
 		return real_size;
@@ -433,7 +433,7 @@ url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 {
 	p->logger = logger;
 	p->loop.set_logger(logger);
-	p->logger.log(LOG_INFO, "Creating network_manager: %p", this);
+	p->logger.log(SWARM_LOG_INFO, "Creating network_manager: %p", this);
 	p->multi = curl_multi_init();
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
@@ -443,7 +443,7 @@ url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 
 url_fetcher::~url_fetcher()
 {
-	p->logger.log(LOG_INFO, "Destroying network_manager: %p", this);
+	p->logger.log(SWARM_LOG_INFO, "Destroying network_manager: %p", this);
 	delete p;
 }
 

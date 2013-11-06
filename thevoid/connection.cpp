@@ -184,7 +184,7 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 	while (bytes_written) {
 		std::unique_lock<std::mutex> lock(m_outgoing_mutex);
 		if (m_outgoing.empty()) {
-			m_server->logger().log(swarm::LOG_ERROR, "connection::write_finished: extra written bytes: %zu", bytes_written);
+			m_server->logger().log(swarm::SWARM_LOG_ERROR, "connection::write_finished: extra written bytes: %zu", bytes_written);
 			break;
 		}
 

@@ -133,8 +133,8 @@ unsigned int base_server::threads_count() const
 bool base_server::initialize_logger(const rapidjson::Value &config)
 {
 	if (!config.HasMember("logger")) {
-		set_logger(swarm::logger("/dev/stderr", swarm::LOG_INFO));
-		logger().log(swarm::LOG_ERROR, "\"logger\" field is missed, use default logger");
+		set_logger(swarm::logger("/dev/stderr", swarm::SWARM_LOG_INFO));
+		logger().log(swarm::SWARM_LOG_ERROR, "\"logger\" field is missed, use default logger");
 		return true;
 	}
 
@@ -149,7 +149,7 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 	if (type == "file") {
 		const char *file = "/dev/stderr";
-		int level = swarm::LOG_INFO;
+		int level = swarm::SWARM_LOG_INFO;
 
 		if (logger_config.HasMember("file"))
 			file = logger_config["file"].GetString();
@@ -159,8 +159,8 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 		set_logger(swarm::logger(file, level));
 	} else {
-		set_logger(swarm::logger("/dev/stderr", swarm::LOG_INFO));
-		logger().log(swarm::LOG_ERROR, "unknown logger type \"%s\", use default, possible values are: file", type.c_str());
+		set_logger(swarm::logger("/dev/stderr", swarm::SWARM_LOG_INFO));
+		logger().log(swarm::SWARM_LOG_ERROR, "unknown logger type \"%s\", use default, possible values are: file", type.c_str());
 	}
 	return true;
 }
@@ -318,7 +318,7 @@ int base_server::run(int argc, char **argv)
 	}
 
 	if (!config.HasMember("application")) {
-		logger().log(swarm::LOG_ERROR, "\"application\" field is missed");
+		logger().log(swarm::SWARM_LOG_ERROR, "\"application\" field is missed");
 		return -5;
 	}
 
@@ -340,7 +340,7 @@ int base_server::run(int argc, char **argv)
 
 	try {
 		if (!initialize(config["application"])) {
-			logger().log(swarm::LOG_ERROR, "Failed to initialize application");
+			logger().log(swarm::SWARM_LOG_ERROR, "Failed to initialize application");
 			return -5;
 		}
 	} catch (std::exception &exc) {
@@ -351,12 +351,12 @@ int base_server::run(int argc, char **argv)
 	auto endpoints = config.FindMember("endpoints");
 
 	if (!endpoints) {
-		logger().log(swarm::LOG_ERROR, "\"endpoints\" field is missed");
+		logger().log(swarm::SWARM_LOG_ERROR, "\"endpoints\" field is missed");
 		return -4;
 	}
 
 	if (!endpoints->value.IsArray()) {
-		logger().log(swarm::LOG_ERROR, "\"endpoints\" field is not an array");
+		logger().log(swarm::SWARM_LOG_ERROR, "\"endpoints\" field is not an array");
 		return -4;
 	}
 

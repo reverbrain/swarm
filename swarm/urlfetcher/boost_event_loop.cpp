@@ -100,7 +100,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 		if (what == poll_remove) {
 			if (data) {
 				listener()->set_socket_data(fd, NULL);
-				logger().log(LOG_DEBUG, "remove socket: %p, fd: %d",
+				logger().log(SWARM_LOG_DEBUG, "remove socket: %p, fd: %d",
 					(*reinterpret_cast<boost_socket_info::ptr *>(data)).get(), fd);
 				delete reinterpret_cast<boost_socket_info::ptr *>(data);
 			} else {
@@ -111,7 +111,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 		if (!data) {
 			data = boost_socket_info::make_pointer(m_service, fd, what);
-			logger().log(LOG_DEBUG, "create socket: %p, fd: %d",
+			logger().log(SWARM_LOG_DEBUG, "create socket: %p, fd: %d",
 				(*reinterpret_cast<boost_socket_info::ptr *>(data)).get(), fd);
 			listener()->set_socket_data(fd, data);
 		}
@@ -119,18 +119,18 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 		info = *reinterpret_cast<boost_socket_info::ptr *>(data);
 	}
 
-	logger().log(LOG_DEBUG, "poll socket: %p, fd: %d, what: %d", info.get(), fd, what);
+	logger().log(SWARM_LOG_DEBUG, "poll socket: %p, fd: %d, what: %d", info.get(), fd, what);
 	info->what = what;
 
 	boost_socket_info::weak_ptr weak_info = info;
 
 	if (what == poll_in) {
-		logger().log(LOG_DEBUG, "poll in socket: %p, fd: %d", info.get(), fd);
+		logger().log(SWARM_LOG_DEBUG, "poll in socket: %p, fd: %d", info.get(), fd);
 		info->socket.async_read_some(boost::asio::null_buffers(),
 			boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_read, _1));
 	}
 	if (what == poll_out) {
-		logger().log(LOG_DEBUG, "poll out socket: %p, fd: %d", info.get(), fd);
+		logger().log(SWARM_LOG_DEBUG, "poll out socket: %p, fd: %d", info.get(), fd);
 		info->socket.async_write_some(boost::asio::null_buffers(),
 			boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_write, _1));
 	}
@@ -140,7 +140,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 int boost_event_loop::timer_request(long timeout_ms)
 {
-	logger().log(LOG_DEBUG, "timer: %ld", timeout_ms);
+	logger().log(SWARM_LOG_DEBUG, "timer: %ld", timeout_ms);
 	m_timer.cancel();
 
 	if (timeout_ms == 0) {
@@ -155,30 +155,30 @@ int boost_event_loop::timer_request(long timeout_ms)
 
 void boost_event_loop::post(const std::function<void ()> &func)
 {
-	logger().log(LOG_DEBUG, "post");
+	logger().log(SWARM_LOG_DEBUG, "post");
 	m_service.dispatch(func);
 }
 
 void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_info, int what, const boost::system::error_code &error)
 {
 	if (error) {
-//		logger().log(LOG_ERROR, "on_event socket: fd: %d, what: %d, error: %s", fd, what, error.message().c_str());
+//		logger().log(SWARM_LOG_ERROR, "on_event socket: fd: %d, what: %d, error: %s", fd, what, error.message().c_str());
 	}
 
 	if (auto info = weak_info.lock()) {
-		logger().log(LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d", info.get(), fd, info->what, what);
+		logger().log(SWARM_LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d", info.get(), fd, info->what, what);
 		if (what == event_listener::socket_read && (info->what & poll_in)) {
-			logger().log(LOG_DEBUG, "repoll in socket: %p, fd: %d", info.get(), fd);
+			logger().log(SWARM_LOG_DEBUG, "repoll in socket: %p, fd: %d", info.get(), fd);
 			info->socket.async_read_some(boost::asio::null_buffers(),
 				boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_read, _1));
 		}
 		if (what == event_listener::socket_write && (info->what & poll_out)) {
-			logger().log(LOG_DEBUG, "repoll out socket: %p, fd: %d", info.get(), fd);
+			logger().log(SWARM_LOG_DEBUG, "repoll out socket: %p, fd: %d", info.get(), fd);
 			info->socket.async_write_some(boost::asio::null_buffers(),
 				boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_write, _1));
 		}
 
-		logger().log(LOG_DEBUG, "call on_socket_event");
+		logger().log(SWARM_LOG_DEBUG, "call on_socket_event");
 
 		listener()->on_socket_event(fd, what);
 	}

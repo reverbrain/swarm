@@ -51,11 +51,11 @@ public:
 			auto &signatures = config["signatures"];
 			for (auto it = signatures.Begin(); it != signatures.End(); ++it) {
 				if (!it->HasMember("key")) {
-					logger().log(ioremap::swarm::LOG_ERROR, "\"signatures[i].key\" field is missed");
+					logger().log(ioremap::swarm::SWARM_LOG_ERROR, "\"signatures[i].key\" field is missed");
 					return false;
 				}
 				if (!it->HasMember("path")) {
-					logger().log(ioremap::swarm::LOG_ERROR, "\"signatures[i].path\" field is missed");
+					logger().log(ioremap::swarm::SWARM_LOG_ERROR, "\"signatures[i].path\" field is missed");
 					return false;
 				}
 
