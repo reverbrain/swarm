@@ -9,35 +9,47 @@ Homepage: https://github.com/reverbrain/swarm
 Vcs-Git: git://github.com/reverbrain/swarm.git
 Vcs-Browser: https://github.com/reverbrain/swarm
 
-Package: libswarm1
+Package: libswarm2
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Swarm is aiming at your web
 
+Package: libswarm2-urlfetcher
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
+Description: Swarm is aiming at your web. Url fetch tools
+
+Package: libswarm2-xml
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
+Description: Swarm is aiming at your web. HTTP-parsing tools
+
 Package: libswarm-dev
 Section: libdevel
 Architecture: any
-Depends: libswarm1 (= ${binary:Version}), libev-dev
+Depends: libswarm2 (= ${binary:Version}), libswarm2-urlfetcher (= ${binary:Version}), libswarm2-xml (= ${binary:Version}), libev-dev, libboost-system-dev
 Description: Swarm is aiming at your web (devel)
  Development files
 
 Package: libswarm-dbg
 Architecture: any
 Section: debug
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm1 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
 Description: Swarm is aiming at your web (debug)
  Debug files and symbols.
 
-Package: libthevoid1
+Package: libthevoid2
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
 Description: TheVoid
 
 Package: libthevoid-dev
 Section: libdevel
 Architecture: any
-Depends: libthevoid1 (= ${binary:Version}), libswarm-dev, libboost-system-dev, libboost-thread-dev
+Depends: libthevoid2 (= ${binary:Version}), libswarm-dev, libboost-system-dev, libboost-thread-dev
 Description: TheVoid (devel)
  Development files
