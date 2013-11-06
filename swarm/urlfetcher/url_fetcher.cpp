@@ -35,6 +35,10 @@
 #include <list>
 #include <algorithm>
 
+#ifndef BOOST_SYSTEM_NOEXCEPT
+#  define BOOST_SYSTEM_NOEXCEPT
+#endif
+
 namespace ioremap {
 namespace swarm {
 
