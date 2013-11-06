@@ -447,6 +447,7 @@ class server_options_private
 {
 public:
 	enum flag : uint64_t {
+		check_nothing           = 0x00,
 		check_methods           = 0x01,
 		check_exact_match       = 0x02,
 		check_prefix_match      = 0x04,
@@ -455,7 +456,7 @@ public:
 		check_all_match         = check_exact_match | check_prefix_match | check_string_match | check_regexp_match
 	};
 
-	server_options_private() : flags(0)
+	server_options_private() : flags(check_nothing)
 	{
 	}
 
@@ -463,6 +464,21 @@ public:
 	std::string match_string;
 	std::vector<std::string> methods;
 };
+
+base_server::options::modificator base_server::options::exact_match(const std::string &str)
+{
+	return std::bind(&base_server::options::set_exact_match, std::placeholders::_1, str);
+}
+
+base_server::options::modificator base_server::options::prefix_match(const std::string &str)
+{
+	return std::bind(&base_server::options::set_prefix_match, std::placeholders::_1, str);
+}
+
+base_server::options::modificator base_server::options::methods(const std::vector<std::string> &methods)
+{
+	return std::bind(&base_server::options::set_methods, std::placeholders::_1, methods);
+}
 
 base_server::options::options() : m_data(new server_options_private)
 {
@@ -504,15 +520,6 @@ void base_server::options::set_methods(const std::vector<std::string> &methods)
 {
 	m_data->flags |= server_options_private::check_methods;
 	m_data->methods = methods;
-}
-
-void base_server::options::set_methods(base_server::options::methods::special_value value)
-{
-	if (value == methods::all) {
-		m_data->flags &= ~server_options_private::check_methods;
-	} else {
-		throw std::runtime_error("unknown options::methods::special_value: " + boost::lexical_cast<std::string>(value));
-	}
 }
 
 bool base_server::options::check(const swarm::http_request &request) const

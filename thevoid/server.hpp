@@ -122,66 +122,17 @@ protected:
 	class options
 	{
 	public:
-		class exact_match : private boost::noncopyable
+		typedef std::function<void (options *)> modificator;
+
+		static modificator exact_match(const std::string &str);
+		static modificator prefix_match(const std::string &str);
+		static modificator methods(const std::vector<std::string> &methods);
+		template <typename... String>
+		static modificator methods(String &&...args)
 		{
-		public:
-			exact_match(const std::string &str) : m_str(str)
-			{
-			}
-
-			void apply(options &opt)
-			{
-				opt.set_exact_match(m_str);
-			}
-
-		private:
-			std::string m_str;
-		};
-
-		class prefix_match : private boost::noncopyable
-		{
-		public:
-			prefix_match(const std::string &str) : m_str(str)
-			{
-			}
-
-			void apply(options &opt)
-			{
-				opt.set_prefix_match(m_str);
-			}
-
-		private:
-			std::string m_str;
-		};
-
-		class methods : private boost::noncopyable
-		{
-		public:
-			enum special_value {
-				all
-			};
-
-			methods(special_value value) : m_methods(value)
-			{
-			}
-
-			template <typename... String>
-			methods(String &&...args) : m_methods(std::vector<std::string>{ std::forward<std::string>(args)... })
-			{
-			}
-
-			void apply(options &opt)
-			{
-				if (auto tmp = boost::get<std::vector<std::string>>(&m_methods)) {
-					opt.set_methods(*tmp);
-				} else if (auto tmp = boost::get<special_value>(&m_methods)) {
-					opt.set_methods(*tmp);
-				}
-			}
-
-		private:
-			boost::variant<std::vector<std::string>, special_value> m_methods;
-		};
+			const std::vector<std::string> tmp = { std::forward<std::string>(args)... };
+			return methods(tmp);
+		}
 
 		options();
 
@@ -195,7 +146,6 @@ protected:
 		void set_exact_match(const std::string &str);
 		void set_prefix_match(const std::string &str);
 		void set_methods(const std::vector<std::string> &methods);
-		void set_methods(methods::special_value value);
 
 		bool check(const swarm::http_request &request) const;
 
@@ -243,7 +193,7 @@ private:
 	template <typename Option>
 	Option &&apply_option(options &opt, Option &&option)
 	{
-		option.apply(opt);
+		option(&opt);
 		return std::forward<Option>(option);
 	}
 
