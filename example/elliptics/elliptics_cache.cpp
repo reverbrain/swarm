@@ -109,6 +109,7 @@ std::vector<int> elliptics_cache::groups(const ioremap::elliptics::key &key)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 	auto it = m_cache_groups.find(key.raw_id());
+    std::cout << "found: " << (it != m_cache_groups.end()) << std::endl;
 	if (it != m_cache_groups.end()) {
 		return it->second;
 	}
@@ -119,14 +120,14 @@ std::vector<int> elliptics_cache::groups(const ioremap::elliptics::key &key)
 void elliptics_cache::sync_thread()
 {
 	while (!m_need_exit) {
-		int timeout = m_timeout;
-		while (!m_need_exit && timeout-- > 0) {
-			sleep(1);
-		}
-
 		ioremap::elliptics::session session = m_session->clone();
 		session.read_data(m_key, 0, 0).connect(std::bind(
 			&elliptics_cache::on_read_finished, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+        
+        int timeout = m_timeout;
+		while (!m_need_exit && timeout-- > 0) {
+			sleep(1);
+		}
 	}
 }
 

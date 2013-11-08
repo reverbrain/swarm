@@ -1,7 +1,6 @@
 {
     "endpoints": [
-        "0.0.0.0:8080",
-        "0.0.0.0:80"
+        "0.0.0.0:8080"
     ],
     "also-possible-endpoints": [
         "unix:test.sock"
@@ -23,10 +22,14 @@
             "localhost:1025:2"
         ],
         "groups": [
-            1,
-            2,
-            3
+            2
         ],
+        "cache": {
+            "groups": [
+                1
+            ],
+            "name": "cache"
+        },
         "signatures": [
             {
                 "key": "some-cool-key",
