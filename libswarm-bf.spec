@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.5.1
+Version:	0.5.5.2
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sat Nov 09 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.5.2
+- Added application-specific statistics information
+
 * Wed Oct 16 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.5.1
 - Added error message on acceptor fail
 - Added call on_close at end of stream

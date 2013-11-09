@@ -1,3 +1,9 @@
+swarm (0.5.5.2) unstable; urgency=low
+
+  * Added application-specific statistics information
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Sat, 09 Nov 2013 16:40:35 +0400
+
 swarm (0.5.5.1) unstable; urgency=low
 
   * Added error message on acceptor fail
