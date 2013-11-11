@@ -21,6 +21,16 @@
 #include <chrono>
 #include <thread>
 
+#if __clang__
+#include <atomic>
+#else
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#  include <cstdatomic>
+#else
+#  include <atomic>
+#endif // gnuc check
+#endif // clang
+
 struct sig_handler
 {
 	ev::loop_ref &loop;
