@@ -200,10 +200,16 @@ public:
 //		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
 		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
 		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
+#if LIBCURL_VERSION_NUM >= 0x071507
+		/*
+		 * If CURL don't support CURLOPT_CLOSESOCKETFUNCTION yet we should fallback
+		 * to dup-method to prevent memory leak
+		 */
 		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETFUNCTION, network_manager_private::open_callback);
 		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETDATA, &loop);
 		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETFUNCTION, network_manager_private::close_callback);
 		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETDATA, &loop);
+#endif
 		curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
 		curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);
 		curl_easy_setopt(info->easy, CURLOPT_HEADERDATA, info.get());
