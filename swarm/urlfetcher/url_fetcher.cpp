@@ -139,6 +139,10 @@ public:
 	struct multi_error_category : public boost::system::error_category
 	{
 	public:
+		enum {
+			failed_to_create_easy_handle = 50
+		};
+
 		const char *name() const BOOST_SYSTEM_NOEXCEPT
 		{
 			return "curl_multi_code";
@@ -146,7 +150,7 @@ public:
 
 		std::string message(int ev) const
 		{
-			if (ev == 50) {
+			if (ev == failed_to_create_easy_handle) {
 				return "failed to create easy handle";
 			}
 
@@ -158,6 +162,16 @@ public:
 	{
 		static multi_error_category instance;
 		return instance;
+	}
+
+	static boost::system::error_code make_posix_error(int err)
+	{
+		return boost::system::errc::make_error_code(static_cast<boost::system::errc::errc_t>(err));
+	}
+
+	static boost::system::error_code make_multi_error(int err)
+	{
+		return boost::system::error_code(err, multi_category());
 	}
 
 	void process_info(request_info::ptr request)
@@ -173,7 +187,7 @@ public:
 		info->body = std::move(request->body);
 		info->logger = logger;
 		if (!info->easy) {
-			info->stream->on_close(boost::system::error_code(50, multi_category()));
+			info->stream->on_close(make_multi_error(multi_error_category::failed_to_create_easy_handle));
 			return;
 		}
 
@@ -244,7 +258,7 @@ public:
 			 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
 			 * which is ok, since easy handler was not added into multi handler in this case.
 			 */
-			info->stream->on_close(boost::system::error_code(err, multi_category()));
+			info->stream->on_close(make_multi_error(err));
 		}
 	}
 
@@ -285,7 +299,7 @@ public:
 			try {
 				--active_connections;
 				if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-					info->stream->on_close(boost::system::error_code(-ETIMEDOUT, boost::system::generic_category()));
+					info->stream->on_close(make_posix_error(ETIMEDOUT));
 				} else {
 					long code = 200;
 					curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
@@ -293,7 +307,7 @@ public:
 					curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
 
 					if (err) {
-						info->stream->on_close(boost::system::error_code(err, boost::system::generic_category()));
+						info->stream->on_close(make_posix_error(err));
 					} else {
 						info->stream->on_close(boost::system::error_code());
 					}
