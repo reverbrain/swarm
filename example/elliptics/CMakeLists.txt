@@ -1,5 +1,6 @@
-include_directories(${elliptics_INCLUDE_DIRS})
-link_directories(${ELLIPTICS_LIBRARY_DIRS})
+find_package(Elliptics 2.24 REQUIRED)
+
+include_directories(${ELLIPTICS_INCLUDE_DIRS})
 
 set(SWARM_ELLIPTICS_HEADERS
 	asio.hpp
@@ -20,7 +21,7 @@ set(SWARM_ELLIPTICS_SOURCES
 )
 
 add_library(elliptics-thevoid SHARED ${SWARM_ELLIPTICS_SOURCES} ${SWARM_ELLIPTICS_HEADERS})
-target_link_libraries(elliptics-thevoid thevoid ${elliptics_cpp_LIBRARY} ${elliptics_client_LIBRARY} pthread)
+target_link_libraries(elliptics-thevoid thevoid ${ELLIPTICS_LIBRARIES} pthread)
 set_target_properties(elliptics-thevoid PROPERTIES
 	VERSION ${DEBFULLVERSION}
 	SOVERSION ${SWARM_VERSION_ABI}
