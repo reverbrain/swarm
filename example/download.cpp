@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 //	request_handler_functor request_handler = { loop };
 
 //	manager.get(request_handler, request);
-
+/*
 	std::thread thread([&manager] () {
 		set_thread_name("swarm_requester");
 		ioremap::swarm::url_fetcher::request request;
@@ -215,7 +215,7 @@ int main(int argc, char **argv)
 
 		std::cout << "Sent all" << std::endl;
 	});
-
+*/
 	if (use_boost) {
 		boost::asio::io_service::work work(service);
 		service.run();
