@@ -109,7 +109,6 @@ std::vector<int> elliptics_cache::groups(const ioremap::elliptics::key &key)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 	auto it = m_cache_groups.find(key.raw_id());
-    std::cout << "found: " << (it != m_cache_groups.end()) << std::endl;
 	if (it != m_cache_groups.end()) {
 		return it->second;
 	}
