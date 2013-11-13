@@ -15,6 +15,7 @@
  */
 
 #include "url_fetcher.hpp"
+#include "../c++config.hpp"
 
 #include <string.h>
 #include <curl/curl.h>
@@ -22,15 +23,12 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
-#if __clang__
-#  include <atomic>
-#else
-#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+
+#ifdef SWARM_CSTDATOMIC
 #  include <cstdatomic>
 #else
 #  include <atomic>
-#endif // gnuc check
-#endif // clang
+#endif
 
 #include <list>
 #include <algorithm>

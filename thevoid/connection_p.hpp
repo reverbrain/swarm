@@ -28,33 +28,52 @@
 #include <queue>
 #include <mutex>
 
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#  include <cstdatomic>
+#  define SWARM_OLD_GCC
+#else
+#include <atomic>
+#endif
+
 namespace ioremap {
 namespace thevoid {
 
 class base_server;
 
 struct buffer_info {
-    buffer_info() : response(boost::none)
-    {
-    }
+	buffer_info() : response(boost::none)
+	{
+	}
 
-    template <typename A, typename B, typename C>
-    buffer_info(A &&a, B &&b, C &&c) :
-        buffer(std::move(a)),
-        response(std::move(b)),
-        handler(std::move(c))
-    {
-    }
+	template <typename A, typename B, typename C>
+	buffer_info(A &&a, B &&b, C &&c) :
+		buffer(std::move(a)),
+		response(std::move(b)),
+		handler(std::move(c))
+	{
+	}
 
-    buffer_info(buffer_info &&info) = default;
-    buffer_info(const buffer_info &info) = delete;
+	buffer_info(buffer_info &&info) :
+		buffer(std::move(info.buffer)),
+		response(std::move(info.response)),
+		handler(std::move(info.handler))
+	{
+	}
+	buffer_info(const buffer_info &info) = delete;
 
-    buffer_info &operator =(buffer_info &&info) = default;
-    buffer_info &operator =(const buffer_info &info) = delete;
+	buffer_info &operator =(buffer_info &&other)
+	{
+		buffer = std::move(other.buffer);
+		response = std::move(other.response);
+		handler = std::move(other.handler);
 
-    std::vector<boost::asio::const_buffer> buffer;
-    swarm::http_response response;
-    std::function<void (const boost::system::error_code &err)> handler;
+		return *this;
+	}
+	buffer_info &operator =(const buffer_info &info) = delete;
+
+	std::vector<boost::asio::const_buffer> buffer;
+	swarm::http_response response;
+	std::function<void (const boost::system::error_code &err)> handler;
 };
 
 //! Represents a single connection from a client.
@@ -93,7 +112,7 @@ private:
 	void want_more_impl();
 	void send_impl(buffer_info &&info);
 	void write_finished(const boost::system::error_code &err, size_t bytes_written);
-    void send_nolock();
+	void send_nolock();
 
 	void close_impl(const boost::system::error_code &err);
 	void process_next();

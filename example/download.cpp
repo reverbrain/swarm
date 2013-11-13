@@ -16,20 +16,17 @@
 #include <swarm/urlfetcher/url_fetcher.hpp>
 #include <swarm/urlfetcher/boost_event_loop.hpp>
 #include <swarm/urlfetcher/ev_event_loop.hpp>
+#include <swarm/c++config.hpp>
 #include <list>
 #include <iostream>
 #include <chrono>
 #include <thread>
 
-#if __clang__
-#include <atomic>
-#else
-#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#ifdef SWARM_CSTDATOMIC
 #  include <cstdatomic>
 #else
 #  include <atomic>
-#endif // gnuc check
-#endif // clang
+#endif
 
 struct sig_handler
 {

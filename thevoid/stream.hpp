@@ -21,17 +21,14 @@
 #include <swarm/http_request.hpp>
 #include <swarm/http_response.hpp>
 #include <swarm/logger.hpp>
+#include <swarm/c++config.hpp>
 #include <cstdarg>
 
-#if __clang__
-#include <atomic>
-#else
-#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#ifdef SWARM_CSTDATOMIC
 #  include <cstdatomic>
 #else
 #  include <atomic>
-#endif // gnuc check
-#endif // clang
+#endif
 
 namespace ioremap {
 namespace thevoid {

@@ -118,7 +118,7 @@ protected:
 
 		options();
 
-		options(options &&other) noexcept;
+		options(options &&other) SWARM_NOEXCEPT;
 		options(const options &other) = delete;
 		options &operator =(options &&other);
 		options &operator =(const options &other) = delete;
