@@ -690,7 +690,7 @@ public:
 //			}
 //		} else
 		if (error) {
-			boost::system::error_code ec(-error.code(), boost::system::generic_category());
+			auto ec = boost::system::errc::make_error_code(static_cast<boost::system::errc::errc_t>(-error.code()));
 			this->get_reply()->close(ec);
 			return;
 		}
