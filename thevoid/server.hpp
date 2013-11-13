@@ -14,24 +14,6 @@
  * limitations under the License.
  */
 
-//
-// server.hpp
-// ~~~~~~~~~~
-/*
- * 2013+ Copyright (c) Ruslan Nigatullin <euroelessar@yandex.ru>
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
-
 #ifndef IOREMAP_THEVOID_SERVER_HPP
 #define IOREMAP_THEVOID_SERVER_HPP
 
@@ -90,10 +72,10 @@ template <typename T> class connection;
 class monitor_connection;
 class server_options_private;
 
-class daemon_exception : public std::exception
+class daemon_exception : public std::runtime_error
 {
 public:
-	virtual const char *what() const noexcept;
+	daemon_exception();
 };
 
 template <typename Server, typename... Args>

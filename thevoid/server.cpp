@@ -553,10 +553,9 @@ void base_server::options::swap(base_server::options &other)
 	swap(m_data, other.m_data);
 }
 
-} } // namespace ioremap::thevoid
-
-
-const char *ioremap::thevoid::daemon_exception::what() const noexcept
+daemon_exception::daemon_exception() : runtime_error("daemon initialization failed")
 {
-	return "daemon initialization failed";
+
 }
+
+} } // namespace ioremap::thevoid
