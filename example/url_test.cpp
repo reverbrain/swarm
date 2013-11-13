@@ -1,4 +1,5 @@
 #include <swarm/url.hpp>
+#include <iostream>
 
 int main()
 {
