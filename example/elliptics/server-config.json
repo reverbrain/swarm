@@ -37,13 +37,11 @@
             }
         ],
         "redirect": false,
-        "users": [
+        "auth": [
             {
-                "name": "qwerty",
                 "namespace": "qwerty",
-                "password": "trello"
+                "key": "trello"
             }
-
         ]
     }
 }

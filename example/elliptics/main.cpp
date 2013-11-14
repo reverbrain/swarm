@@ -16,6 +16,7 @@
 #include "server.hpp"
 #include "elliptics_cache.hpp"
 #include "signature_base.hpp"
+#include "elliptics_auth.hpp"
 
 using namespace ioremap::thevoid;
 
@@ -70,7 +71,15 @@ public:
 
 		if (config.HasMember("cache")) {
 			m_cache = std::make_shared<elliptics::elliptics_cache>();
-			m_cache->initialize(config, m_elliptics.node(), logger());
+			if (!m_cache->initialize(config, m_elliptics.node(), logger()))
+				return false;
+		}
+
+		if (config.HasMember("auth")) {
+			m_auth.reset(new elliptics::elliptics_auth);
+			if (!m_auth->initialize(config, m_elliptics.node(), logger()))
+				return false;
+			m_elliptics.set_auth(m_auth.get());
 		}
 
 		if (config.HasMember("redirect")) {
@@ -179,8 +188,10 @@ public:
 		virtual ioremap::swarm::http_response::status_type process(const ioremap::swarm::http_request &request,
 			ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
 		{
-			if (!elliptics_base::process(request, key, session)) {
-				return ioremap::swarm::http_response::bad_request;
+			auto result = elliptics_base::process(request, key, session);
+
+			if (result != ioremap::swarm::http_response::ok) {
+				return result;
 			}
 
 			if (m_server->m_cache) {
@@ -205,6 +216,7 @@ private:
 	int m_redirect_port;
 	bool m_secured_http;
 	std::shared_ptr<elliptics::elliptics_cache> m_cache;
+	std::unique_ptr<elliptics::elliptics_auth> m_auth;
 	elliptics_impl m_elliptics;
 	elliptics::signature_base m_signature;
 };

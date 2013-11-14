@@ -30,12 +30,15 @@
 namespace ioremap {
 namespace thevoid {
 
+class auth_interface;
+
 class elliptics_base
 {
 public:
 	elliptics_base();
 
 	bool initialize(const rapidjson::Value &config, const swarm::logger &logger);
+	void set_auth(auth_interface *auth);
 
 	ioremap::elliptics::node node() const;
 	ioremap::elliptics::session session() const;
@@ -50,6 +53,7 @@ protected:
 
 private:
 	swarm::logger m_logger;
+	auth_interface *m_auth;
 	std::unique_ptr<ioremap::elliptics::node> m_node;
 	std::unique_ptr<ioremap::elliptics::session> m_session;
 };

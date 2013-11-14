@@ -15,6 +15,7 @@
 
 #include <elliptics/utils.hpp>
 #include "elliptics_logger.hpp"
+#include "elliptics_auth.hpp"
 
 #include <iostream>
 
@@ -24,7 +25,7 @@ using namespace ioremap::swarm;
 using namespace ioremap::thevoid;
 using namespace ioremap::elliptics;
 
-elliptics_base::elliptics_base()
+elliptics_base::elliptics_base() : m_auth(NULL)
 {
 }
 
@@ -54,6 +55,11 @@ bool elliptics_base::initialize(const rapidjson::Value &config, const swarm::log
 	return true;
 }
 
+void elliptics_base::set_auth(auth_interface *auth)
+{
+	m_auth = auth;
+}
+
 node elliptics_base::node() const
 {
 	return *m_node;
@@ -66,6 +72,10 @@ session elliptics_base::session() const
 
 ioremap::swarm::http_response::status_type elliptics_base::process(const swarm::http_request &request, ioremap::elliptics::key &key, ioremap::elliptics::session &session) const
 {
+	if (m_auth && !m_auth->check(request)) {
+		return ioremap::swarm::http_response::forbidden;
+	}
+
 	const auto &query = request.url().query();
 
 	if (auto name = query.item_value("name")) {
@@ -83,7 +93,9 @@ ioremap::swarm::http_response::status_type elliptics_base::process(const swarm::
 
 	session.transform(key);
 
-	(void) session;
+	if (auto ns = query.item_value("namespace")) {
+		session.set_namespace(ns->c_str(), ns->size());
+	}
 
 	return ioremap::swarm::http_response::ok;
 }

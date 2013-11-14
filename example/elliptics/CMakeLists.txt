@@ -5,6 +5,7 @@ include_directories(${ELLIPTICS_INCLUDE_DIRS})
 set(SWARM_ELLIPTICS_HEADERS
 	asio.hpp
 	common.hpp
+        elliptics_auth.hpp
 	elliptics_logger.hpp
 	elliptics_cache.hpp
 	index.hpp
@@ -15,6 +16,7 @@ set(SWARM_ELLIPTICS_HEADERS
 )
 
 set(SWARM_ELLIPTICS_SOURCES
+        elliptics_auth.cpp
 	elliptics_cache.cpp
 	server.cpp
 	signature_base.cpp
