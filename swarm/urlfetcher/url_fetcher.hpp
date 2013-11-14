@@ -119,40 +119,6 @@ public:
 	virtual void on_close(const boost::system::error_code &error) = 0;
 };
 
-class simple_stream : public base_stream
-{
-public:
-	typedef std::function<void (const url_fetcher::response &response, const std::string &data, const boost::system::error_code &error)> handler_func;
-
-	simple_stream(const handler_func &handler) : m_handler(handler)
-	{
-	}
-
-	virtual void on_headers(url_fetcher::response &&response)
-	{
-		m_response = std::move(response);
-		if (auto content_length = m_response.headers().content_length())
-			m_data.reserve(*content_length);
-	}
-
-	virtual void on_data(const boost::asio::const_buffer &buffer)
-	{
-		auto data = boost::asio::buffer_cast<const char *>(buffer);
-		auto size = boost::asio::buffer_size(buffer);
-
-		m_data.append(data, data + size);
-	}
-
-	virtual void on_close(const boost::system::error_code &error)
-	{
-		m_handler(m_response, m_data, error);
-	}
-private:
-	ioremap::swarm::url_fetcher::response m_response;
-	std::string m_data;
-	handler_func m_handler;
-};
-
 } // namespace service
 } // namespace cocaine
 

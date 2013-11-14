@@ -7,12 +7,15 @@ set(SWARM_ACCESS_MANAGER_SRC_LIST
     boost_event_loop.hpp
     url_fetcher.cpp
     url_fetcher.hpp
+    stream.hpp
+    stream.cpp
     )
 set(SWARM_ACCESS_MANAGER_HDR_LIST
     event_loop.hpp
     ev_event_loop.hpp
     boost_event_loop.hpp
     url_fetcher.hpp
+    stream.hpp
     )
 
 add_library(swarm_urlfetcher SHARED ${SWARM_ACCESS_MANAGER_SRC_LIST})
