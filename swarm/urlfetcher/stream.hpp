@@ -36,13 +36,6 @@ public:
 		return std::make_shared<simple_stream>(handler);
 	}
 
-	template <typename... Args>
-	static std::shared_ptr<simple_stream> create(Args &&...args)
-	{
-		handler_func func = std::bind(std::forward<Args>(args)...);
-		return std::make_shared<simple_stream>(func);
-	}
-
 protected:
 	virtual void on_headers(url_fetcher::response &&response)
 	{
