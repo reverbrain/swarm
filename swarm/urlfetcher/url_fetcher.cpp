@@ -491,12 +491,21 @@ url_fetcher::~url_fetcher()
 
 void url_fetcher::set_total_limit(long active_connections)
 {
+#if LIBCURL_VERSION_NUM >= 0x071E00
 	curl_multi_setopt(p->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, active_connections);
+#else
+	curl_multi_setopt(p->multi, CURLMOPT_MAXCONNECTS, active_connections);
+#endif
 }
 
 void url_fetcher::set_host_limit(long host_connections)
 {
+#if LIBCURL_VERSION_NUM >= 0x071E00
 	curl_multi_setopt(p->multi, CURLMOPT_MAX_HOST_CONNECTIONS, host_connections);
+#else
+	(void) host_connections;
+	throw std::runtime_error("url_fetcher::set_host_limit is not implemented");
+#endif
 }
 
 void url_fetcher::set_logger(const swarm::logger &log)
