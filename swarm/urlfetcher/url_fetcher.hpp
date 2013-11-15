@@ -93,7 +93,8 @@ public:
 		std::unique_ptr<url_fetcher_response_data> m_data;
 	};
 
-	void set_limit(int active_connections);
+	void set_total_limit(long active_connections);
+	void set_host_limit(long host_connections);
 	void set_logger(const swarm::logger &log);
 	swarm::logger logger() const;
 

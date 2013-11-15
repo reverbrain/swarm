@@ -78,7 +78,7 @@ class network_manager_private : public event_listener
 public:
 	network_manager_private(event_loop &loop) :
 		loop(loop), still_running(0), prev_running(0),
-		active_connections_limit(10), active_connections(0)
+		active_connections(0)
 	{
 		loop.set_listener(this);
 		loop.set_logger(logger);
@@ -439,7 +439,6 @@ public:
 	event_loop &loop;
 	int still_running;
 	int prev_running;
-	int active_connections_limit;
 	std::atomic_int active_connections;
 	std::list<request_info::ptr> requests;
 	swarm::logger logger;
@@ -465,9 +464,14 @@ url_fetcher::~url_fetcher()
 	delete p;
 }
 
-void url_fetcher::set_limit(int active_connections)
+void url_fetcher::set_total_limit(long active_connections)
 {
-	p->active_connections_limit = active_connections;
+	curl_multi_setopt(p->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, active_connections);
+}
+
+void url_fetcher::set_host_limit(long host_connections)
+{
+	curl_multi_setopt(p->multi, CURLMOPT_MAX_HOST_CONNECTIONS, host_connections);
 }
 
 void url_fetcher::set_logger(const swarm::logger &log)
