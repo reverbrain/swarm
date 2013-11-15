@@ -27,22 +27,25 @@ namespace ioremap {
 namespace swarm {
 
 namespace detail {
+
 /*
- * Sometimes it's usefull to provide pair of iterators to http_headers::set method
- * to simulate boost::begin/end behaviour.
+ * Test if T is convertable to std::string.
+ * It is true for char*, char[], and all classes with operator std::string().
  */
-
-template <typename Iterator>
-Iterator begin(const std::pair<Iterator, Iterator> &range)
+template <typename T>
+struct is_string
 {
-	return range.first;
-}
+	typedef short ok;
+	typedef int bad;
 
-template <typename Iterator>
-Iterator end(const std::pair<Iterator, Iterator> &range)
-{
-	return range.second;
-}
+	static ok test(const std::string &);
+	static bad test(...);
+
+	enum {
+		value = (sizeof(test(*reinterpret_cast<const T *>(NULL))) == sizeof(ok))
+	};
+};
+
 }
 
 class http_headers_private;
@@ -66,6 +69,8 @@ public:
 	const std::vector<headers_entry> &all() const;
 	std::vector<headers_entry> &all();
 
+	size_t count() const;
+
 	bool has(const std::string &name) const;
 
 	boost::optional<std::string> get(const std::string &name) const;
@@ -73,26 +78,31 @@ public:
 
 	size_t remove(const std::string &name);
 	size_t remove(const char *name);
+	void remove(size_t index);
 	bool remove_first(const std::string &name);
 	bool remove_first(const char *name);
 	bool remove_last(const std::string &name);
 	bool remove_last(const char *name);
 
-	void set(const std::vector<headers_entry> &headers);
+	void clear();
+
 	void set(std::vector<headers_entry> &&headers);
-	void set(const headers_entry &header);
 	template <typename Range>
-	void set(const Range &range);
+	void set(const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type * = NULL);
+	template <typename Iterator>
+	void set(Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type * = NULL);
 	void set(const std::string &name, const std::string &value);
-	void set(const std::string &name, const char *value);
 	template <typename Range>
-	void set(const std::string &name, const Range &range);
+	void set(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type * = NULL);
+	template <typename Iterator>
+	void set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type * = NULL);
 
 	void add(const headers_entry &header);
-	void add(const std::string &name, const char *value);
 	void add(const std::string &name, const std::string &value);
 	template <typename Range>
-	void add(const std::string &name, const Range &range);
+	void add(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type * = NULL);
+	template <typename Iterator>
+	void add(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type * = NULL);
 
 	// Last-Modified, UTC
 	boost::optional<time_t> last_modified() const;
@@ -125,58 +135,61 @@ private:
 	std::unique_ptr<http_headers_private> p;
 };
 
-template <typename Range>
-inline void http_headers::set(const std::string &name, const Range &range)
+template <typename Iterator>
+inline void http_headers::set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type *)
 {
-	using std::begin;
-	using std::end;
-	using ioremap::swarm::detail::begin;
-	using ioremap::swarm::detail::end;
-
-	auto begin_it = begin(range);
-	auto end_it = end(range);
-
-	if (begin_it == end_it) {
+	if (begin == end) {
 		remove(name);
 	} else {
-		set(name, static_cast<const std::string &>(*begin_it));
-		std::advance(begin_it, 1);
+		set(name, static_cast<const std::string &>(*begin));
+		std::advance(begin, 1);
 
-		for (; begin_it != end_it; ++begin_it) {
-			add(name, static_cast<const std::string &>(*begin_it));
+		for (; begin != end; ++begin) {
+			add(name, *begin);
 		}
 	}
 }
 
 template <typename Range>
-inline void http_headers::set(const Range &range)
+inline void http_headers::set(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type *)
 {
 	using std::begin;
 	using std::end;
-	using ioremap::swarm::detail::begin;
-	using ioremap::swarm::detail::end;
 
-	auto begin_it = begin(range);
-	auto end_it = end(range);
+	set(name, begin(range), end(range));
+}
 
-	std::vector<headers_entry> headers(begin_it, end_it);
+template <typename Iterator>
+inline void http_headers::set(Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type *)
+{
+	std::vector<headers_entry> headers(begin, end);
 	set(std::move(headers));
 }
 
 template <typename Range>
-inline void http_headers::add(const std::string &name, const Range &range)
+inline void http_headers::set(const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type *)
 {
 	using std::begin;
 	using std::end;
-	using ioremap::swarm::detail::begin;
-	using ioremap::swarm::detail::end;
 
-	auto begin_it = begin(range);
-	auto end_it = end(range);
+	set(begin(range), end(range));
+}
 
-	for (; begin_it != end_it; ++begin_it) {
-		add(name, static_cast<const std::string &>(*begin_it));
+template <typename Iterator>
+inline void http_headers::add(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type *)
+{
+	for (; begin != end; ++begin) {
+		add(name, *begin);
 	}
+}
+
+template <typename Range>
+inline void http_headers::add(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type *)
+{
+	using std::begin;
+	using std::end;
+
+	add(begin(range), end(range));
 }
 
 } // namespace swarm

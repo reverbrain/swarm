@@ -327,6 +327,11 @@ std::vector<headers_entry> &http_headers::all()
 	return p->get_headers();
 }
 
+size_t http_headers::count() const
+{
+	return p->data.size();
+}
+
 bool http_headers::has(const std::string &name) const
 {
 	return p->has_header(name);
@@ -352,6 +357,11 @@ size_t http_headers::remove(const char *name)
 	return p->remove_header(name, strlen(name));
 }
 
+void http_headers::remove(size_t index)
+{
+	p->data.erase(p->data.begin() + index);
+}
+
 bool http_headers::remove_first(const std::string &name)
 {
 	return p->remove_first_header(name.c_str(), name.size());
@@ -373,9 +383,9 @@ bool http_headers::remove_last(const char *name)
 
 }
 
-void http_headers::set(const std::vector<headers_entry> &headers)
+void http_headers::clear()
 {
-	p->set_headers(headers);
+	p->data.clear();
 }
 
 void http_headers::set(std::vector<headers_entry> &&headers)
@@ -383,17 +393,7 @@ void http_headers::set(std::vector<headers_entry> &&headers)
 	p->data = std::move(headers);
 }
 
-void http_headers::set(const headers_entry &header)
-{
-	p->set_header(header.first, header.second);
-}
-
 void http_headers::set(const std::string &name, const std::string &value)
-{
-	p->set_header(name, value);
-}
-
-void http_headers::set(const std::string &name, const char *value)
 {
 	p->set_header(name, value);
 }
@@ -404,11 +404,6 @@ void http_headers::add(const headers_entry &header)
 }
 
 void http_headers::add(const std::string &name, const std::string &value)
-{
-	p->add_header(name, value);
-}
-
-void http_headers::add(const std::string &name, const char *value)
 {
 	p->add_header(name, value);
 }
