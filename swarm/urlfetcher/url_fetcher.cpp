@@ -54,7 +54,7 @@ class network_connection_info
 public:
 	typedef std::unique_ptr<network_connection_info> ptr;
 
-	network_connection_info() : easy(NULL)
+	network_connection_info() : easy(NULL), redirect_count(0), on_headers_called(false)
 	{
 		//        error[0] = '\0';
 	}
@@ -64,11 +64,29 @@ public:
 		//                error[CURL_ERROR_SIZE - 1] = '\0';
 	}
 
+	void ensure_headers_sent()
+	{
+		if (on_headers_called)
+			return;
+
+		long code;
+		curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
+		char *effective_url = NULL;
+		curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
+
+		on_headers_called = true;
+		reply.set_code(code);
+		reply.set_url(effective_url);
+		stream->on_headers(std::move(reply));
+	}
+
 	CURL *easy;
 	swarm::logger logger;
 	url_fetcher::response reply;
 	std::shared_ptr<base_stream> stream;
 	std::string body;
+	long redirect_count;
+	bool on_headers_called;
 
 	//    char error[CURL_ERROR_SIZE];
 };
@@ -209,7 +227,7 @@ public:
 
 		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
-//		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 0L);
 		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
 		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
 #if LIBCURL_VERSION_NUM >= 0x071507
@@ -295,12 +313,12 @@ public:
 			curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 
 			try {
+				info->ensure_headers_sent();
+
 				--active_connections;
 				if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
 					info->stream->on_close(make_posix_error(ETIMEDOUT));
 				} else {
-					long code = 200;
-					curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &code);
 					long err = 0;
 					curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
 
@@ -309,12 +327,7 @@ public:
 					} else {
 						info->stream->on_close(boost::system::error_code());
 					}
-
-//					info->reply.set_code(code);
-//					info->reply.set_error(-err);
 				}
-//				info->reply.set_url(effective_url);
-//				info->stream->on_close(boost::system::error_code());
 			} catch (...) {
 				curl_multi_remove_handle(multi, easy);
 				delete info;
@@ -376,6 +389,7 @@ public:
 
 	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
 	{
+		info->ensure_headers_sent();
 		info->logger.log(SWARM_LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
 		const size_t real_size = size * nmemb;
 		info->stream->on_data(boost::asio::buffer(data, real_size));
@@ -396,15 +410,26 @@ public:
 		const size_t real_size = size * nmemb;
 
 		// Empty header line, so it's the end
+		long redirect_count;
+		curl_easy_getinfo(info->easy, CURLINFO_REDIRECT_COUNT, &redirect_count);
+
+		if (redirect_count != info->redirect_count) {
+			info->redirect_count = redirect_count;
+			info->reply.headers().clear();
+		}
+
 		if (real_size == 2) {
 			long code;
-			char *effective_url = NULL;
 			curl_easy_getinfo(info->easy, CURLINFO_RESPONSE_CODE, &code);
-			curl_easy_getinfo(info->easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 
-			info->reply.set_code(code);
-			info->reply.set_url(effective_url);
-			info->stream->on_headers(std::move(info->reply));
+			// Check for location header, if it's not redirect - it's surely final request
+			if (code < 300
+				|| code >= 400
+				|| !(info->reply.request().follow_location()
+					&& info->reply.headers().has("Location"))) {
+				info->ensure_headers_sent();
+			}
+
 			return real_size;
 		}
 

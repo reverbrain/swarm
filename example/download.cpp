@@ -16,6 +16,7 @@
 #include <swarm/urlfetcher/url_fetcher.hpp>
 #include <swarm/urlfetcher/boost_event_loop.hpp>
 #include <swarm/urlfetcher/ev_event_loop.hpp>
+#include <swarm/urlfetcher/stream.hpp>
 #include <swarm/c++config.hpp>
 #include <list>
 #include <iostream>
@@ -55,14 +56,17 @@ struct request_handler_functor
 {
 	ev::loop_ref &loop;
 
-	void operator() (const ioremap::swarm::url_fetcher::response &reply) const {
+	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) const {
 		std::cout << "HTTP code: " << reply.code() << std::endl;
+		std::cout << "Error: " << error.message() << std::endl;
 
 		const auto &headers = reply.headers().all();
 
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
 			std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
 		}
+		(void) data;
+//		std::cout << data << std::endl;
 
 		loop.unloop();
 	}
@@ -139,83 +143,23 @@ int main(int argc, char **argv)
 
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
 
-	std::vector<ioremap::swarm::headers_entry> headers = {
-		{ "Content-Type", "text/html; always" },
-		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
-	};
-
 	ioremap::swarm::url_fetcher::request request;
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
 	request.set_timeout(500000);
-	request.headers().set(headers);
+	request.headers().set({
+		{ "Content-Type", "text/html; always" },
+		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
+	});
 
 	typedef std::chrono::high_resolution_clock clock;
 
 	auto begin_time = clock::now();
 
-//	request_handler_functor request_handler = { loop };
+	request_handler_functor request_handler = { loop };
 
-//	manager.get(request_handler, request);
-/*
-	std::thread thread([&manager] () {
-		set_thread_name("swarm_requester");
-		ioremap::swarm::url_fetcher::request request;
-		request.set_url("http://localhost:8080/echo");
-//		request.headers().set_keep_alive();
+	manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
 
-		for (size_t j = 1; j < 1; ++j) {
-			size_t total_count = 5000000;
-			auto total_begin = clock::now();
-
-			size_t total_mu = 0;
-			size_t min_mu = std::numeric_limits<size_t>::max();
-			size_t max_mu = std::numeric_limits<size_t>::min();
-
-			auto timer_begin = clock::now();
-			std::atomic_int counter(0);
-
-			for (size_t i = 0; i < 1; ++i) {
-				auto begin = clock::now();
-				auto handler = std::make_shared<stream>([&counter, &total_mu, &min_mu, &max_mu, &timer_begin, begin] (const ioremap::swarm::http_response &reply) {
-					auto end = clock::now();
-					auto mu = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-					total_mu += mu.count();
-					min_mu = std::min(min_mu, total_mu);
-					max_mu = std::max(max_mu, total_mu);
-//					std::cout << "reply: " << reply.code() << ", " << mu.count() / 1000. << " ms" << std::endl;
-					(void) reply;
-
-					++counter;
-
-
-					auto timer_end = clock::now();
-					auto timer_s = std::chrono::duration_cast<std::chrono::seconds>(timer_end - timer_begin).count();
-					if (timer_s >= 1) {
-						timer_begin = timer_end;
-						std::cout << counter << " rps" << std::endl;
-						counter = 0;
-					}
-				});
-				ioremap::swarm::url_fetcher::request tmp = request;
-				manager.get(std::move(handler), std::move(tmp));
-				usleep(40);
-			}
-			auto total_end = clock::now();
-
-			sleep(1);
-
-			std::cout << "count: " << total_count
-				  << ", total_send: " << std::chrono::duration_cast<std::chrono::microseconds>(total_end - total_begin).count() / 1000. << " ms"
-				  << ", avg: " << total_mu / (total_count * 1000.) << " ms"
-				  << ", max: " << max_mu / 1000. << " ms"
-				  << ", min: " << min_mu / 1000. << " ms"
-				  << std::endl;
-		}
-
-		std::cout << "Sent all" << std::endl;
-	});
-*/
 	if (use_boost) {
 		boost::asio::io_service::work work(service);
 		service.run();
