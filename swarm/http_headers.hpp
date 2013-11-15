@@ -64,12 +64,15 @@ public:
 
 	void clear();
 
-	void set(std::vector<headers_entry> &&headers);
+	void assign(std::vector<headers_entry> &&headers);
+	void assign(std::initializer_list<headers_entry> headers);
 	template <typename Range>
-	void set(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
+	void assign(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
 	template <typename Iterator>
-	void set(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
+	void assign(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
+
 	void set(const std::string &name, const std::string &value);
+	void set(const std::string &name, std::initializer_list<std::string> values);
 	template <typename Range>
 	void set(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
 	template <typename Iterator>
@@ -77,6 +80,7 @@ public:
 
 	void add(const headers_entry &header);
 	void add(const std::string &name, const std::string &value);
+	void add(const std::string &name, std::initializer_list<std::string> values);
 	template <typename Range>
 	void add(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
 	template <typename Iterator>
@@ -114,6 +118,22 @@ private:
 };
 
 template <typename Iterator>
+inline void http_headers::assign(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type *)
+{
+	std::vector<headers_entry> headers(begin, end);
+	assign(std::move(headers));
+}
+
+template <typename Range>
+inline void http_headers::assign(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
+{
+	using std::begin;
+	using std::end;
+
+	assign(begin(range), end(range));
+}
+
+template <typename Iterator>
 inline void http_headers::set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type *)
 {
 	if (begin == end) {
@@ -135,22 +155,6 @@ inline void http_headers::set(const std::string &name, const Range &range, typen
 	using std::end;
 
 	set(name, begin(range), end(range));
-}
-
-template <typename Iterator>
-inline void http_headers::set(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type *)
-{
-	std::vector<headers_entry> headers(begin, end);
-	set(std::move(headers));
-}
-
-template <typename Range>
-inline void http_headers::set(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
-{
-	using std::begin;
-	using std::end;
-
-	set(begin(range), end(range));
 }
 
 template <typename Iterator>

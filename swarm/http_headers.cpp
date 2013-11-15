@@ -388,14 +388,24 @@ void http_headers::clear()
 	p->data.clear();
 }
 
-void http_headers::set(std::vector<headers_entry> &&headers)
+void http_headers::assign(std::vector<headers_entry> &&headers)
 {
 	p->data = std::move(headers);
+}
+
+void http_headers::assign(std::initializer_list<headers_entry> headers)
+{
+	p->data = headers;
 }
 
 void http_headers::set(const std::string &name, const std::string &value)
 {
 	p->set_header(name, value);
+}
+
+void http_headers::set(const std::string &name, std::initializer_list<std::string> values)
+{
+	set(name, values.begin(), values.end());
 }
 
 void http_headers::add(const headers_entry &header)
@@ -406,6 +416,11 @@ void http_headers::add(const headers_entry &header)
 void http_headers::add(const std::string &name, const std::string &value)
 {
 	p->add_header(name, value);
+}
+
+void http_headers::add(const std::string &name, std::initializer_list<std::string> values)
+{
+	add(name, values.begin(), values.end());
 }
 
 boost::optional<time_t> http_headers::last_modified() const
