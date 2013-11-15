@@ -26,28 +26,6 @@
 namespace ioremap {
 namespace swarm {
 
-namespace detail {
-
-/*
- * Test if T is convertable to std::string.
- * It is true for char*, char[], and all classes with operator std::string().
- */
-template <typename T>
-struct is_string
-{
-	typedef short ok;
-	typedef int bad;
-
-	static ok test(const std::string &);
-	static bad test(...);
-
-	enum {
-		value = (sizeof(test(*reinterpret_cast<const T *>(NULL))) == sizeof(ok))
-	};
-};
-
-}
-
 class http_headers_private;
 
 typedef std::pair<std::string, std::string> headers_entry;
@@ -88,21 +66,21 @@ public:
 
 	void set(std::vector<headers_entry> &&headers);
 	template <typename Range>
-	void set(const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type * = NULL);
+	void set(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
 	template <typename Iterator>
-	void set(Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type * = NULL);
+	void set(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
 	void set(const std::string &name, const std::string &value);
 	template <typename Range>
-	void set(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type * = NULL);
+	void set(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
 	template <typename Iterator>
-	void set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type * = NULL);
+	void set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
 
 	void add(const headers_entry &header);
 	void add(const std::string &name, const std::string &value);
 	template <typename Range>
-	void add(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type * = NULL);
+	void add(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type * = NULL);
 	template <typename Iterator>
-	void add(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type * = NULL);
+	void add(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
 
 	// Last-Modified, UTC
 	boost::optional<time_t> last_modified() const;
@@ -136,7 +114,7 @@ private:
 };
 
 template <typename Iterator>
-inline void http_headers::set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type *)
+inline void http_headers::set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type *)
 {
 	if (begin == end) {
 		remove(name);
@@ -151,7 +129,7 @@ inline void http_headers::set(const std::string &name, Iterator begin, Iterator 
 }
 
 template <typename Range>
-inline void http_headers::set(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type *)
+inline void http_headers::set(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
 	using std::begin;
 	using std::end;
@@ -160,14 +138,14 @@ inline void http_headers::set(const std::string &name, const Range &range, typen
 }
 
 template <typename Iterator>
-inline void http_headers::set(Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type *)
+inline void http_headers::set(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type *)
 {
 	std::vector<headers_entry> headers(begin, end);
 	set(std::move(headers));
 }
 
 template <typename Range>
-inline void http_headers::set(const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type *)
+inline void http_headers::set(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
 	using std::begin;
 	using std::end;
@@ -176,7 +154,7 @@ inline void http_headers::set(const Range &range, typename std::enable_if<!detai
 }
 
 template <typename Iterator>
-inline void http_headers::add(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!detail::is_string<Iterator>::value>::type *)
+inline void http_headers::add(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type *)
 {
 	for (; begin != end; ++begin) {
 		add(name, *begin);
@@ -184,7 +162,7 @@ inline void http_headers::add(const std::string &name, Iterator begin, Iterator 
 }
 
 template <typename Range>
-inline void http_headers::add(const std::string &name, const Range &range, typename std::enable_if<!detail::is_string<Range>::value>::type *)
+inline void http_headers::add(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
 	using std::begin;
 	using std::end;
