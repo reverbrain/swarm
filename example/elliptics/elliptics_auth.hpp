@@ -16,9 +16,22 @@ public:
 	virtual bool check(const swarm::http_request &request) = 0;
 };
 
+class simple_password_auth : public auth_interface
+{
+public:
+	simple_password_auth();
+
+	bool initialize(const rapidjson::Value &config, const swarm::logger &logger);
+	bool check(const swarm::http_request &request);
+
+private:
+	swarm::logger m_logger;
+	std::map<std::string, std::string> m_keys;
+};
+
 namespace elliptics {
 
-class elliptics_auth : public auth_interface
+class elliptics_auth : public simple_password_auth
 {
 public:
 	elliptics_auth();
@@ -26,8 +39,11 @@ public:
 	bool initialize(const rapidjson::Value &config, const ioremap::elliptics::node &node, const swarm::logger &logger);
 	bool check(const swarm::http_request &request);
 
+	std::string generate_signature(const swarm::http_request &request, const std::string &key) const;
+
 private:
 	swarm::logger m_logger;
+	std::unique_ptr<ioremap::elliptics::node> m_node;
 	std::map<std::string, std::string> m_keys;
 };
 

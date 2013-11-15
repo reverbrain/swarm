@@ -2,15 +2,13 @@
 
 namespace ioremap {
 namespace thevoid {
-namespace elliptics {
 
-elliptics_auth::elliptics_auth()
+simple_password_auth::simple_password_auth()
 {
 }
 
-bool elliptics_auth::initialize(const rapidjson::Value &config, const ioremap::elliptics::node &node, const swarm::logger &logger)
+bool simple_password_auth::initialize(const rapidjson::Value &config, const swarm::logger &logger)
 {
-	(void) node;
 	m_logger = logger;
 
 	if (!config.HasMember("auth")) {
@@ -49,16 +47,81 @@ bool elliptics_auth::initialize(const rapidjson::Value &config, const ioremap::e
 	return true;
 }
 
-bool elliptics_auth::check(const swarm::http_request &request)
+bool simple_password_auth::check(const swarm::http_request &request)
 {
 	if (auto ns = request.url().query().item_value("namespace")) {
-		if (auto auth = request.headers().get("Authentication")) {
+		if (auto auth = request.headers().get("Authorization")) {
 			auto it = m_keys.find(*ns);
 			return it != m_keys.end() && it->second == *auth;
 		}
 	}
 
 	return false;
+}
+
+namespace elliptics {
+
+elliptics_auth::elliptics_auth()
+{
+}
+
+bool elliptics_auth::initialize(const rapidjson::Value &config, const ioremap::elliptics::node &node, const swarm::logger &logger)
+{
+	m_node.reset(new ioremap::elliptics::node(node));
+	return simple_password_auth::initialize(config, logger);
+}
+
+bool elliptics_auth::check(const swarm::http_request &request)
+{
+	if (auto ns = request.url().query().item_value("namespace")) {
+		auto it = m_keys.find(*ns);
+		if (it == m_keys.end()) {
+			return false;
+		}
+
+		if (auto auth = request.headers().get("Authorization")) {
+			auto key = generate_signature(request, it->second);
+
+			return *auth == key;
+		}
+	}
+
+	return false;
+}
+
+std::string elliptics_auth::generate_signature(const swarm::http_request &request, const std::string &key) const
+{
+	const auto &url = request.url();
+	auto headers_copy = request.headers();
+	headers_copy.remove("Authorization");
+
+	std::vector<swarm::headers_entry> &headers = headers_copy.all();
+	for (auto it = headers.begin(); it != headers.end(); ++it) {
+		std::transform(it->first.begin(), it->first.end(), it->first.begin(), tolower);
+	}
+
+	std::sort(headers.begin(), headers.end());
+
+	std::string text = url.path();
+	text += '\n';
+	text += url.raw_query();
+	text += '\n';
+
+	for (auto it = headers.begin(); it != headers.end(); ++it) {
+		text += it->first;
+		text += ':';
+		text += it->second;
+		text += '\n';
+	}
+	text += key;
+	text += '\n';
+
+	dnet_raw_id signature;
+	char signature_str[DNET_ID_SIZE * 2 + 1];
+
+	dnet_transform_node(m_node->get_native(), text.c_str(), text.size(), signature.id, sizeof(signature.id));
+
+	return dnet_dump_id_len_raw(signature.id, DNET_ID_SIZE, signature_str);
 }
 
 } // namespace elliptics
