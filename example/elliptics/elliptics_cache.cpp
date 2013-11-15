@@ -82,8 +82,8 @@ bool elliptics_cache::initialize(const rapidjson::Value &application_config, con
 
 	m_key = std::string(config["name"].GetString());
 	m_timeout = 30;
-	if (auto tmp = config.FindMember("timeout")) {
-		m_timeout = tmp->value.GetInt();
+	if (config.HasMember("timeout")) {
+		m_timeout = config["timeout"].GetInt();
 	}
 
 	auto &groupsArray = config["groups"];

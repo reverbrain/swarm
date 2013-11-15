@@ -18,6 +18,7 @@
  * GCC-4.4 don't have <atomic> include, so we should use <cstdatomic> on it
  */
 #  define SWARM_CSTDATOMIC
+#  define SWARM_GCC_4_4
 /*
  * GCC-4.4 don''t have noexcept support yet
  */

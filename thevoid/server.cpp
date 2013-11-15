@@ -29,7 +29,7 @@
 
 #include <swarm/url.hpp>
 #include <swarm/logger.hpp>
-#include <thevoid/rapidjson/filereadstream.h>
+#include <thevoid/rapidjson/filestream.h>
 
 #include <sys/wait.h>
 
@@ -244,11 +244,9 @@ static int read_config(rapidjson::Document &doc, const char *config_path)
 		return -2;
 	}
 
-	char buffer[8 * 1024];
+	rapidjson::FileStream config_stream(config_file);
 
-	rapidjson::FileReadStream config_stream(config_file, buffer, sizeof(buffer));
-
-	doc.ParseStream<rapidjson::kParseDefaultFlags, rapidjson::UTF8<> >(config_stream);
+	doc.ParseStream<rapidjson::kParseDefaultFlags>(config_stream);
 
 	fclose(config_file);
 
@@ -348,14 +346,14 @@ int base_server::run(int argc, char **argv)
 		return -5;
 	}
 
-	auto endpoints = config.FindMember("endpoints");
-
-	if (!endpoints) {
+	if (!config.HasMember("endpoints")) {
 		logger().log(swarm::SWARM_LOG_ERROR, "\"endpoints\" field is missed");
 		return -4;
 	}
 
-	if (!endpoints->value.IsArray()) {
+	auto &endpoints = config["endpoints"];
+
+	if (!endpoints.IsArray()) {
 		logger().log(swarm::SWARM_LOG_ERROR, "\"endpoints\" field is not an array");
 		return -4;
 	}
@@ -370,7 +368,7 @@ int base_server::run(int argc, char **argv)
 	}
 
 	try {
-		for (auto it = endpoints->value.Begin(); it != endpoints->value.End(); ++it) {
+		for (auto it = endpoints.Begin(); it != endpoints.End(); ++it) {
 			listen(it->GetString());
 		}
 	} catch (...) {

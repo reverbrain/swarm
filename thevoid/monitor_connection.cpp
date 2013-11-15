@@ -73,7 +73,7 @@ std::string monitor_connection::get_information()
 	information.Accept(writer);
 	buffer.Put('\n');
 
-	return std::string(buffer.GetString(), buffer.GetSize());
+	return std::string(buffer.GetString(), buffer.Size());
 }
 
 void monitor_connection::async_read()

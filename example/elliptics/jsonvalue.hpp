@@ -19,13 +19,9 @@
 
 #include <boost/asio.hpp>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-
 #include <thevoid/rapidjson/stringbuffer.h>
 #include <thevoid/rapidjson/prettywriter.h>
 #include <thevoid/rapidjson/document.h>
-#pragma GCC diagnostic pop
 
 namespace {
 	static inline std::string lexical_cast(size_t value) {
@@ -91,7 +87,7 @@ public:
 		Accept(writer);
 		buffer.Put('\n');
 
-		return std::string(buffer.GetString(), buffer.GetSize());
+		return std::string(buffer.GetString(), buffer.Size());
 	}
 
 	rapidjson::MemoryPoolAllocator<> &GetAllocator() {

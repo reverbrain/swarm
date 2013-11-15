@@ -30,18 +30,28 @@ bool simple_password_auth::initialize(const rapidjson::Value &config, const swar
 			return false;
 		}
 
-		auto ns = value.FindMember("namespace");
-		auto key = value.FindMember("key");
-		if (!ns || !ns->value.IsString()) {
+		if (!value.HasMember("namespace")) {
+			m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.auth[%zu].namespace\" field is missed", i);
+			return false;
+		}
+
+		if (!value.HasMember("key")) {
+			m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.auth[%zu].key\" field is missed", i);
+			return false;
+		}
+
+		auto &ns = value["namespace"];
+		auto &key = value["key"];
+		if (ns.IsString()) {
 			m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.auth[%zu].namespace\" field is not string", i);
 			return false;
 		}
-		if (!key || !key->value.IsString()) {
+		if (!key.IsString()) {
 			m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.auth[%zu].key\" field is not string", i);
 			return false;
 		}
 
-		m_keys[ns->value.GetString()] = key->value.GetString();
+		m_keys[ns.GetString()] = key.GetString();
 	}
 
 	return true;

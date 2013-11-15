@@ -18,17 +18,23 @@
 #define IOREMAP_SWARM_EV_EVENT_LOOP_H
 
 #include "event_loop.hpp"
+#include "../c++config.hpp"
 
 #include <mutex>
 #include <list>
 
-#define EV_MULTIPLICITY 1
+#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
 
+#define EV_MULTIPLICITY 1
 #include <ev++.h>
+
+#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
 #pragma GCC diagnostic pop
+#endif
 
 namespace ioremap {
 namespace swarm {
