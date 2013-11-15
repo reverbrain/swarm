@@ -23,20 +23,19 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/variant.hpp>
+#include <swarm/c++config.hpp>
 
 #include <string>
 #include <vector>
 
-#ifdef __GNUC__
+#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
 #pragma GCC diagnostic push
-#if __GNUC__ > 5 || (__GNUC__ == 4 && __GNUC_MINOR__ > 6)
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
 #endif
 
 #include <thevoid/rapidjson/document.h>
 
-#ifdef __GNUC__
+#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
 #pragma GCC diagnostic pop
 #endif
 
