@@ -80,10 +80,26 @@ static time_t convert_from_http_date(const std::string &str)
 	return timegm(&time_data);
 }
 
+struct is_same_header
+{
+	const char *name;
+	const size_t size;
+
+	bool operator() (const headers_entry &entry) const
+	{
+		return are_case_insensitive_equal(entry.first, name, size);
+	}
+};
+
 class http_headers_private
 {
 public:
 	const std::vector<headers_entry> &get_headers() const
+	{
+		return data;
+	}
+
+	std::vector<headers_entry> &get_headers()
 	{
 		return data;
 	}
@@ -170,6 +186,46 @@ public:
 	boost::optional<std::string> get_header(const char (&name)[N]) const
 	{
 		return get_header(name, N - 1);
+	}
+
+	size_t remove_header(const char *name, size_t length)
+	{
+		is_same_header pred = { name, length };
+
+		auto it = std::remove_if(data.begin(), data.end(), pred);
+
+		size_t count = data.end() - it;
+		data.erase(it, data.end());
+
+		return count;
+	}
+
+	bool remove_first_header(const char *name, size_t length)
+	{
+		is_same_header pred = { name, length };
+
+		auto it = std::find_if(data.begin(), data.end(), pred);
+
+		if (it == data.end()) {
+			return false;
+		}
+
+		data.erase(it);
+		return true;
+	}
+
+	bool remove_last_header(const char *name, size_t length)
+	{
+		is_same_header pred = { name, length };
+
+		auto it = std::find_if(data.rbegin(), data.rend(), pred);
+
+		if (it == data.rend()) {
+			return false;
+		}
+
+		data.erase(std::prev(it.base()));
+		return true;
 	}
 
 	boost::optional<std::string> try_header(const char *name, size_t name_size) const
@@ -266,6 +322,11 @@ const std::vector<headers_entry> &http_headers::all() const
 	return p->get_headers();
 }
 
+std::vector<headers_entry> &http_headers::all()
+{
+	return p->get_headers();
+}
+
 bool http_headers::has(const std::string &name) const
 {
 	return p->has_header(name);
@@ -279,6 +340,37 @@ boost::optional<std::string> http_headers::get(const std::string &name) const
 boost::optional<std::string> http_headers::get(const char *name) const
 {
 	return p->try_header(name);
+}
+
+size_t http_headers::remove(const std::string &name)
+{
+	return p->remove_header(name.c_str(), name.size());
+}
+
+size_t http_headers::remove(const char *name)
+{
+	return p->remove_header(name, strlen(name));
+}
+
+bool http_headers::remove_first(const std::string &name)
+{
+	return p->remove_first_header(name.c_str(), name.size());
+}
+
+bool http_headers::remove_first(const char *name)
+{
+	return p->remove_first_header(name, strlen(name));
+}
+
+bool http_headers::remove_last(const std::string &name)
+{
+	return p->remove_last_header(name.c_str(), name.size());
+}
+
+bool http_headers::remove_last(const char *name)
+{
+	return p->remove_last_header(name, strlen(name));
+
 }
 
 void http_headers::set(const std::vector<headers_entry> &headers)
@@ -301,12 +393,22 @@ void http_headers::set(const std::string &name, const std::string &value)
 	p->set_header(name, value);
 }
 
+void http_headers::set(const std::string &name, const char *value)
+{
+	p->set_header(name, value);
+}
+
 void http_headers::add(const headers_entry &header)
 {
 	p->add_header(header.first, header.second);
 }
 
 void http_headers::add(const std::string &name, const std::string &value)
+{
+	p->add_header(name, value);
+}
+
+void http_headers::add(const std::string &name, const char *value)
 {
 	p->add_header(name, value);
 }
