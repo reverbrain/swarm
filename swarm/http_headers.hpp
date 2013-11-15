@@ -127,8 +127,8 @@ inline void http_headers::assign(Iterator begin, Iterator end, typename std::ena
 template <typename Range>
 inline void http_headers::assign(const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
-	using std::begin;
-	using std::end;
+	using boost::begin;
+	using boost::end;
 
 	assign(begin(range), end(range));
 }
@@ -151,8 +151,8 @@ inline void http_headers::set(const std::string &name, Iterator begin, Iterator 
 template <typename Range>
 inline void http_headers::set(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
-	using std::begin;
-	using std::end;
+	using boost::begin;
+	using boost::end;
 
 	set(name, begin(range), end(range));
 }
@@ -168,8 +168,8 @@ inline void http_headers::add(const std::string &name, Iterator begin, Iterator 
 template <typename Range>
 inline void http_headers::add(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
-	using std::begin;
-	using std::end;
+	using boost::begin;
+	using boost::end;
 
 	add(begin(range), end(range));
 }
