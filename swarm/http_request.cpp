@@ -25,7 +25,6 @@ public:
 	network_request_data() : major_version(1), minor_version(1)
 	{
 	}
-	network_request_data(const network_request_data &o) = default;
 
 	swarm::url url;
 	http_headers headers;

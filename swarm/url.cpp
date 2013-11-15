@@ -52,8 +52,6 @@ public:
 	{
 	}
 
-	url_private(const url_private &other) = default;
-
 	void ensure_data() const;
 	void set_uri(const UriUriA &uri);
 	void start_modifications()

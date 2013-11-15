@@ -26,7 +26,6 @@ public:
 	network_reply_data() : code(0)
 	{
 	}
-	network_reply_data(const network_reply_data &o) = default;
 
 	int code;
 	boost::optional<std::string> reason;
