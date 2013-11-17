@@ -1,5 +1,5 @@
 if(BUILD_URLFETCHER)
-	locate_library(LIBXML2 "ev++.h" "ev" "libev")
+	locate_library(LIBEV "ev++.h" "ev" "libev")
 	include_directories(
 	    ${LIBEV_INCLUDE_DIRS}
 	)
