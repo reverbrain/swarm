@@ -110,9 +110,13 @@ int main(int argc, char *argv[])
 
         for (long i = 0; i < request_num;) {
 		std::atomic_long counter(0);
-		request_handler_functor request_handler = { loop, counter, chunk_num};
+		long total = chunk_num;
+		if (i + total > request_num)
+			total = request_num - i;
 
-		for (long j = 0; j < chunk_num && i < request_num; ++i, ++j) {
+		request_handler_functor request_handler = { loop, counter, total};
+
+		for (long j = 0; j < total; ++i, ++j) {
 			ioremap::swarm::url_fetcher::request request;
 			request.set_url(url);
 			request.set_timeout(500000);
