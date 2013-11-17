@@ -1,0 +1,17 @@
+Simple swarm/thevoid performance testing tool
+Client creates @chunk number of requests, starts event loop,
+waits until all requests have been finished and stops the loop.
+
+This is repeated multiple times (until total number of requests reaches @requests)
+Number of requests per second is being written during the test.
+
+Usage example:
+$ swarm_perf_server -c server-config.json
+
+$ swarm_perf_client --url http://localhost:8080/get
+...
+num: 1000, performance: 9009
+num: 1000, performance: 9009
+num: 1000, performance: 8928
+num: 100000, performance: 8374
+$
