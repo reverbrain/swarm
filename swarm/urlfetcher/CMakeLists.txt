@@ -1,3 +1,11 @@
+locate_library(LIBXML2 "ev++.h" "ev" "libev")
+include_directories(
+    ${LIBEV_INCLUDE_DIRS}
+)
+link_directories(
+    ${LIBEV_LIBRARY_DIRS}
+)
+
 set(SWARM_ACCESS_MANAGER_SRC_LIST
     event_loop.cpp
     event_loop.hpp
@@ -19,7 +27,7 @@ set(SWARM_ACCESS_MANAGER_HDR_LIST
     )
 
 add_library(swarm_urlfetcher SHARED ${SWARM_ACCESS_MANAGER_SRC_LIST})
-target_link_libraries(swarm_urlfetcher swarm curl ev ${Boost_LIBRARIES})
+target_link_libraries(swarm_urlfetcher swarm curl ${LIBEV_LIBRARIES} ${Boost_LIBRARIES})
 
 set_target_properties(swarm_urlfetcher PROPERTIES
     VERSION ${DEBFULLVERSION}
