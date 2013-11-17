@@ -20,6 +20,7 @@ locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
 find_package(Boost COMPONENTS system thread program_options REQUIRED)
 
 option(BUILD_URLFETCHER "Build url_fetcher" ON)
+option(PERF "Build performance checking tool" ON)
 
 include_directories(
     ${CURL_INCLUDE_DIRS}
@@ -40,8 +41,12 @@ add_subdirectory(thevoid)
 
 option(BUILD_EXAMPLES "Build examples" ON)
 
-if(BUILD_EXAMPLES)
+if (BUILD_EXAMPLES)
 	add_subdirectory(example)
+endif()
+
+if (PERF)
+	add_subdirectory(perf)
 endif()
 
 install(DIRECTORY thevoid/rapidjson
