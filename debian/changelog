@@ -1,3 +1,15 @@
+swarm (0.6.0.0) unstable; urgency=low
+
+  * All: Lots of API changes
+  * Swarm: UrlFetcher and xml-support separated to libraries
+  * Swarm: Added boost::asio-based event loop
+  * Swarm: Streamed interface for reply handling
+  * TheVoid: Fixed LWS-headers support
+  * TheVoid: Config-based logger initialization
+  * TheVoid: Daemonization support
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 19 Nov 2013 21:45:39 +0400
+
 swarm (0.5.5.1) unstable; urgency=low
 
   * Added error message on acceptor fail

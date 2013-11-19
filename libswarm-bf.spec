@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.5.5.1
+Version:	0.6.0.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -106,6 +106,15 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Nov 19 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.0.0
+- All: Lots of API changes
+- Swarm: UrlFetcher and xml-support separated to libraries
+- Swarm: Added boost::asio-based event loop
+- Swarm: Streamed interface for reply handling
+- TheVoid: Fixed LWS-headers support
+- TheVoid: Config-based logger initialization
+- TheVoid: Daemonization support
+
 * Wed Oct 16 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.5.5.1
 - Added error message on acceptor fail
 - Added call on_close at end of stream
