@@ -14,5 +14,3 @@ if(BUILD_URLFETCHER)
 	add_executable(url_test url_test.cpp)
 	target_link_libraries(url_test swarm)
 endif()
-
-add_subdirectory(elliptics)
