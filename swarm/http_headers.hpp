@@ -79,6 +79,7 @@ public:
 	void set(const std::string &name, Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
 
 	void add(const headers_entry &header);
+	void add(headers_entry &&header);
 	void add(const std::string &name, const std::string &value);
 	void add(const std::string &name, std::initializer_list<std::string> values);
 	template <typename Range>

@@ -30,6 +30,7 @@
 #  include <atomic>
 #endif
 
+#include <queue>
 #include <list>
 #include <algorithm>
 
@@ -96,7 +97,7 @@ class network_manager_private : public event_listener
 public:
 	network_manager_private(event_loop &loop) :
 		loop(loop), still_running(0), prev_running(0),
-		active_connections(0)
+		active_connections(0), active_connections_limit(std::numeric_limits<long>::max())
 	{
 		loop.set_listener(this);
 		loop.set_logger(logger);
@@ -190,7 +191,17 @@ public:
 		return boost::system::error_code(err, multi_category());
 	}
 
-	void process_info(request_info::ptr request)
+	void process_info(const request_info::ptr &request)
+	{
+		if (active_connections >= active_connections_limit) {
+			requests.push(request);
+			return;
+		}
+
+		process_info_nocheck(request);
+	}
+
+	void process_info_nocheck(const request_info::ptr &request)
 	{
 //		auto tmp = clock::now();
 
@@ -338,6 +349,12 @@ public:
 			curl_multi_remove_handle(multi, easy);
 			delete info;
 		} while (easy);
+
+		while (!requests.empty() && active_connections < active_connections_limit) {
+			auto request = requests.front();
+			requests.pop();
+			process_info_nocheck(request);
+		}
 	}
 
 	static int open_callback(event_loop *loop, curlsocktype purpose, struct curl_sockaddr *address)
@@ -396,13 +413,18 @@ public:
 		return real_size;
 	}
 
-	static std::string trimmed(const char *begin, const char *end)
+	template <typename Iter>
+	static inline void trim_line(Iter &begin, Iter &end)
 	{
 		while (begin < end && isspace(*begin))
-			++begin;
+		    ++begin;
 		while (begin < end && isspace(*(end - 1)))
-			--end;
+		    --end;
+	}
 
+	static std::string trimmed(const char *begin, const char *end)
+	{
+		trim_line(begin, end);
 		return std::string(begin, end);
 	}
 
@@ -438,8 +460,9 @@ public:
 		char *colon = std::find(data, end, ':');
 
 		if (colon != end) {
-			const std::string field = trimmed(data, colon);
+			std::string field = trimmed(data, colon);
 			std::string value;
+			value.reserve(16);
 
 			data = colon + 1;
 
@@ -450,12 +473,16 @@ public:
 				if (!value.empty())
 					value += ' ';
 
-				value += trimmed(data, lf);
+				auto value_begin = data;
+				auto value_end = lf;
+				trim_line(value_begin, value_end);
+				value.append(value_begin, value_end);
 
 				data = lf;
 			} while (data < end && (*(data + 1) == ' ' || *(data + 1) == '\t'));
 
-			info->reply.headers().add(field, value);
+			swarm::headers_entry entry = { std::move(field), std::move(value) };
+			info->reply.headers().add(std::move(entry));
 		}
 
 		return size * nmemb;
@@ -464,8 +491,9 @@ public:
 	event_loop &loop;
 	int still_running;
 	int prev_running;
-	std::atomic_int active_connections;
-	std::list<request_info::ptr> requests;
+	std::atomic_long active_connections;
+	long active_connections_limit;
+	std::queue<request_info::ptr, std::list<request_info::ptr>> requests;
 	swarm::logger logger;
 	CURLM *multi;
 };
@@ -481,6 +509,7 @@ url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
+	curl_multi_setopt(p->multi, CURLMOPT_PIPELINING, long(1));
 }
 
 url_fetcher::~url_fetcher()
@@ -491,21 +520,7 @@ url_fetcher::~url_fetcher()
 
 void url_fetcher::set_total_limit(long active_connections)
 {
-#if LIBCURL_VERSION_NUM >= 0x071E00
-	curl_multi_setopt(p->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, active_connections);
-#else
-	curl_multi_setopt(p->multi, CURLMOPT_MAXCONNECTS, active_connections);
-#endif
-}
-
-void url_fetcher::set_host_limit(long host_connections)
-{
-#if LIBCURL_VERSION_NUM >= 0x071E00
-	curl_multi_setopt(p->multi, CURLMOPT_MAX_HOST_CONNECTIONS, host_connections);
-#else
-	(void) host_connections;
-	throw std::runtime_error("url_fetcher::set_host_limit is not implemented");
-#endif
+	p->active_connections_limit = active_connections;
 }
 
 void url_fetcher::set_logger(const swarm::logger &log)
@@ -554,7 +569,7 @@ public:
 class url_fetcher_response_data
 {
 public:
-	url_fetcher_response_data()
+	url_fetcher_response_data() : request(boost::none)
 	{
 	}
 

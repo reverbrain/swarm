@@ -413,6 +413,11 @@ void http_headers::add(const headers_entry &header)
 	p->add_header(header.first, header.second);
 }
 
+void http_headers::add(headers_entry &&header)
+{
+	p->data.emplace_back(std::move(header));
+}
+
 void http_headers::add(const std::string &name, const std::string &value)
 {
 	p->add_header(name, value);
