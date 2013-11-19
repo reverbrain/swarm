@@ -71,6 +71,8 @@ public:
 	template <typename Iterator>
 	void assign(Iterator begin, Iterator end, typename std::enable_if<!std::is_convertible<Iterator, std::string>::value>::type * = NULL);
 
+	void set(const headers_entry &header);
+	void set(headers_entry &&header);
 	void set(const std::string &name, const std::string &value);
 	void set(const std::string &name, std::initializer_list<std::string> values);
 	template <typename Range>

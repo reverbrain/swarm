@@ -398,6 +398,16 @@ void http_headers::assign(std::initializer_list<headers_entry> headers)
 	p->data = headers;
 }
 
+void http_headers::set(const headers_entry &header)
+{
+	p->data.emplace_back(header);
+}
+
+void http_headers::set(headers_entry &&header)
+{
+	p->data.emplace_back(std::move(header));
+}
+
 void http_headers::set(const std::string &name, const std::string &value)
 {
 	p->set_header(name, value);
