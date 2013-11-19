@@ -1,7 +1,6 @@
 find_package(Elliptics 2.24 REQUIRED)
 
 include_directories(${ELLIPTICS_INCLUDE_DIRS})
-link_directories(${ELLIPTICS_LIBRARY_DIRS})
 
 set(SWARM_ELLIPTICS_HEADERS
 	asio.hpp
