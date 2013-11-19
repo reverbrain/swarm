@@ -10,7 +10,6 @@ string(REGEX MATCH "([0-9]+\\.[0-9]+)" SWARM_VERSION_ABI "${DEBFULLVERSION}")
 string(REGEX MATCH "([0-9]+\\.[0-9]+$)" SWARM_VERSION_MINOR "${DEBFULLVERSION}")
 
 include(cmake/locate_library.cmake)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 locate_library(LIBEV "ev++.h" "ev" "libev")
 locate_library(CURL "curl.h" "curl" "curl" "libcurl")
