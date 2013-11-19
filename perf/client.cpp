@@ -23,6 +23,8 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <iostream>
 
@@ -36,7 +38,9 @@ struct request_handler_shared {
 };
 
 struct request_handler_functor {
-	ev::loop_ref &loop;
+	std::mutex &mutex;
+	std::condition_variable &condition;
+	bool &finished;
 	std::atomic_long &counter;
 	long total;
 
@@ -57,9 +61,11 @@ struct request_handler_functor {
 		(void) data;
 		(void) error;
 #endif
-		++counter;
-		if (counter == total)
-			loop.unloop();
+		if (++counter == total) {
+			std::unique_lock<std::mutex> locker(mutex);
+			finished = true;
+			condition.notify_all();
+		}
 	}
 };
 
@@ -72,13 +78,14 @@ int main(int argc, char *argv[])
 
         std::string url;
 
-        long request_num, chunk_num;
+	long request_num, chunk_num, connections_limit;
 
         generic.add_options()
                 ("help", "This help message")
                 ("url", bpo::value<std::string>(&url)->default_value("http://localhost:8080/get"), "Test URL for GET request")
                 ("requests", bpo::value<long>(&request_num)->default_value(100000), "Number of test calls")
                 ("chunk", bpo::value<long>(&chunk_num)->default_value(1000), "Send this many requests and then synchronously wait for all of them to complete")
+		("connections", bpo::value<long>(&connections_limit)->default_value(100), "Number of connections limit")
                 ;
 
         bpo::options_description cmdline_options;
@@ -98,23 +105,40 @@ int main(int argc, char *argv[])
                 return -1;
         }
 
-	ev::default_loop loop;
-	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
-	loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
+	boost::asio::io_service service;
+	std::unique_ptr<boost::asio::io_service::work> work;
+	work.reset(new boost::asio::io_service::work(service));
+	ioremap::swarm::boost_event_loop loop(service);
+	std::mutex mutex;
+	std::condition_variable condition;
 
 	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_ERROR);
 
-	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
+	ioremap::swarm::url_fetcher manager(loop, logger);
+	manager.set_total_limit(connections_limit);
+//	manager.set_host_limit(connections_limit);
 
-	ioremap::warp::timer tm, total;
+	struct io_service_runner
+	{
+		void operator()(boost::asio::io_service *service) const
+		{
+			service->run();
+		}
+	} runner;
+
+	std::thread thread(std::bind(runner, &service));
+
+	ioremap::warp::timer tm, total, preparation;
 
         for (long i = 0; i < request_num;) {
 		std::atomic_long counter(0);
 		long total = chunk_num;
 		if (i + total > request_num)
 			total = request_num - i;
+		bool finished = false;
 
-		request_handler_functor request_handler = { loop, counter, total};
+		preparation.restart();
+		request_handler_functor request_handler = { mutex, condition, finished, counter, total};
 
 		for (long j = 0; j < total; ++i, ++j) {
 			ioremap::swarm::url_fetcher::request request;
@@ -124,11 +148,23 @@ int main(int argc, char *argv[])
 			manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
 		}
 
-		loop.loop();
-		std::cout << "num: " << chunk_num << ", performance: " << chunk_num * 1000 / tm.restart() << std::endl;
+		auto preparation_usecs = preparation.elapsed();
+
+		std::unique_lock<std::mutex> locker(mutex);
+		while (!finished) {
+			condition.wait(locker);
+		}
+
+		auto tm_result = tm.restart();
+		std::cout << "num: " << chunk_num << ", performance: " << chunk_num * 1000000 / tm_result << ", time: " << tm_result << " usecs"
+			  << ", preparation: " << preparation_usecs << " usecs" << std::endl;
         }
 
-        std::cout << "num: " << request_num << ", performance: " << request_num * 1000 / total.restart() << std::endl;
+	std::cout << "num: " << request_num << ", performance: " << request_num * 1000000 / total.restart() << std::endl;
+
+	work.reset();
+	service.stop();
+	thread.join();
 
         return 0;
 }
