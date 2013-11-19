@@ -170,7 +170,7 @@ void base_server::on(base_server::options &&opts, const std::shared_ptr<base_str
 	m_data->handlers.emplace_back(std::move(opts), factory);
 }
 
-static int start_daemon()
+static pid_t start_daemon()
 {
 	pid_t pid;
 
@@ -195,29 +195,11 @@ void base_server::daemonize()
 		return;
 	}
 
-	while (1) {
-		int err = start_daemon();
-		if (err > 0) {
-			int status;
-
-			waitpid(err, &status, 0);
-
-			err = WEXITSTATUS(status);
-			fprintf(stderr, "child exited with status: %d\n", err);
-			if (WIFEXITED(status)) {
-				printf("exited, status=%d\n", WEXITSTATUS(status));
-			} else if (WIFSIGNALED(status)) {
-				printf("killed by signal %d\n", WTERMSIG(status));
-			} else if (WIFSTOPPED(status)) {
-				printf("stopped by signal %d\n", WSTOPSIG(status));
-			} else if (WIFCONTINUED(status)) {
-				printf("continued\n");
-			}
-		} else {
-			return;
-		}
-
-		sleep(1);
+	pid_t err = start_daemon();
+	if (err > 0) {
+		std::_Exit(0);
+	} else {
+		return;
 	}
 }
 
