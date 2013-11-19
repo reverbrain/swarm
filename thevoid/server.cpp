@@ -376,7 +376,10 @@ int base_server::run(int argc, char **argv)
 	}
 
 	if (m_data->daemonize && m_data->user_id) {
-		setuid(*m_data->user_id);
+		int err = setuid(*m_data->user_id);
+		if (err == -1) {
+			return errno;
+		}
 	}
 
 	int monitor_port = -1;
