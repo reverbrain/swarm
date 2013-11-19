@@ -24,7 +24,7 @@ public:
 	bool initialize(const rapidjson::Value &config, const swarm::logger &logger);
 	bool check(const swarm::http_request &request);
 
-private:
+protected:
 	swarm::logger m_logger;
 	std::map<std::string, std::string> m_keys;
 };
@@ -42,9 +42,7 @@ public:
 	std::string generate_signature(const swarm::http_request &request, const std::string &key) const;
 
 private:
-	swarm::logger m_logger;
 	std::unique_ptr<ioremap::elliptics::node> m_node;
-	std::map<std::string, std::string> m_keys;
 };
 
 } // namespace elliptics

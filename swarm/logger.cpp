@@ -128,7 +128,7 @@ void logger::set_level(int level)
 	m_data->level = level;
 }
 
-void logger::log(int level, const char *format, ...)
+void logger::log(int level, const char *format, ...) const
 {
 	va_list args;
 	va_start(args, format);
@@ -138,7 +138,7 @@ void logger::log(int level, const char *format, ...)
 	va_end(args);
 }
 
-void logger::vlog(int level, const char *format, va_list args)
+void logger::vlog(int level, const char *format, va_list args) const
 {
 	if (!m_data->impl || m_data->level < level)
 		return;

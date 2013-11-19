@@ -42,7 +42,7 @@ bool simple_password_auth::initialize(const rapidjson::Value &config, const swar
 
 		auto &ns = value["namespace"];
 		auto &key = value["key"];
-		if (ns.IsString()) {
+		if (!ns.IsString()) {
 			m_logger.log(swarm::SWARM_LOG_ERROR, "\"application.auth[%zu].namespace\" field is not string", i);
 			return false;
 		}
@@ -99,22 +99,60 @@ bool elliptics_auth::check(const swarm::http_request &request)
 	return false;
 }
 
+static std::string to_lower(const std::string &str)
+{
+	std::string result;
+	result.resize(str.size());
+	std::transform(str.begin(), str.end(), result.begin(), tolower);
+	return result;
+}
+
+static void check_hash(const swarm::logger &logger, const std::string &name, const std::string &message)
+{
+	dnet_raw_id signature;
+	char signature_str[DNET_ID_SIZE * 2 + 1];
+
+	dnet_digest_transform_raw(message.c_str(), message.size(), signature.id, DNET_ID_SIZE);
+	dnet_dump_id_len_raw(signature.id, DNET_ID_SIZE, signature_str);
+
+	logger.log(swarm::SWARM_LOG_DATA, "name: \"%s\", result: \"%s\"", name.c_str(), signature_str);
+}
+
 std::string elliptics_auth::generate_signature(const swarm::http_request &request, const std::string &key) const
 {
 	const auto &url = request.url();
-	auto headers_copy = request.headers();
-	headers_copy.remove("Authorization");
+	const auto &query = url.query();
+	const auto &original_headers = request.headers().all();
 
-	std::vector<swarm::headers_entry> &headers = headers_copy.all();
-	for (auto it = headers.begin(); it != headers.end(); ++it) {
-		std::transform(it->first.begin(), it->first.end(), it->first.begin(), tolower);
+	std::vector<swarm::headers_entry> headers;
+	for (auto it = original_headers.begin(); it != original_headers.end(); ++it) {
+		std::string name = to_lower(it->first);
+		if (name.compare(0, 6, "x-ell-") == 0) {
+			headers.emplace_back(std::move(name), it->second);
+		}
 	}
 
 	std::sort(headers.begin(), headers.end());
 
-	std::string text = url.path();
+	std::vector<std::pair<std::string, std::string> > query_items;
+
+	for (size_t i = 0; i < query.count(); ++i) {
+		const auto &item = query.item(i);
+		query_items.emplace_back(to_lower(item.first), item.second);
+	}
+
+	std::sort(query_items.begin(), query_items.end());
+
+	swarm::url result_url;
+	result_url.set_path(url.path());
+
+	for (auto it = query_items.begin(); it != query_items.end(); ++it) {
+		result_url.query().add_item(it->first, it->second);
+	}
+
+	std::string text = request.method();
 	text += '\n';
-	text += url.raw_query();
+	text += result_url.to_string();
 	text += '\n';
 
 	for (auto it = headers.begin(); it != headers.end(); ++it) {
@@ -123,15 +161,19 @@ std::string elliptics_auth::generate_signature(const swarm::http_request &reques
 		text += it->second;
 		text += '\n';
 	}
-	text += key;
-	text += '\n';
+
+	check_hash(m_logger, "key", key);
+	check_hash(m_logger, "message", text);
 
 	dnet_raw_id signature;
 	char signature_str[DNET_ID_SIZE * 2 + 1];
 
-	dnet_transform_node(m_node->get_native(), text.c_str(), text.size(), signature.id, sizeof(signature.id));
+	dnet_digest_auth_transform_raw(text.c_str(), text.size(), key.c_str(), key.size(), signature.id, DNET_ID_SIZE);
+	dnet_dump_id_len_raw(signature.id, DNET_ID_SIZE, signature_str);
 
-	return dnet_dump_id_len_raw(signature.id, DNET_ID_SIZE, signature_str);
+	m_logger.log(swarm::SWARM_LOG_DATA, "signature: \"%s\", result: \"%s\"", text.c_str(), signature_str);
+
+	return signature_str;
 }
 
 } // namespace elliptics

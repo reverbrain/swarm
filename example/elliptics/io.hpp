@@ -260,8 +260,17 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 			const_cast<char *>(boost::asio::buffer_cast<const char*>(buffer)),
 			boost::asio::buffer_size(buffer));
 
+		ioremap::elliptics::session sess = this->server()->elliptics()->session();
+		ioremap::elliptics::key key;
+
+		auto status = this->server()->elliptics()->process(req, key, sess);
+		if (status != swarm::http_response::ok) {
+			this->send_reply(status);
+			return;
+		}
+
 		try {
-			write_data(req, data).connect(
+			write_data(req, sess, key, data).connect(
 				std::bind(&on_upload::on_write_finished, this->shared_from_this(),
 				std::placeholders::_1, std::placeholders::_2));
 		} catch (std::exception &e) {
@@ -270,16 +279,12 @@ struct on_upload : public simple_request_stream<T>, public std::enable_shared_fr
 		}
 	}
 
-	ioremap::elliptics::async_write_result write_data(const swarm::http_request &req, const ioremap::elliptics::data_pointer &data) {
+	ioremap::elliptics::async_write_result write_data(
+			const swarm::http_request &req,
+			ioremap::elliptics::session &sess,
+			const ioremap::elliptics::key &key,
+			const ioremap::elliptics::data_pointer &data) {
 		const auto &query = req.url().query();
-
-		ioremap::elliptics::session sess = this->server()->elliptics()->session();
-		ioremap::elliptics::key key;
-
-		auto status = this->server()->elliptics()->process(req, key, sess);
-		if (status != swarm::http_response::ok) {
-			throw std::runtime_error("failed to get file name");
-		}
 
 		size_t offset = query.item_value("offset", 0llu);
 
