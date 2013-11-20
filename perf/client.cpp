@@ -38,13 +38,17 @@ struct request_handler_shared {
 };
 
 struct request_handler_functor {
-	std::mutex &mutex;
-	std::condition_variable &condition;
-	bool &finished;
-	std::atomic_long &counter;
+	request_handler_functor() : finished(false), counter(0), total(0)
+	{
+	}
+
+	std::mutex mutex;
+	std::condition_variable condition;
+	bool finished;
+	std::atomic_long counter;
 	long total;
 
-	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) {
+	void operator() (const swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) {
 #if 0
 		std::cout << "HTTP code: " << reply.code() << std::endl;
 		std::cout << "Error: " << error.message() << std::endl;
@@ -108,13 +112,11 @@ int main(int argc, char *argv[])
 	boost::asio::io_service service;
 	std::unique_ptr<boost::asio::io_service::work> work;
 	work.reset(new boost::asio::io_service::work(service));
-	ioremap::swarm::boost_event_loop loop(service);
-	std::mutex mutex;
-	std::condition_variable condition;
+	swarm::boost_event_loop loop(service);
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_ERROR);
+	swarm::logger logger("/dev/stdout", swarm::SWARM_LOG_ERROR);
 
-	ioremap::swarm::url_fetcher manager(loop, logger);
+	swarm::url_fetcher manager(loop, logger);
 	manager.set_total_limit(connections_limit);
 //	manager.set_host_limit(connections_limit);
 
@@ -130,33 +132,29 @@ int main(int argc, char *argv[])
 
 	ioremap::warp::timer tm, total, preparation;
 
-        for (long i = 0; i < request_num;) {
-		std::atomic_long counter(0);
-		long total = chunk_num;
-		if (i + total > request_num)
-			total = request_num - i;
-		bool finished = false;
-
+	for (long i = 0; i < request_num;) {
 		preparation.restart();
-		request_handler_functor request_handler = { mutex, condition, finished, counter, total};
 
-		for (long j = 0; j < total; ++i, ++j) {
-			ioremap::swarm::url_fetcher::request request;
+		request_handler_functor handler;
+		handler.total = std::min(chunk_num, request_num - i);
+
+		for (long j = 0; j < handler.total; ++i, ++j) {
+			swarm::url_fetcher::request request;
 			request.set_url(url);
 			request.set_timeout(500000);
 
-			manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
+			manager.get(swarm::simple_stream::create(std::ref(handler)), std::move(request));
 		}
 
 		auto preparation_usecs = preparation.elapsed();
 
-		std::unique_lock<std::mutex> locker(mutex);
-		while (!finished) {
-			condition.wait(locker);
+		std::unique_lock<std::mutex> locker(handler.mutex);
+		while (!handler.finished) {
+			handler.condition.wait(locker);
 		}
 
 		auto tm_result = tm.restart();
-		std::cout << "num: " << chunk_num << ", performance: " << chunk_num * 1000000 / tm_result << ", time: " << tm_result << " usecs"
+		std::cout << "num: " << handler.total << ", performance: " << handler.total * 1000000 / tm_result << ", time: " << tm_result << " usecs"
 			  << ", preparation: " << preparation_usecs << " usecs" << std::endl;
         }
 
