@@ -1,5 +1,3 @@
-add_definitions(-g -std=c++11 -W -Wall -Wextra -fstack-protector-all)
-
 find_package(Boost REQUIRED COMPONENTS system program_options)
 
 INCLUDE(${PROJECT_SOURCE_DIR}/cmake/locate_library.cmake)
