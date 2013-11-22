@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.0.0
+Version:	0.6.0.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Nov 22 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.0.1
+- Logger: Add log level to file interface output
+- TheVoid: Added header check option
+- Example: Added HTTP server example
+
 * Tue Nov 19 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.0.0
 - All: Lots of API changes
 - Swarm: UrlFetcher and xml-support separated to libraries

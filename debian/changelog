@@ -1,3 +1,11 @@
+swarm (0.6.0.1) unstable; urgency=low
+
+  * Logger: Add log level to file interface output
+  * TheVoid: Added header check option
+  * Example: Added HTTP server example
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 22 Nov 2013 14:09:19 +0400
+
 swarm (0.6.0.0) unstable; urgency=low
 
   * All: Lots of API changes
