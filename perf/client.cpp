@@ -35,6 +35,7 @@
 #endif
 
 #include <boost/program_options.hpp>
+#include <boost/thread.hpp>
 
 #include "timer.hpp"
 
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
 		}
 	} runner = { service };
 
-	std::thread thread(runner);
+	boost::thread thread(runner);
 
 	ioremap::warp::timer tm, total, preparation;
 
