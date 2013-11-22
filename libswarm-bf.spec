@@ -17,7 +17,6 @@ BuildRequires:	gcc44 gcc44-c++
 %endif
 BuildRequires:  libxml2-devel libev-devel
 BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread
-BuildRequires:	elliptics-client-devel >= 2.24.14.26
 BuildRequires:  curl-devel
 BuildRequires:	cmake uriparser-devel
 
