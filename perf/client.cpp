@@ -28,6 +28,12 @@
 
 #include <iostream>
 
+#ifdef SWARM_CSTDATOMIC
+#  include <cstdatomic>
+#else
+#  include <atomic>
+#endif
+
 #include <boost/program_options.hpp>
 
 #include "timer.hpp"
@@ -122,13 +128,15 @@ int main(int argc, char *argv[])
 
 	struct io_service_runner
 	{
-		void operator()(boost::asio::io_service *service) const
-		{
-			service->run();
-		}
-	} runner;
+		boost::asio::io_service &service;
 
-	std::thread thread(std::bind(runner, &service));
+		void operator()() const
+		{
+			service.run();
+		}
+	} runner = { service };
+
+	std::thread thread(runner);
 
 	ioremap::warp::timer tm, total, preparation;
 
