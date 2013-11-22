@@ -114,6 +114,7 @@ protected:
 			const std::vector<std::string> tmp = { std::forward<std::string>(args)... };
 			return methods(tmp);
 		}
+		static modificator header(const std::string &name, const std::string &value);
 
 		options();
 
@@ -127,6 +128,7 @@ protected:
 		void set_exact_match(const std::string &str);
 		void set_prefix_match(const std::string &str);
 		void set_methods(const std::vector<std::string> &methods);
+		void set_header(const std::string &name, const std::string &value);
 
 		bool check(const swarm::http_request &request) const;
 

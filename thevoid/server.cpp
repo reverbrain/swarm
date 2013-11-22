@@ -436,6 +436,7 @@ public:
 		check_prefix_match      = 0x04,
 		check_string_match      = 0x08,
 		check_regexp_match      = 0x10,
+		check_headers           = 0x20,
 		check_all_match         = check_exact_match | check_prefix_match | check_string_match | check_regexp_match
 	};
 
@@ -446,6 +447,7 @@ public:
 	uint64_t flags;
 	std::string match_string;
 	std::vector<std::string> methods;
+	std::vector<swarm::headers_entry> headers;
 };
 
 base_server::options::modificator base_server::options::exact_match(const std::string &str)
@@ -461,6 +463,11 @@ base_server::options::modificator base_server::options::prefix_match(const std::
 base_server::options::modificator base_server::options::methods(const std::vector<std::string> &methods)
 {
 	return std::bind(&base_server::options::set_methods, std::placeholders::_1, methods);
+}
+
+base_server::options::modificator base_server::options::header(const std::string &name, const std::string &value)
+{
+	return std::bind(&base_server::options::set_header, std::placeholders::_1, name, value);
 }
 
 base_server::options::options() : m_data(new server_options_private)
@@ -505,6 +512,12 @@ void base_server::options::set_methods(const std::vector<std::string> &methods)
 	m_data->methods = methods;
 }
 
+void base_server::options::set_header(const std::string &name, const std::string &value)
+{
+	m_data->flags |= server_options_private::check_headers;
+	m_data->headers.emplace_back(name, value);
+}
+
 bool base_server::options::check(const swarm::http_request &request) const
 {
 	if (m_data->flags & server_options_private::check_methods) {
@@ -522,6 +535,20 @@ bool base_server::options::check(const swarm::http_request &request) const
 			}
 		} else if (m_data->flags & server_options_private::check_prefix_match) {
 			if (request.url().path().compare(0, match.size(), match) != 0) {
+				return false;
+			}
+		}
+	}
+
+	if (m_data->flags & server_options_private::check_headers) {
+		const auto &request_headers = request.headers();
+		const auto &headers = m_data->headers;
+		for (auto it = headers.begin(); it != headers.end(); ++it) {
+			if (auto value = request_headers.get(it->first)) {
+				if (*value != it->second) {
+					return false;
+				}
+			} else {
 				return false;
 			}
 		}
