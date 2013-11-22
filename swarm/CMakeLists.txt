@@ -43,4 +43,6 @@ install(TARGETS swarm
     )
 
 add_subdirectory(xml)
-add_subdirectory(urlfetcher)
+if(BUILD_URLFETCHER)
+    add_subdirectory(urlfetcher)
+endif()
