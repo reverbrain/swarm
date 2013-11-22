@@ -1,0 +1,19 @@
+{
+    "endpoints": [
+        "0.0.0.0:8080"
+    ],
+    "backlog": 128,
+    "threads": 2,
+    "buffer_size": 65536,
+    "logger": {
+        "file": "/dev/stderr",
+        "level": 4
+    },
+    "daemon": {
+        "fork": false,
+        "uid": 1000
+    },
+    "monitor-port": 20000,
+    "application": {
+    }
+}
