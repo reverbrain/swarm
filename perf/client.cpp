@@ -129,13 +129,13 @@ int main(int argc, char *argv[])
 
 	struct io_service_runner
 	{
-		boost::asio::io_service &service;
+		boost::asio::io_service *service;
 
 		void operator()() const
 		{
-			service.run();
+			service->run();
 		}
-	} runner = { service };
+	} runner = { &service };
 
 	boost::thread thread(runner);
 
