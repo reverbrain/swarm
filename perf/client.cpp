@@ -80,6 +80,15 @@ struct request_handler_functor {
 	}
 };
 
+struct io_service_runner
+{
+	boost::asio::io_service *service;
+
+	void operator()() const
+	{
+		service->run();
+	}
+};
 
 int main(int argc, char *argv[])
 {
@@ -127,16 +136,7 @@ int main(int argc, char *argv[])
 	manager.set_total_limit(connections_limit);
 //	manager.set_host_limit(connections_limit);
 
-	struct io_service_runner
-	{
-		boost::asio::io_service *service;
-
-		void operator()() const
-		{
-			service->run();
-		}
-	} runner = { &service };
-
+	io_service_runner runner = { &service };
 	boost::thread thread(runner);
 
 	ioremap::warp::timer tm, total, preparation;

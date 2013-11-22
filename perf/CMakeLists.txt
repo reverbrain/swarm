@@ -24,6 +24,7 @@ target_link_libraries(swarm_perf_client
 	${LIBEV_LIBRARIES}
 	${Boost_LIBRARIES}
 	swarm swarm_urlfetcher
+        -pthread
 )
 
 FILE(GLOB headers
