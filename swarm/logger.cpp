@@ -43,6 +43,15 @@ static long get_thread_id()
 namespace ioremap {
 namespace swarm {
 
+static const char *log_level_names[] = {
+	"DATA  ",
+	"ERROR ",
+	"INFO  ",
+	"NOTICE",
+	"DEBUG "
+};
+static const size_t log_level_names_size = sizeof(log_level_names) / sizeof(log_level_names[0]);
+
 class file_logger_interface : public logger_interface
 {
 public:
@@ -61,7 +70,6 @@ public:
 
 	void log(int level, const char *msg)
 	{
-		(void) level;
 		char str[64];
 		struct tm tm;
 		struct timeval tv;
@@ -70,9 +78,10 @@ public:
 		gettimeofday(&tv, NULL);
 		localtime_r((time_t *)&tv.tv_sec, &tm);
 		strftime(str, sizeof(str), "%F %R:%S", &tm);
+		const char *level_name = log_level_names[std::max(0, std::min<int>(level, log_level_names_size - 1))];
 
-		snprintf(usecs_and_id, sizeof(usecs_and_id), ".%06ld %ld/%d : ",
-			(long)tv.tv_usec, get_thread_id(), getpid());
+		snprintf(usecs_and_id, sizeof(usecs_and_id), ".%06ld %ld/%d [%s]: ",
+			(long)tv.tv_usec, get_thread_id(), getpid(), level_name);
 
 		if (m_stream) {
 			size_t len = strlen(msg);
