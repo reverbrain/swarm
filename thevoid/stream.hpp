@@ -23,6 +23,7 @@
 #include <swarm/logger.hpp>
 #include <swarm/c++config.hpp>
 #include <cstdarg>
+#include <type_traits>
 
 #ifdef SWARM_CSTDATOMIC
 #  include <cstdatomic>
@@ -118,6 +119,7 @@ protected:
 	template <typename T>
 	void send_reply(swarm::http_response &&rep, T &&data)
 	{
+		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), make_close_handler());
 		auto buffer = boost::asio::buffer(wrapper.data());
 		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
@@ -139,6 +141,7 @@ protected:
 			  T &&data,
 			  std::function<void (const boost::system::error_code &err)> &&handler)
 	{
+		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
 		auto buffer = boost::asio::buffer(wrapper.data());
 		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
@@ -154,6 +157,7 @@ protected:
 	void send_data(T &&data,
 		       std::function<void (const boost::system::error_code &err)> &&handler)
 	{
+		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
 		auto buffer = boost::asio::buffer(wrapper.data());
 		get_reply()->send_data(buffer, std::move(wrapper));
@@ -186,6 +190,7 @@ private:
 	template <typename T>
 	functor_wrapper<typename std::remove_reference<T>::type> make_wrapper(T &&data, std::function<void (const boost::system::error_code &err)> &&handler)
 	{
+		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		return functor_wrapper<typename std::remove_reference<T>::type>(std::forward<T>(data), std::move(handler));
 	}
 
