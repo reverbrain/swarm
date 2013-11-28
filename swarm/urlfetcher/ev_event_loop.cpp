@@ -27,6 +27,11 @@ ev_event_loop::ev_event_loop(ev::loop_ref &loop) :
         m_async.start();
 }
 
+static void delete_later(ev::io *object)
+{
+	delete object;
+}
+
 int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 {
 	ev::io *io = reinterpret_cast<ev::io *>(data);
@@ -34,7 +39,8 @@ int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 	if (what == poll_remove) {
 		logger().log(SWARM_LOG_DEBUG, "socket_callback, destroying io: %p, socket: %d, what: %d", io, socket, what);
 		listener()->set_socket_data(socket, NULL);
-		delete io;
+		io->stop();
+		post(std::bind(delete_later, io));
 		return 0;
 	}
 

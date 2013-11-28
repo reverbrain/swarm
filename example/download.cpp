@@ -58,6 +58,7 @@ struct request_handler_functor
 	ev::loop_ref &loop;
 
 	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) const {
+		std::cout << "Request finished: " << reply.request().url().to_string() << " -> " << reply.url().to_string() << std::endl;
 		std::cout << "HTTP code: " << reply.code() << std::endl;
 		std::cout << "Error: " << error.message() << std::endl;
 
@@ -67,47 +68,9 @@ struct request_handler_functor
 			std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
 		}
 		(void) data;
-//		std::cout << data << std::endl;
 
 		loop.unloop();
 	}
-};
-
-class stream : public ioremap::swarm::base_stream
-{
-public:
-	stream(const std::function<void (const ioremap::swarm::http_response &)> &handler) :
-		m_response(boost::none),
-		m_handler(handler)
-	{
-	}
-
-	void on_headers(ioremap::swarm::url_fetcher::response &&response)
-	{
-//		std::cout << "on_headers" << std::endl;
-		m_response = std::move(response);
-		m_handler(m_response);
-	}
-
-	void on_data(const boost::asio::const_buffer &data)
-	{
-		auto begin = boost::asio::buffer_cast<const char *>(data);
-		auto end = begin + boost::asio::buffer_size(data);
-
-//		std::cout << "on_data: \"" << std::string(begin, end) << "\"" << std::endl;
-		(void) end;
-		(void) data;
-	}
-
-	void on_close(const boost::system::error_code &error)
-	{
-//		std::cout << "on_close: " << error.message() << ", category: " << error.category().name() << std::endl;
-		(void) error;
-	}
-
-private:
-	ioremap::swarm::http_response m_response;
-	std::function<void (const ioremap::swarm::http_response &)> m_handler;
 };
 
 int main(int argc, char **argv)
