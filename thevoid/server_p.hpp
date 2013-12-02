@@ -110,6 +110,8 @@ public:
     //! User id change to during deamonization
     boost::optional<uid_t> user_id;
     bool daemonize;
+	//! Safe mode
+	bool safe_mode;
 };
 
 }}
