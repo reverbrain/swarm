@@ -132,7 +132,6 @@ void signal_handler::ignore_handler(int signal_value)
 
 		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
 			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
-			(*it)->handle_reload();
 		}
 	}
 }
