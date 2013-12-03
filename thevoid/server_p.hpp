@@ -62,7 +62,7 @@ public:
 
 	void register_handler(void (*handler)(int), int signal_value, const std::string &signal_name)
 	{
-		if (SIG_ERR == std::signal(signal_value, handler)) {
+		if (SIG_ERR == ::signal(signal_value, handler)) {
 			throw std::runtime_error("Cannot set up " + signal_name + " handler");
 		}
 	}
