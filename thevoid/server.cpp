@@ -96,28 +96,40 @@ boost::asio::io_service &server_data::get_worker_service()
 	return *worker_io_services[id];
 }
 
-void signal_handler::stop_handler(int)
+void signal_handler::stop_handler(int signal_value)
 {
 	if (auto signal_set = global_signal_set.lock()) {
 		std::lock_guard<std::mutex> locker(signal_set->lock);
 
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it)
+		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
+			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
 			(*it)->handle_stop();
+		}
 	}
 }
 
-void signal_handler::reload_handler(int)
+void signal_handler::reload_handler(int signal_value)
 {
 	if (auto signal_set = global_signal_set.lock()) {
 		std::lock_guard<std::mutex> locker(signal_set->lock);
 
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it)
+		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
+			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
 			(*it)->handle_reload();
+		}
 	}
 }
 
-void signal_handler::ignore_handler(int)
+void signal_handler::ignore_handler(int signal_value)
 {
+	if (auto signal_set = global_signal_set.lock()) {
+		std::lock_guard<std::mutex> locker(signal_set->lock);
+
+		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
+			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
+			(*it)->handle_reload();
+		}
+	}
 }
 
 base_server::base_server() : m_data(new server_data)
