@@ -1,3 +1,15 @@
+swarm (0.6.1.0) unstable; urgency=low
+
+  * Swarm: Fixed segfaults in ev_event_loop
+  * Swarm: Added ability to reopen log file
+  * TheVoid: Added static_assert checks for rvalue
+  * * This ensures correct error messages will be printed if user will pass
+  * * not rvalue to send_reply/send_data instead of hundreds of gcc's lines
+  * TheVoid: Fixed several issues connected with signals
+  * TheVoid: Added support for SIGHUP
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 03 Dec 2013 17:12:02 +0400
+
 swarm (0.6.0.1) unstable; urgency=low
 
   * Logger: Add log level to file interface output

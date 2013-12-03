@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.0.1
+Version:	0.6.1.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,15 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Dec 03 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.0
+- Swarm: Fixed segfaults in ev_event_loop
+- Swarm: Added ability to reopen log file
+- TheVoid: Added static_assert checks for rvalue
+- * This ensures correct error messages will be printed if user will pass
+- * not rvalue to send_reply/send_data instead of hundreds of gcc's lines
+- TheVoid: Fixed several issues connected with signals
+- TheVoid: Added support for SIGHUP
+
 * Fri Nov 22 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.0.1
 - Logger: Add log level to file interface output
 - TheVoid: Added header check option
