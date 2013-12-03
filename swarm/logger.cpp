@@ -23,6 +23,7 @@
 #include <cstdarg>
 #include <cstring>
 #include <sys/time.h>
+#include <sys/uio.h>
 
 /*
  * Supported in Linux only so far
@@ -55,20 +56,18 @@ static const size_t log_level_names_size = sizeof(log_level_names) / sizeof(log_
 class file_logger_interface : public logger_interface
 {
 public:
-	file_logger_interface(const char *file) {
-		m_stream.open(file, std::ios_base::app);
-		if (!m_stream) {
-			std::string message = "Can not open file: \"";
-			message += file;
-			message += "\"";
-			throw std::ios_base::failure(message);
-		}
-		m_stream.exceptions(std::ofstream::failbit);
+	file_logger_interface(const char *file) : m_path(file), m_file(NULL) {
+		reopen();
 	}
 	~file_logger_interface() {
 	}
 
 	void log(int level, const char *msg)
+	{
+		log_internal(m_file, level, msg);
+	}
+
+	void log_internal(FILE *file, int level, const char *msg)
 	{
 		char str[64];
 		struct tm tm;
@@ -83,21 +82,53 @@ public:
 		snprintf(usecs_and_id, sizeof(usecs_and_id), ".%06ld %ld/%d [%s]: ",
 			(long)tv.tv_usec, get_thread_id(), getpid(), level_name);
 
-		if (m_stream) {
-			size_t len = strlen(msg);
-			m_stream << str << usecs_and_id;
-			if (len > 0 && msg[len - 1] == '\n')
-				m_stream.write(msg, len - 1);
-			else
-				m_stream.write(msg, len);
-			m_stream << std::endl;
-		} else {
+		if (!file) {
 			std::cerr << str << usecs_and_id << ": could not write log in elliptics file logger" << std::endl;
+			return;
+		}
+
+		const size_t msg_len = ::strlen(msg);
+		const bool has_new_line = (msg_len > 0 && msg[msg_len - 1] == '\n');
+		char new_line[] = "\n";
+
+		const iovec io[] = {
+			{ str, ::strlen(str) },
+			{ usecs_and_id, ::strlen(usecs_and_id) },
+			{ const_cast<char *>(msg), has_new_line ? msg_len  - 1 : msg_len },
+			{ new_line, 1 }
+		};
+
+		if (-1 == ::writev(::fileno(file), io, sizeof(io) / sizeof(io[0]))) {
+			// TODO: What to do there?
+		}
+		::fflush(file);
+	}
+
+	void reopen()
+	{
+		FILE *old_file = m_file;
+		FILE *new_file = std::fopen(m_path.c_str(), "a");
+		if (!new_file) {
+			int err = errno;
+			std::string message = "Failed to open log file \"";
+			message += m_path;
+			message += "\": ";
+			message += strerror(err);
+			throw std::ios_base::failure(message);
+		}
+
+		log_internal(new_file, -1, "Reopened log file");
+		m_file = new_file;
+
+		if (old_file) {
+			log_internal(old_file, -1, "Reopened log file");
+			std::fclose(old_file);
 		}
 	}
 
 private:
-	std::ofstream	m_stream;
+	const std::string m_path;
+	FILE *m_file;
 };
 
 class logger_data
@@ -135,6 +166,13 @@ int logger::level() const
 void logger::set_level(int level)
 {
 	m_data->level = level;
+}
+
+void logger::reopen()
+{
+	if (m_data->impl) {
+		m_data->impl->reopen();
+	}
 }
 
 void logger::log(int level, const char *format, ...) const

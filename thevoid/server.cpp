@@ -88,6 +88,7 @@ void server_data::handle_stop()
 
 void server_data::handle_reload()
 {
+	logger.reopen();
 }
 
 boost::asio::io_service &server_data::get_worker_service()
@@ -115,7 +116,11 @@ void signal_handler::reload_handler(int signal_value)
 
 		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
 			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
-			(*it)->handle_reload();
+			try {
+				(*it)->handle_reload();
+			} catch (std::exception &e) {
+				std::fprintf(stderr, "Failed to reload configuration: %s", e.what());
+			}
 		}
 	}
 }
