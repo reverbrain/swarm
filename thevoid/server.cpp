@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <boost/thread.hpp>
+#include <pthread.h>
 #include <functional>
 #include <iostream>
 
@@ -85,13 +86,17 @@ void server_data::handle_stop()
 	monitor_io_service.stop();
 }
 
+void server_data::handle_reload()
+{
+}
+
 boost::asio::io_service &server_data::get_worker_service()
 {
 	const uint id = (threads_round_robin++ % threads_count);
 	return *worker_io_services[id];
 }
 
-void signal_handler::handler(int)
+void signal_handler::stop_handler(int)
 {
 	if (auto signal_set = global_signal_set.lock()) {
 		std::lock_guard<std::mutex> locker(signal_set->lock);
@@ -101,9 +106,22 @@ void signal_handler::handler(int)
 	}
 }
 
+void signal_handler::reload_handler(int)
+{
+	if (auto signal_set = global_signal_set.lock()) {
+		std::lock_guard<std::mutex> locker(signal_set->lock);
+
+		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it)
+			(*it)->handle_reload();
+	}
+}
+
+void signal_handler::ignore_handler(int)
+{
+}
+
 base_server::base_server() : m_data(new server_data)
 {
-	m_data->threads_count = 2;
 }
 
 base_server::~base_server()
@@ -381,6 +399,11 @@ int base_server::run(int argc, char **argv)
 		return -7;
 	}
 
+	sigset_t previous_sigset;
+	sigset_t sigset;
+	sigfillset(&sigset);
+	pthread_sigmask(SIG_BLOCK, &sigset, &previous_sigset);
+
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->monitor_io_service));
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->io_service));
 
@@ -400,6 +423,8 @@ int base_server::run(int argc, char **argv)
 	runner.name = "void_acceptor";
 	runner.service = &m_data->io_service;
 	threads.emplace_back(new boost::thread(runner));
+
+	pthread_sigmask(SIG_SETMASK, &previous_sigset, NULL);
 
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)

@@ -48,19 +48,28 @@ class signal_handler
 public:
 	signal_handler()
 	{
-		if (SIG_ERR == signal(SIGINT, handler)) {
-			throw std::runtime_error("Cannot set up SIGINT handler");
-		}
-		if (SIG_ERR == signal(SIGTERM, handler)) {
-			throw std::runtime_error("Cannot set up SIGTERM handler");
-		}
+		register_handler(stop_handler, SIGINT, "SIGINT");
+		register_handler(stop_handler, SIGTERM, "SIGTERM");
+		register_handler(stop_handler, SIGALRM, "SIGALRM");
+		register_handler(reload_handler, SIGHUP, "SIGHUP");
+		register_handler(ignore_handler, SIGUSR1, "SIGUSR1");
+		register_handler(ignore_handler, SIGUSR2, "SIGUSR2");
 	}
 
 	~signal_handler()
 	{
 	}
 
-	static void handler(int);
+	void register_handler(void (*handler)(int), int signal_value, const std::string &signal_name)
+	{
+		if (SIG_ERR == std::signal(signal_value, handler)) {
+			throw std::runtime_error("Cannot set up " + signal_name + " handler");
+		}
+	}
+
+	static void stop_handler(int);
+	static void reload_handler(int);
+	static void ignore_handler(int);
 
 	std::mutex lock;
 	std::set<server_data*> all_servers;
@@ -76,29 +85,30 @@ public:
 	~server_data();
 
 	void handle_stop();
-    
-    boost::asio::io_service &get_worker_service();
+	void handle_reload();
 
-    //! Logger instance
-    swarm::logger logger;
-    //! Statistics
-    std::atomic_int connections_counter;
-    std::atomic_int active_connections_counter;
+	boost::asio::io_service &get_worker_service();
+
+	//! Logger instance
+	swarm::logger logger;
+	//! Statistics
+	std::atomic_int connections_counter;
+	std::atomic_int active_connections_counter;
 	//! Weak pointer to server itself
 	std::weak_ptr<base_server> server;
 	//! The io_service used to handle new sockets.
 	boost::asio::io_service io_service;
-    //! The io_service used to process monitoring connection.
+	//! The io_service used to process monitoring connection.
 	boost::asio::io_service monitor_io_service;
-    //! List of io_services to process connections.
-    std::vector<std::unique_ptr<boost::asio::io_service>> worker_io_services;
-    std::vector<std::unique_ptr<boost::asio::io_service::work>> worker_works;
-    std::vector<std::unique_ptr<boost::thread>> worker_threads;
+	//! List of io_services to process connections.
+	std::vector<std::unique_ptr<boost::asio::io_service>> worker_io_services;
+	std::vector<std::unique_ptr<boost::asio::io_service::work>> worker_works;
+	std::vector<std::unique_ptr<boost::thread>> worker_threads;
 	//! Size of workers thread pool
-    std::atomic_uint threads_round_robin;
+	std::atomic_uint threads_round_robin;
 	unsigned int threads_count;
 	unsigned int backlog_size;
-    size_t buffer_size;
+	size_t buffer_size;
 	//! List of activated acceptors
 	acceptors_list<unix_connection> local_acceptors;
 	acceptors_list<tcp_connection> tcp_acceptors;
@@ -107,9 +117,9 @@ public:
 	std::shared_ptr<signal_handler> signal_set;
 	//! User handlers for urls
 	std::vector<std::pair<base_server::options, factory_ptr>> handlers;
-    //! User id change to during deamonization
-    boost::optional<uid_t> user_id;
-    bool daemonize;
+	//! User id change to during deamonization
+	boost::optional<uid_t> user_id;
+	bool daemonize;
 };
 
 }}
