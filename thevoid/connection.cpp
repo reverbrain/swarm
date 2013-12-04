@@ -32,14 +32,11 @@ namespace thevoid {
 #define SAFE_SEND_NONE do {} while (0)
 #define SAFE_SEND_ERROR \
 do { \
-	if (!m_something_sent) { \
-		send_error(swarm::http_response::internal_server_error); \
-	} else { \
-		boost::system::error_code ignored_ec; \
-		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
-		m_handler.reset(); \
-		return; \
-	} \
+	boost::system::error_code ignored_ec; \
+	m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
+	--m_server->m_data->active_connections_counter; \
+	m_handler.reset(); \
+	return; \
 } while (0)
 
 #define SAFE_CALL(expr, err_prefix, error_handler) \
@@ -63,7 +60,6 @@ template <typename T>
 connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
 	m_socket(service),
 	m_sending(false),
-	m_something_sent(false),
 	m_buffer(buffer_size),
 	m_content_length(0),
 	m_state(read_headers),
@@ -179,8 +175,6 @@ void connection<T>::send_impl(buffer_info &&info)
 		m_sending = true;
 		send_nolock();
 	}
-
-	m_something_sent = true;
 }
 
 template <typename T>
@@ -335,7 +329,6 @@ void connection<T>::process_next()
 	// Start to wait new HTTP requests by this socket due to HTTP 1.1
 	m_state = read_headers;
 	m_request_parser.reset();
-	m_something_sent = false;
 
 	m_request = swarm::http_request();
 

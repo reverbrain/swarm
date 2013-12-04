@@ -135,7 +135,6 @@ private:
 	std::deque<buffer_info> m_outgoing;
 	std::mutex m_outgoing_mutex;
 	bool m_sending;
-	bool m_something_sent;
 
 	//! Buffer for incoming data.
 	std::vector<char> m_buffer;
