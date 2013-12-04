@@ -349,16 +349,13 @@ void connection<T>::process_data(const char *begin, const char *end)
 		if (!result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
+			m_keep_alive = false;
 			send_error(swarm::http_response::bad_request);
 			return;
 		} else if (result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
 			auto factory = m_server->factory(m_request);
-			if (!factory) {
-				send_error(swarm::http_response::not_found);
-				return;
-			}
 
 			if (auto length = m_request.headers().content_length())
 				m_content_length = *length;
@@ -366,10 +363,14 @@ void connection<T>::process_data(const char *begin, const char *end)
 				m_content_length = 0;
 			m_keep_alive = m_request.is_keep_alive();
 
-			++m_server->m_data->active_connections_counter;
-			m_handler = factory->create();
-			m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-			m_handler->on_headers(std::move(m_request));
+			if (factory) {
+				++m_server->m_data->active_connections_counter;
+				m_handler = factory->create();
+				m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
+				m_handler->on_headers(std::move(m_request));
+			} else {
+				send_error(swarm::http_response::not_found);
+			}
 
 			m_state &= ~read_headers;
 			m_state |=  read_data;
