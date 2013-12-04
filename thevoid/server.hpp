@@ -75,6 +75,7 @@ class daemon_exception : public std::runtime_error
 {
 public:
 	daemon_exception();
+	daemon_exception(const std::string &error);
 };
 
 template <typename Server, typename... Args>

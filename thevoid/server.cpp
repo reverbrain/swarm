@@ -85,6 +85,7 @@ void server_data::handle_stop()
 		(*it)->stop();
 	}
 	monitor_io_service.stop();
+	pid.reset();
 }
 
 void server_data::handle_reload()
@@ -135,6 +136,64 @@ void signal_handler::ignore_handler(int signal_value)
 			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
 		}
 	}
+}
+
+pid_file::pid_file(const std::string &path) : m_path(path), m_file(NULL)
+{
+}
+
+pid_file::~pid_file()
+{
+	remove();
+}
+
+bool pid_file::remove_stale()
+{
+	FILE *file = ::fopen(m_path.c_str(), "r");
+	if (file) {
+		pid_t pid;
+		if (::fscanf(file, "%d", &pid) <= 0) {
+			::fclose(file);
+			if (::unlink(m_path.c_str()) < 0) {
+				return false;
+			}
+			return true;
+		}
+		::fclose(file);
+
+		if (::kill(pid, 0) < 0 && errno == ESRCH) {
+			if (::unlink(m_path.c_str()) < 0) {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool pid_file::open()
+{
+	m_file = ::fopen(m_path.c_str(), "w");
+	if (!m_file) {
+		return false;
+	}
+	return true;
+}
+
+void pid_file::write()
+{
+	::fprintf(m_file, "%d", ::getpid());
+	::fclose(m_file);
+	m_file = NULL;
+}
+
+bool pid_file::remove()
+{
+	if (::unlink(m_path.c_str()) < 0)
+		return false;
+
+	return true;
 }
 
 base_server::base_server() : m_data(new server_data)
@@ -205,14 +264,14 @@ void base_server::on(base_server::options &&opts, const std::shared_ptr<base_str
 	m_data->handlers.emplace_back(std::move(opts), factory);
 }
 
-static pid_t start_daemon()
+static pid_t start_daemon(pid_file *file)
 {
 	pid_t pid;
 
 	pid = fork();
 	if (pid == -1) {
 		fprintf(stderr, "Failed to fork to background: %s.\n", strerror(errno));
-		throw daemon_exception();
+		throw daemon_exception("failed to fork to background");
 	}
 
 	if (pid != 0) {
@@ -220,6 +279,7 @@ static pid_t start_daemon()
 		return pid;
 	}
 	setsid();
+	file->write();
 
 	return 0;
 }
@@ -230,7 +290,17 @@ void base_server::daemonize()
 		return;
 	}
 
-	pid_t err = start_daemon();
+	if (!m_data->pid_file_path.empty()) {
+		m_data->pid.reset(new pid_file(m_data->pid_file_path));
+		if (!m_data->pid->remove_stale()) {
+			throw daemon_exception("another process is active");
+		}
+		if (!m_data->pid->open()) {
+			throw daemon_exception("can not open pid file");
+		}
+	}
+
+	pid_t err = start_daemon(m_data->pid.get());
 	if (err > 0) {
 		std::_Exit(0);
 	} else {
@@ -299,6 +369,8 @@ int base_server::run(int argc, char **argv)
 	description.add_options()
 		("help", "this help message")
 		("config,c", po::value<std::string>(&config_path), "config path (required)")
+		("daemonize,d", "daemonize on start")
+		("pidfile,p", po::value<std::string>(&m_data->pid_file_path), "location of a pid file")
 	;
 
 	po::variables_map options;
@@ -341,7 +413,9 @@ int base_server::run(int argc, char **argv)
 		m_data->safe_mode = config["safe_mode"].GetBool();
 	}
 
-	if (config.HasMember("daemon")) {
+	if (options.count("daemonize")) {
+		m_data->daemonize = true;
+	} else if (config.HasMember("daemon")) {
 		const rapidjson::Value &daemon = config["daemon"];
 
 		if (daemon.HasMember("fork")) {
@@ -612,6 +686,10 @@ void base_server::options::swap(base_server::options &other)
 daemon_exception::daemon_exception() : runtime_error("daemon initialization failed")
 {
 
+}
+
+daemon_exception::daemon_exception(const std::string &error) : runtime_error("daemon initialization failed: " + error)
+{
 }
 
 } } // namespace ioremap::thevoid

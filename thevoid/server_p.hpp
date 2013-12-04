@@ -75,6 +75,22 @@ public:
 	std::set<server_data*> all_servers;
 };
 
+class pid_file
+{
+public:
+	pid_file(const std::string &path);
+	~pid_file();
+
+	bool remove_stale();
+	bool open();
+	void write();
+	bool remove();
+
+private:
+	std::string m_path;
+	FILE *m_file;
+};
+
 typedef std::shared_ptr<base_stream_factory> factory_ptr;
 
 class server_data
@@ -122,6 +138,8 @@ public:
 	bool daemonize;
 	//! Safe mode
 	bool safe_mode;
+	std::unique_ptr<pid_file> pid;
+	std::string pid_file_path;
 };
 
 }}
