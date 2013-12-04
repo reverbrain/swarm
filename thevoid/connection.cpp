@@ -29,6 +29,33 @@ namespace thevoid {
 
 #define debug(arg) do {} while (0)
 
+#define SAFE_SEND_NONE do {} while (0)
+#define SAFE_SEND_ERROR \
+do { \
+	boost::system::error_code ignored_ec; \
+	m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
+	--m_server->m_data->active_connections_counter; \
+	m_handler.reset(); \
+	return; \
+} while (0)
+
+#define SAFE_CALL(expr, err_prefix, error_handler) \
+do { \
+	if (m_server->m_data->safe_mode) { \
+		try { \
+			expr; \
+		} catch (const std::exception &ex) { \
+			m_server->logger().log(swarm::SWARM_LOG_ERROR, "%s: uncaught exception: %s", (err_prefix), ex.what()); \
+			error_handler; \
+		} catch (...) { \
+			m_server->logger().log(swarm::SWARM_LOG_ERROR, "%s: uncaught exception: unknown", (err_prefix)); \
+			error_handler; \
+		} \
+	} else { \
+		expr; \
+	} \
+} while (0)
+
 template <typename T>
 connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
 	m_socket(service),
@@ -52,7 +79,7 @@ connection<T>::~connection()
 		--m_server->m_data->connections_counter;
 
 	if (m_handler)
-		m_handler->on_close(boost::system::error_code());
+		SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
 
 	debug("");
 }
@@ -166,7 +193,7 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 		}
 
 		if (m_handler)
-			m_handler->on_close(err);
+			SAFE_CALL(m_handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
 		close_impl(err);
 		return;
 	}
@@ -319,7 +346,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 	debug("error: " << err.message());
 	if (err) {
 		if (m_handler) {
-			m_handler->on_close(err);
+			SAFE_CALL(m_handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
 			--m_server->m_data->active_connections_counter;
 		}
 		m_handler.reset();
@@ -367,7 +394,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 				++m_server->m_data->active_connections_counter;
 				m_handler = factory->create();
 				m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-				m_handler->on_headers(std::move(m_request));
+				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
 			} else {
 				send_error(swarm::http_response::not_found);
 			}
@@ -387,7 +414,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 		size_t processed_size = data_from_body;
 
 		if (data_from_body && m_handler)
-			processed_size = m_handler->on_data(boost::asio::buffer(begin, data_from_body));
+			SAFE_CALL(processed_size = m_handler->on_data(boost::asio::buffer(begin, data_from_body)), "connection::process_data -> on_data", SAFE_SEND_ERROR);
 
 		m_content_length -= processed_size;
 
@@ -407,7 +434,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_unprocessed_end = end;
 
 			if (m_handler)
-				m_handler->on_close(boost::system::error_code());
+				SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
 
 			if (m_state & request_processed) {
 				debug("");

@@ -59,7 +59,8 @@ server_data::server_data() :
 	tcp_acceptors(*this),
 	monitor_acceptors(*this),
 	signal_set(global_signal_set.lock()),
-	daemonize(false)
+	daemonize(false),
+	safe_mode(false)
 {
 	if (!signal_set) {
 		signal_set = std::make_shared<signal_handler>();
@@ -334,6 +335,10 @@ int base_server::run(int argc, char **argv)
 	if (!config.HasMember("application")) {
 		logger().log(swarm::SWARM_LOG_ERROR, "\"application\" field is missed");
 		return -5;
+	}
+
+	if (config.HasMember("safe_mode")) {
+		m_data->safe_mode = config["safe_mode"].GetBool();
 	}
 
 	if (config.HasMember("daemon")) {
