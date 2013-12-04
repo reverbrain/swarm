@@ -79,7 +79,7 @@ connection<T>::~connection()
 		--m_server->m_data->connections_counter;
 
 	if (m_handler)
-		SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::~connection", SAFE_SEND_NONE);
+		SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
 
 	debug("");
 }
@@ -193,7 +193,7 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 		}
 
 		if (m_handler)
-			SAFE_CALL(m_handler->on_close(err), "connection::write_finished", SAFE_SEND_NONE);
+			SAFE_CALL(m_handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
 		close_impl(err);
 		return;
 	}
@@ -346,7 +346,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 	debug("error: " << err.message());
 	if (err) {
 		if (m_handler) {
-			SAFE_CALL(m_handler->on_close(err), "connection::handle_read", SAFE_SEND_NONE);
+			SAFE_CALL(m_handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
 			--m_server->m_data->active_connections_counter;
 		}
 		m_handler.reset();
@@ -394,7 +394,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 				++m_server->m_data->active_connections_counter;
 				m_handler = factory->create();
 				m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data", SAFE_SEND_ERROR);
+				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
 			} else {
 				send_error(swarm::http_response::not_found);
 			}
@@ -414,7 +414,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 		size_t processed_size = data_from_body;
 
 		if (data_from_body && m_handler)
-			SAFE_CALL(processed_size = m_handler->on_data(boost::asio::buffer(begin, data_from_body)), "connection::process_data", SAFE_SEND_ERROR);
+			SAFE_CALL(processed_size = m_handler->on_data(boost::asio::buffer(begin, data_from_body)), "connection::process_data -> on_data", SAFE_SEND_ERROR);
 
 		m_content_length -= processed_size;
 
@@ -434,7 +434,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_unprocessed_end = end;
 
 			if (m_handler)
-				SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::process_data", SAFE_SEND_ERROR);
+				SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
 
 			if (m_state & request_processed) {
 				debug("");
