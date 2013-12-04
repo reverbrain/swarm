@@ -37,8 +37,9 @@ do { \
 	} else { \
 		boost::system::error_code ignored_ec; \
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
+		m_handler.reset(); \
+		return; \
 	} \
-	return; \
 } while (0)
 
 #define SAFE_CALL(expr, err_prefix, error_handler) \
@@ -334,6 +335,7 @@ void connection<T>::process_next()
 	// Start to wait new HTTP requests by this socket due to HTTP 1.1
 	m_state = read_headers;
 	m_request_parser.reset();
+	m_something_sent = false;
 
 	m_request = swarm::http_request();
 
