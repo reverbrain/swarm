@@ -28,6 +28,7 @@ class logger_interface
 public:
 	virtual ~logger_interface() {}
 	virtual void log(int level, const char *msg) = 0;
+	virtual void reopen() = 0;
 };
 
 enum log_level {
@@ -50,6 +51,8 @@ public:
 
 	int level() const;
 	void set_level(int level);
+
+	void reopen();
 
 	void log(int level, const char *format, ...) const __attribute__ ((format(printf, 3, 4)));
 	void vlog(int level, const char *format, va_list args) const;
