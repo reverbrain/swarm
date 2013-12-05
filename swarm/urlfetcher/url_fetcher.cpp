@@ -175,9 +175,29 @@ public:
 		}
 	};
 
+	struct easy_error_category : public boost::system::error_category
+	{
+	public:
+		const char *name() const BOOST_SYSTEM_NOEXCEPT
+		{
+			return "curl_easy_code";
+		}
+
+		std::string message(int ev) const
+		{
+			return curl_easy_strerror(static_cast<CURLcode>(ev));
+		}
+	};
+
 	static const multi_error_category &multi_category()
 	{
 		static multi_error_category instance;
+		return instance;
+	}
+
+	static const easy_error_category &easy_category()
+	{
+		static easy_error_category instance;
 		return instance;
 	}
 
@@ -189,6 +209,11 @@ public:
 	static boost::system::error_code make_multi_error(int err)
 	{
 		return boost::system::error_code(err, multi_category());
+	}
+
+	static boost::system::error_code make_easy_error(int err)
+	{
+		return boost::system::error_code(err, easy_category());
 	}
 
 	void process_info(const request_info::ptr &request)
@@ -327,17 +352,15 @@ public:
 				info->ensure_headers_sent();
 
 				--active_connections;
-				if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-					info->stream->on_close(make_posix_error(ETIMEDOUT));
-				} else {
-					long err = 0;
-					curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
+				long err = 0;
+				curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
 
-					if (err) {
-						info->stream->on_close(make_posix_error(err));
-					} else {
-						info->stream->on_close(boost::system::error_code());
-					}
+				if (err) {
+					info->stream->on_close(make_posix_error(err));
+				} else if (msg->data.result == CURLE_OK) {
+					info->stream->on_close(boost::system::error_code());
+				} else {
+					info->stream->on_close(make_easy_error(msg->data.result));
 				}
 			} catch (...) {
 				curl_multi_remove_handle(multi, easy);
