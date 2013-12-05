@@ -612,6 +612,7 @@ url_fetcher::request &url_fetcher::request::operator =(const url_fetcher::reques
 	using std::swap;
 	url_fetcher::request tmp(other);
 	swap(m_data, tmp.m_data);
+	http_request::operator =(other);
 	return *this;
 }
 
@@ -669,6 +670,7 @@ url_fetcher::response &url_fetcher::response::operator =(const url_fetcher::resp
 	using std::swap;
 	url_fetcher::response tmp(other);
 	swap(m_data, tmp.m_data);
+	http_response::operator =(other);
 	return *this;
 }
 
