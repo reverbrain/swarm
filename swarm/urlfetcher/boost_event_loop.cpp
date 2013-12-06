@@ -64,18 +64,29 @@ int boost_event_loop::open_socket(int domain, int type, int protocol)
 {
 	int fd = event_loop::open_socket(domain, type, protocol);
 	if (fd < 0) {
+		logger().log(SWARM_LOG_DEBUG, "open_socket: failed, domain: %d, type: %d, protocol: %d",
+			domain, type, protocol);
 		return -1;
 	}
 
-//	std::cout << "open_socket, fd: " << fd << std::endl;
+	auto socket = boost_socket_info::create(m_service, fd);
 
-	m_sockets.insert(std::make_pair(fd, boost_socket_info::create(m_service, fd)));
+	logger().log(SWARM_LOG_DEBUG, "open_socket: %p, fd: %d, domain: %d, type: %d, protocol: %d",
+		socket.get(), fd, domain, type, protocol);
+
+	m_sockets.insert(std::make_pair(fd, socket));
 	return fd;
 }
 
 int boost_event_loop::close_socket(int fd)
 {
-//	std::cout << "close_socket, fd: " << fd << std::endl;
+	if (logger().level() >= SWARM_LOG_DEBUG) {
+		auto it = m_sockets.find(fd);
+		if (it != m_sockets.end()) {
+			logger().log(SWARM_LOG_DEBUG, "close_socket: %p, fd: %d", it->second.get(), fd);
+		}
+	}
+
 	if (m_sockets.erase(fd) == 0) {
 		return event_loop::close_socket(fd);
 	}
@@ -161,12 +172,12 @@ void boost_event_loop::post(const std::function<void ()> &func)
 
 void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_info, int what, const boost::system::error_code &error)
 {
-	if (error) {
-//		logger().log(SWARM_LOG_ERROR, "on_event socket: fd: %d, what: %d, error: %s", fd, what, error.message().c_str());
-	}
-
 	if (auto info = weak_info.lock()) {
-		logger().log(SWARM_LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d", info.get(), fd, info->what, what);
+		if (logger().level() >= SWARM_LOG_DEBUG) {
+			logger().log(SWARM_LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d, error: %s",
+				     info.get(), fd, info->what, what, error.message().c_str());
+		}
+
 		if (what == event_listener::socket_read && (info->what & poll_in)) {
 			logger().log(SWARM_LOG_DEBUG, "repoll in socket: %p, fd: %d", info.get(), fd);
 			info->socket.async_read_some(boost::asio::null_buffers(),
@@ -178,9 +189,12 @@ void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_
 				boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_write, _1));
 		}
 
-		logger().log(SWARM_LOG_DEBUG, "call on_socket_event");
+		logger().log(SWARM_LOG_DEBUG, "call on_socket_event: %p, fd: %d", info.get(), fd);
 
 		listener()->on_socket_event(fd, what);
+	} else if (logger().level() >= SWARM_LOG_DEBUG) {
+		logger().log(SWARM_LOG_DEBUG, "call on_socket_event: socket_info is destroyed, fd: %d, what: %d, error: %s",
+			     fd, what, error.message().c_str());
 	}
 }
 
