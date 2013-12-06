@@ -1,3 +1,14 @@
+swarm (0.6.1.1) unstable; urgency=low
+
+  * Swarm: Fixed assignment operator for url_fetcher::request/response
+  * Swarm: Fixed url_query::item_value<T>
+  * UrlFetcher: Fixed errors handling for easy handler
+  * TheVoid: Fixed behaviour on 400 and 404
+  * TheVoid: Added safe_mode for catch users exceptions and for prevent core-dumps
+  * TheVoid: Added --daemonize and --pidfile options
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 06 Dec 2013 19:54:45 +0400
+
 swarm (0.6.1.0) unstable; urgency=low
 
   * Swarm: Fixed segfaults in ev_event_loop

@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.1.0
+Version:	0.6.1.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,14 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Dec 06 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.1
+- Swarm: Fixed assignment operator for url_fetcher::request/response
+- Swarm: Fixed url_query::item_value<T>
+- UrlFetcher: Fixed errors handling for easy handler
+- TheVoid: Fixed behaviour on 400 and 404
+- TheVoid: Added safe_mode for catch users exceptions and for prevent core-dumps
+- TheVoid: Added --daemonize and --pidfile options
+
 * Tue Dec 03 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.0
 - Swarm: Fixed segfaults in ev_event_loop
 - Swarm: Added ability to reopen log file
