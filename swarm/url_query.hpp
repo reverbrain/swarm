@@ -58,7 +58,7 @@ public:
 	T item_value(const std::string &key, const T &default_value) const
 	{
 		if (auto value = item_value(key))
-			return boost::lexical_cast<T>(value);
+			return boost::lexical_cast<T>(*value);
 		return default_value;
 	}
 
