@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 	ioremap::swarm::url_fetcher::request request;
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
-	request.set_timeout(500000);
+	request.set_timeout(10);
 	request.headers().assign({
 		{ "Content-Type", "text/html; always" },
 		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }

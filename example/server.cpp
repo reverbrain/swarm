@@ -31,6 +31,14 @@ public:
 			options::exact_match("/ping"),
 			options::methods("GET")
 		);
+		on<on_timeout>(
+			options::exact_match("/timeout"),
+			options::methods("GET")
+		);
+		on<on_get>(
+			options::exact_match("/get"),
+			options::methods("GET")
+		);
 		on<on_echo>(
 			options::exact_match("/echo"),
 			options::methods("GET")
@@ -50,6 +58,38 @@ public:
 			(void) req;
 
 			this->send_reply(swarm::http_response::ok);
+		}
+	};
+
+	struct on_timeout : public thevoid::simple_request_stream<http_server> {
+		virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+			(void) buffer;
+			(void) req;
+			if (auto timeout = req.url().query().item_value("timeout")) {
+				log(swarm::SWARM_LOG_DATA, "timeout: %s", timeout->c_str());
+				usleep(atoi(timeout->c_str()) * 1000);
+			}
+
+			this->send_reply(swarm::http_response::ok);
+		}
+	};
+
+	struct on_get : public thevoid::simple_request_stream<http_server> {
+		virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+			(void) buffer;
+
+			std::string data;
+			if (auto datap = req.url().query().item_value("data"))
+				data = *datap;
+
+			int timeout_ms = 10 + (rand() % 10);
+			usleep(timeout_ms * 1000);
+
+			swarm::http_response reply;
+			reply.set_code(swarm::http_response::ok);
+			reply.headers().set_content_length(data.size());
+
+			this->send_reply(std::move(reply), std::move(data));
 		}
 	};
 
