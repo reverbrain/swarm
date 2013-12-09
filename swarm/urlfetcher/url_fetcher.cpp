@@ -532,7 +532,7 @@ url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
-	curl_multi_setopt(p->multi, CURLMOPT_PIPELINING, long(1));
+	curl_multi_setopt(p->multi, CURLMOPT_PIPELINING, long(0));
 }
 
 url_fetcher::~url_fetcher()
