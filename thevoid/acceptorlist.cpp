@@ -92,6 +92,12 @@ void acceptors_list<Connection>::handle_accept(size_t index, connection_ptr_type
 }
 
 template <typename Connection>
+void acceptors_list<Connection>::clear()
+{
+	acceptors.clear();
+}
+
+template <typename Connection>
 boost::asio::io_service &acceptors_list<Connection>::get_acceptor_service()
 {
 	return data.io_service;

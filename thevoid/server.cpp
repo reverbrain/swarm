@@ -85,7 +85,6 @@ void server_data::handle_stop()
 		(*it)->stop();
 	}
 	monitor_io_service.stop();
-	pid.reset();
 }
 
 void server_data::handle_reload()
@@ -526,6 +525,11 @@ int base_server::run(int argc, char **argv)
 		threads[i]->join();
 	for (std::size_t i = 0; i < m_data->worker_threads.size(); ++i)
 		m_data->worker_threads[i]->join();
+
+	m_data->local_acceptors.clear();
+	m_data->tcp_acceptors.clear();
+	m_data->monitor_acceptors.clear();
+	m_data->pid.reset();
 
 	return 0;
 }

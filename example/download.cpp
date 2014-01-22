@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 		sig_watcher.start();
 	}
 
-	const bool use_boost = false;
+	const bool use_boost = true;
 
 	boost::asio::io_service service;
 	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
 	else
 		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_NOTICE);
+	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_DEBUG);
 
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
 

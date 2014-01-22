@@ -134,7 +134,6 @@ private:
 	//! Buffer for outgoing data
 	std::deque<buffer_info> m_outgoing;
 	std::mutex m_outgoing_mutex;
-	bool m_sending;
 
 	//! Buffer for incoming data.
 	std::vector<char> m_buffer;
@@ -153,6 +152,7 @@ private:
 
 	//! Request parsing state
 	uint32_t m_state;
+	bool m_sending;
 	//! If current connection is keep-alive
 	bool m_keep_alive;
 	//! If async_read is already called
