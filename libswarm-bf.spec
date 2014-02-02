@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.1.1
+Version:	0.6.1.2
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Feb 02 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.1.2
+- Stop acceptors at end of server::run method
+- UrlFetcher: Disable pipelining
+- UrlFetcher: Added more debug logs to boost_event_loop
+
 * Fri Dec 06 2013 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.1
 - Swarm: Fixed assignment operator for url_fetcher::request/response
 - Swarm: Fixed url_query::item_value<T>

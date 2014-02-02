@@ -1,3 +1,11 @@
+swarm (0.6.1.2) unstable; urgency=low
+
+  * Stop acceptors at end of server::run method
+  * UrlFetcher: Disable pipelining
+  * UrlFetcher: Added more debug logs to boost_event_loop
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 02 Feb 2014 18:33:29 +0400
+
 swarm (0.6.1.1) unstable; urgency=low
 
   * Swarm: Fixed assignment operator for url_fetcher::request/response
