@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.1.2
+Version:	0.6.1.3
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Feb 07 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.3
+- thevoid: Final fix for non unlinkable unix sockets
+
 * Sun Feb 02 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.1.2
 - Stop acceptors at end of server::run method
 - UrlFetcher: Disable pipelining
