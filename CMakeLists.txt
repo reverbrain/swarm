@@ -27,6 +27,7 @@ include_directories(
     ${LIBXML2_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
     foreign/blackhole/src
+    foreign/blackhole/foreign/rapidjson/include
 )
 
 link_directories(

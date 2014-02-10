@@ -32,6 +32,10 @@
 #include <swarm/logger.hpp>
 #include <thevoid/rapidjson/filestream.h>
 
+#include <blackhole/log.hpp>
+#include <blackhole/repository.hpp>
+#include <blackhole/repository/config/parser/rapidjson.hpp>
+
 #include <sys/wait.h>
 
 #ifdef __linux__
@@ -232,6 +236,25 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 	}
 
 	const rapidjson::Value &logger_config = config["logger"];
+	try {
+		const std::vector<blackhole::log_config_t>& log_configs =
+				blackhole::repository::config::parser_t<std::vector<blackhole::log_config_t>>::parse(logger_config);
+
+		if (log_configs.size() != 1 || log_configs.at(0).name != "root") {
+			throw std::logic_error("only root logger supported");
+		}
+		auto& repository = blackhole::repository_t<swarm::log_level>::instance();
+		const blackhole::log_config_t& log_config = log_configs.at(0);
+		repository.init(log_config);
+
+		int level = swarm::SWARM_LOG_INFO;
+		if (logger_config.HasMember("level")) {
+			level = logger_config["level"].GetInt();
+		}
+		set_logger(swarm::logger(log_config, level));
+		return true;
+	} catch (const std::exception&) {
+	}
 
 	std::string type;
 	if (logger_config.HasMember("type")) {
@@ -316,7 +339,7 @@ void base_server::listen(const std::string &host)
 		m_data->local_acceptors->add_acceptor(file);
 	} else {
 		m_data->tcp_acceptors->add_acceptor(host);
-    }
+	}
 }
 
 static int read_config(rapidjson::Document &doc, const char *config_path)
