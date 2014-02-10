@@ -29,6 +29,10 @@
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 
+#ifdef EV_ERROR
+#undef EV_ERROR
+#endif
+
 #define EV_MULTIPLICITY 1
 #include <ev++.h>
 
