@@ -61,8 +61,8 @@ void set_thread_name(const char *)
 struct request_handler_functor
 {
 #ifdef USE_BOOST
-	boost::asio::io_service& service;
-	blackhole::verbose_logger_t<ioremap::swarm::log_level>& log;
+	boost::asio::io_service &service;
+	blackhole::verbose_logger_t<ioremap::swarm::log_level> &log;
 #else
 	ev::loop_ref &loop;
 #endif

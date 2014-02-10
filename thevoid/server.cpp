@@ -237,14 +237,14 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 	const rapidjson::Value &logger_config = config["logger"];
 	try {
-		const std::vector<blackhole::log_config_t>& log_configs =
+		const std::vector<blackhole::log_config_t> &log_configs =
 				blackhole::repository::config::parser_t<std::vector<blackhole::log_config_t>>::parse(logger_config);
 
 		if (log_configs.size() != 1 || log_configs.at(0).name != "root") {
 			throw std::logic_error("only root logger supported");
 		}
 		auto& repository = blackhole::repository_t<swarm::log_level>::instance();
-		const blackhole::log_config_t& log_config = log_configs.at(0);
+		const blackhole::log_config_t &log_config = log_configs.at(0);
 		repository.init(log_config);
 
 		int level = swarm::SWARM_LOG_INFO;
@@ -253,7 +253,8 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 		}
 		set_logger(swarm::logger(log_config, level));
 		return true;
-	} catch (const std::exception&) {
+	} catch (const std::exception &err) {
+		std::cerr << "failed to initialize blackhole logger: " << err.what() << std::endl;
 	}
 
 	std::string type;

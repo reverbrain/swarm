@@ -138,7 +138,7 @@ private:
 class blackhole_logger_interface : public logger_interface {
 	blackhole::verbose_logger_t<log_level> m_log;
 public:
-	blackhole_logger_interface(const blackhole::log_config_t& config) :
+	blackhole_logger_interface(const blackhole::log_config_t &config) :
 		m_log(init_from_config(config))
 	{
 	}
@@ -152,7 +152,7 @@ public:
 	}
 
 private:
-	static blackhole::verbose_logger_t<log_level> init_from_config(const blackhole::log_config_t& config) {
+	static blackhole::verbose_logger_t<log_level> init_from_config(const blackhole::log_config_t &config) {
 		blackhole::log_config_t copy = config;
 
 		blackhole::mapping::value_t mapper;
