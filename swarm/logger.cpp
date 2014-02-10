@@ -41,6 +41,10 @@ static long get_thread_id()
 }
 #endif
 
+#include <blackhole/log.hpp>
+#include <blackhole/logger.hpp>
+#include <blackhole/repository.hpp>
+
 namespace ioremap {
 namespace swarm {
 
@@ -131,6 +135,64 @@ private:
 	FILE *m_file;
 };
 
+class blackhole_logger_interface : public logger_interface {
+	blackhole::verbose_logger_t<log_level> m_log;
+public:
+	blackhole_logger_interface(const blackhole::log_config_t& config) :
+		m_log(init_from_config(config))
+	{
+	}
+
+	void log(int level, const char *msg) {
+		BH_LOG(m_log, static_cast<log_level>(level), msg);
+	}
+
+	void reopen() {
+		// Do nothing ATM, because logger can rotate itself.
+	}
+
+private:
+	static blackhole::verbose_logger_t<log_level> init_from_config(const blackhole::log_config_t& config) {
+		blackhole::log_config_t copy = config;
+
+		blackhole::mapping::value_t mapper;
+		mapper.add<blackhole::keyword::tag::severity_t<log_level>>(&blackhole_logger_interface::map_severity);
+		mapper.add<blackhole::keyword::tag::timestamp_t>(&blackhole_logger_interface::map_timestamp);
+		for (auto it = copy.frontends.begin(); it != copy.frontends.end(); ++it) {
+			it->formatter.mapper = mapper;
+		}
+
+		auto& repository = blackhole::repository_t<log_level>::instance();
+		repository.init(copy);
+		return repository.create(copy.name);
+	}
+
+	static std::string map_severity(log_level lvl) {
+		auto value = static_cast<blackhole::aux::underlying_type<log_level>::type>(lvl);
+		if (value < log_level_names_size) {
+			return log_level_names[value];
+		}
+
+		return "UNKNOWN";
+	}
+
+	static std::string map_timestamp(const std::time_t&) {
+		char str[64];
+		struct tm tm;
+		struct timeval tv;
+		char usecs[64];
+
+		gettimeofday(&tv, NULL);
+		localtime_r((time_t *)&tv.tv_sec, &tm);
+		if (std::strftime(str, sizeof(str), "%F %R:%S", &tm)) {
+			snprintf(usecs, sizeof(usecs), ".%06ld", (long)tv.tv_usec);
+			return std::string(str) + usecs;
+		}
+
+		return "UNKNOWN";
+	}
+};
+
 class logger_data
 {
 public:
@@ -152,6 +214,12 @@ logger::logger(logger_interface *impl, int level) : m_data(std::make_shared<logg
 logger::logger(const char *file, int level) : m_data(std::make_shared<logger_data>(level))
 {
 	m_data->impl.reset(new file_logger_interface(file));
+}
+
+logger::logger(const blackhole::log_config_t &config, int level)
+	: m_data(std::make_shared<logger_data>(level))
+{
+	m_data->impl.reset(new blackhole_logger_interface(config));
 }
 
 logger::~logger()

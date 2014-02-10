@@ -24,11 +24,16 @@
 #include <chrono>
 #include <thread>
 
+#include <blackhole/log.hpp>
+#include <blackhole/repository.hpp>
+
 #ifdef SWARM_CSTDATOMIC
 #  include <cstdatomic>
 #else
 #  include <atomic>
 #endif
+
+#define USE_BOOST
 
 struct sig_handler
 {
@@ -55,21 +60,32 @@ void set_thread_name(const char *)
 
 struct request_handler_functor
 {
+#ifdef USE_BOOST
+	boost::asio::io_service& service;
+	blackhole::verbose_logger_t<ioremap::swarm::log_level>& log;
+#else
 	ev::loop_ref &loop;
+#endif
 
 	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) const {
-		std::cout << "Request finished: " << reply.request().url().to_string() << " -> " << reply.url().to_string() << std::endl;
-		std::cout << "HTTP code: " << reply.code() << std::endl;
-		std::cout << "Error: " << error.message() << std::endl;
+		BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "resuest finished")(
+			blackhole::attribute::make("request url", reply.request().url().to_string()),
+			blackhole::attribute::make("reply url", reply.url().to_string()),
+			blackhole::attribute::make("status", reply.code()),
+			blackhole::attribute::make("error", error.message())
+		);
 
 		const auto &headers = reply.headers().all();
 
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
-			std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
+			BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "header: %s : %s ", it->first, it->second);
 		}
 		(void) data;
-
+#ifdef USE_BOOST
+		service.stop();
+#else
 		loop.unloop();
+#endif
 	}
 };
 
@@ -81,7 +97,6 @@ int main(int argc, char **argv)
 	}
 
 	ev::default_loop loop;
-
 	sig_handler shandler = { loop };
 	std::list<ev::sig> sigs;
 	int signal_ids[] = { SIGINT, SIGTERM };
@@ -94,23 +109,35 @@ int main(int argc, char **argv)
 		sig_watcher.start();
 	}
 
-	const bool use_boost = true;
-
 	boost::asio::io_service service;
 	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
-	if (use_boost)
-		loop_impl.reset(new ioremap::swarm::boost_event_loop(service));
-	else
-		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
+#ifdef USE_BOOST
+	loop_impl.reset(new ioremap::swarm::boost_event_loop(service));
+#else
+	loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
+#endif
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_DEBUG);
+	//! Blackhole initialization
+	blackhole::formatter_config_t formatter("string");
+	formatter["pattern"] = "[%(timestamp)s] [%(severity)s]: %(message)s [%(...L)s]";
+
+	blackhole::sink_config_t sink("files");
+	sink["path"] = "/dev/stdout";
+	sink["autoflush"] = true;
+
+	blackhole::frontend_config_t frontend = { formatter, sink };
+	blackhole::log_config_t config{ "root", { frontend } };
+
+	ioremap::swarm::logger logger(config, ioremap::swarm::SWARM_LOG_DEBUG);
+	blackhole::verbose_logger_t<ioremap::swarm::log_level> log =
+			blackhole::repository_t<ioremap::swarm::log_level>::instance().create(config.name);
 
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
 
 	ioremap::swarm::url_fetcher::request request;
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
-	request.set_timeout(10);
+	request.set_timeout(1000);
 	request.headers().assign({
 		{ "Content-Type", "text/html; always" },
 		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
@@ -120,21 +147,25 @@ int main(int argc, char **argv)
 
 	auto begin_time = clock::now();
 
+#ifdef USE_BOOST
+	request_handler_functor request_handler = { service, log };
+#else
 	request_handler_functor request_handler = { loop };
+#endif
 
 	manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
 
-	if (use_boost) {
-		boost::asio::io_service::work work(service);
-		service.run();
-	} else {
-		loop.loop();
-	}
+#ifdef USE_BOOST
+	boost::asio::io_service::work work(service);
+	service.run();
+#else
+	loop.loop();
+#endif
 
 	auto end_time = clock::now();
 
 	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time);
-	std::cout << "Finished in: " << ms.count() << " ms" << std::endl;
+	BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "finished in: %d ms", ms.count());
 
 	return 0;
 }

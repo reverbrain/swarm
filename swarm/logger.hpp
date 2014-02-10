@@ -20,6 +20,11 @@
 #include <memory>
 #include <cstdarg>
 
+
+namespace blackhole {
+struct log_config_t;
+} // namespace blackhole
+
 namespace ioremap {
 namespace swarm {
 
@@ -47,6 +52,7 @@ public:
 	logger();
 	logger(logger_interface *impl, int level);
 	logger(const char *file, int level);
+	logger(const blackhole::log_config_t& config, int level);
 	~logger();
 
 	int level() const;
