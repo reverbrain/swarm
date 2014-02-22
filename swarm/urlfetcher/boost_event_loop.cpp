@@ -64,7 +64,7 @@ int boost_event_loop::open_socket(int domain, int type, int protocol)
 {
 	int fd = event_loop::open_socket(domain, type, protocol);
 	if (fd < 0) {
-		logger().log(SWARM_LOG_DEBUG, "open_socket: failed, domain: %d, type: %d, protocol: %d",
+		logger().log(SWARM_LOG_ERROR, "open_socket: failed, domain: %d, type: %d, protocol: %d",
 			domain, type, protocol);
 		return -1;
 	}
