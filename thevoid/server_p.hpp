@@ -126,9 +126,9 @@ public:
 	unsigned int backlog_size;
 	size_t buffer_size;
 	//! List of activated acceptors
-	acceptors_list<unix_connection> local_acceptors;
-	acceptors_list<tcp_connection> tcp_acceptors;
-	acceptors_list<monitor_connection> monitor_acceptors;
+	std::unique_ptr<acceptors_list<unix_connection>> local_acceptors;
+	std::unique_ptr<acceptors_list<tcp_connection>> tcp_acceptors;
+	std::unique_ptr<acceptors_list<monitor_connection>> monitor_acceptors;
 	//! The signal_set is used to register for process termination notifications.
 	std::shared_ptr<signal_handler> signal_set;
 	//! User handlers for urls

@@ -55,9 +55,9 @@ server_data::server_data() :
 	threads_count(2),
 	backlog_size(128),
 	buffer_size(8192),
-	local_acceptors(*this),
-	tcp_acceptors(*this),
-	monitor_acceptors(*this),
+	local_acceptors(new acceptors_list<unix_connection>(*this)),
+	tcp_acceptors(new acceptors_list<tcp_connection>(*this)),
+	monitor_acceptors(new acceptors_list<monitor_connection>(*this)),
 	signal_set(global_signal_set.lock()),
 	daemonize(false),
 	safe_mode(false)
@@ -313,9 +313,9 @@ void base_server::listen(const std::string &host)
 		// Unix socket
 		std::string file = host.substr(UNIX_PREFIX_LEN);
 
-		m_data->local_acceptors.add_acceptor(file);
+		m_data->local_acceptors->add_acceptor(file);
 	} else {
-		m_data->tcp_acceptors.add_acceptor(host);
+		m_data->tcp_acceptors->add_acceptor(host);
     }
 }
 
@@ -487,7 +487,7 @@ int base_server::run(int argc, char **argv)
 
 	try {
 		if (monitor_port != -1) {
-			m_data->monitor_acceptors.add_acceptor("0.0.0.0:" + boost::lexical_cast<std::string>(monitor_port));
+			m_data->monitor_acceptors->add_acceptor("0.0.0.0:" + boost::lexical_cast<std::string>(monitor_port));
 		}
 	} catch (...) {
 		return -7;
@@ -526,9 +526,9 @@ int base_server::run(int argc, char **argv)
 	for (std::size_t i = 0; i < m_data->worker_threads.size(); ++i)
 		m_data->worker_threads[i]->join();
 
-	m_data->local_acceptors.clear();
-	m_data->tcp_acceptors.clear();
-	m_data->monitor_acceptors.clear();
+	m_data->local_acceptors.reset();
+	m_data->tcp_acceptors.reset();
+	m_data->monitor_acceptors.reset();
 	m_data->pid.reset();
 
 	return 0;

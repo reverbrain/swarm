@@ -34,16 +34,12 @@ public:
 	typedef Connection connection_type;
 	typedef std::shared_ptr<connection_type> connection_ptr_type;
 
-	acceptors_list(server_data &data) : data(data)
-	{
-	}
-
-	~acceptors_list() {}
+	acceptors_list(server_data &data);
+	~acceptors_list();
 
 	void add_acceptor(const std::string &address);
 	void start_acceptor(size_t index);
 	void handle_accept(size_t index, connection_ptr_type conn, const boost::system::error_code &err);
-	void clear();
     
     boost::asio::io_service &get_acceptor_service();
     boost::asio::io_service &get_connection_service();
