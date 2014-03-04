@@ -38,6 +38,6 @@ Description: TheVoid
 Package: libthevoid-dev
 Section: libdevel
 Architecture: any
-Depends: libthevoid1 (= ${binary:Version}), libswarm-dev, libboost-system-dev, libboost-thread-dev
+Depends: libthevoid1 (= ${binary:Version}), libswarm-dev (= ${binary:Version}), libboost-system-dev, libboost-thread-dev
 Description: TheVoid (devel)
  Development files
