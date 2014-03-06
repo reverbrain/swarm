@@ -163,6 +163,11 @@ protected:
 		get_reply()->send_data(buffer, std::move(wrapper));
 	}
 
+	void close(const boost::system::error_code &err)
+	{
+		get_reply()->close(err);
+	}
+
 private:
 	template <typename T>
 	struct functor_wrapper
