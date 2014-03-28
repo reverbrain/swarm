@@ -22,11 +22,22 @@
 namespace ioremap {
 namespace swarm {
 
+/*!
+ * \brief The simple_stream class makes possible to handle only final result for the requests.
+ */
 class simple_stream : public base_stream
 {
 public:
 	typedef std::function<void (const url_fetcher::response &response, const std::string &data, const boost::system::error_code &error)> handler_func;
 
+	/*!
+	 * \brief Cosntructs simple_stream with \a handler.
+	 *
+	 * Once request is finished \a handler will be called.
+	 *
+	 * \attention If handler_func is non-copyable object you may use std::ref to pass it as a reference.
+	 * In this case you must guarantee that handler will be alive during the whole request execution.
+	 */
 	simple_stream(const handler_func &handler) : m_handler(handler)
 	{
 	}
@@ -37,6 +48,9 @@ public:
 	}
 
 protected:
+	/*!
+	 * \internal
+	 */
 	virtual void on_headers(url_fetcher::response &&response)
 	{
 		m_response = std::move(response);
@@ -44,6 +58,9 @@ protected:
 			m_data.reserve(*content_length);
 	}
 
+	/*!
+	 * \internal
+	 */
 	virtual void on_data(const boost::asio::const_buffer &buffer)
 	{
 		auto data = boost::asio::buffer_cast<const char *>(buffer);
@@ -52,6 +69,9 @@ protected:
 		m_data.append(data, data + size);
 	}
 
+	/*!
+	 * \internal
+	 */
 	virtual void on_close(const boost::system::error_code &error)
 	{
 		m_handler(m_response, m_data, error);

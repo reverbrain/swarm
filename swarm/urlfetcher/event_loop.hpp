@@ -23,6 +23,9 @@
 namespace ioremap {
 namespace swarm {
 
+/*!
+ * \brief The event_listener class is interface for receiving events from the event_loop.
+ */
 class event_listener
 {
 public:
@@ -34,11 +37,28 @@ public:
 
 	virtual ~event_listener();
 
+	/*!
+	 * \brief This method is called if event loop wants you to store
+	 * some additional \a data specific for the \a socket.
+	 */
 	virtual void set_socket_data(int socket, void *data) = 0;
+	/*!
+	 * \brief This method is called once timer is elapsed.
+	 */
 	virtual void on_timer() = 0;
+	/*!
+	 * \brief This methods is called once \a socket has \a action available.
+	 *
+	 * \a Action is some of socket_action values.
+	 */
 	virtual void on_socket_event(int socket, int action) = 0;
 };
 
+/*!
+ * \brief The event_loop class is an abstraction for event loop.
+ *
+ * It allows you to implement your own event loop for Swarm.
+ */
 class event_loop
 {
 public:
@@ -53,16 +73,63 @@ public:
 	event_loop();
 	virtual ~event_loop();
 
+	/*!
+	 * \brief Sets the \a listener of event loop's events.
+	 *
+	 * All events received by event loop should be passed to appropriate methods of \a listener.
+	 */
 	void set_listener(event_listener *listener);
+	/*!
+	 * \brief Returns previously listener of the event loop.
+	 */
 	event_listener *listener() const;
 
+	/*!
+	 * \brief Set \a logger as event loop's logger.
+	 */
 	void set_logger(const swarm::logger &logger);
+	/*!
+	 * \brief Returns previously set logger.
+	 */
 	swarm::logger logger() const;
 
+	/*!
+	 * \brief Open socket for \a domain, \a type and \a protocol.
+	 *
+	 * Arguments are similiar to POSIX socket function.
+	 *
+	 * Default implementation just calls \a socket.
+	 *
+	 * On success, returnes socket descriptor. On error -1 is returned.
+	 */
 	virtual int open_socket(int domain, int type, int protocol);
+	/*!
+	 * \brief Close socket by \a fd.
+	 *
+	 * Default implemenation just calls \a close.
+	 */
 	virtual int close_socket(int fd);
+	/*!
+	 * \brief Asks event loop to poll \a what events for \a socket.
+	 *
+	 * Data previously set by listener::set_socket_data is provided by \a data.
+	 *
+	 * Returns 0 on success or error code otherwise.
+	 */
 	virtual int socket_request(int socket, poll_option what, void *data) = 0;
+	/*!
+	 * \brief Requests a timer call in \a timeout_ms milliseconds.
+	 *
+	 * Returns 0 on success or error code otherwise.
+	 *
+	 * \attention Only last set timer request will be in charge. All previously set timers are forgotten.
+	 */
 	virtual int timer_request(long timeout_ms) = 0;
+	/*!
+	 * \brief Invokes \a func in event loop thread.
+	 *
+	 * \attention It must be guaranteed that \a func doesn't throw exceptions otherwise behaviour is undefined.
+	 */
 	virtual void post(const std::function<void ()> &func) = 0;
 
 private:

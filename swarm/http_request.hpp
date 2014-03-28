@@ -25,6 +25,17 @@ namespace swarm {
 
 class network_request_data;
 
+/*!
+ * \brief The http_request class is a convient API for http responses.
+ *
+ * It provides read/write access to all HTTP-specific properties like headers,
+ * result code and reason.
+ *
+ * \attention http_request supports move semantics, so it's cheaper to move it if
+ * it's possible.
+ *
+ * \sa http_response
+ */
 class http_request
 {
 public:
