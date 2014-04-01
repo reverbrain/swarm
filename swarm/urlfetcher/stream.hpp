@@ -24,6 +24,8 @@ namespace swarm {
 
 /*!
  * \brief The simple_stream class makes possible to handle only final result for the requests.
+ *
+ * \sa base_stream
  */
 class simple_stream : public base_stream
 {
