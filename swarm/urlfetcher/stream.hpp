@@ -44,6 +44,9 @@ public:
 	{
 	}
 
+	/*!
+	 * \brief Call this method with you functor to create simple_stream
+	 */
 	static std::shared_ptr<simple_stream> create(const handler_func &handler)
 	{
 		return std::make_shared<simple_stream>(handler);

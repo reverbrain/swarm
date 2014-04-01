@@ -49,6 +49,9 @@ class base_stream;
  * \attention Url fetcher's event loop must be executed exactly in one thread. Multithreading
  * is \b unsupported. To run url fetcher in different threads create different instances.
  *
+ * Sometimes you may want to do synchronous requests to url fetcher. In this case you need to
+ * use std::condition_variable to wait for request being processed.
+ *
  * All methods except get and post are not thread safe.
  */
 class url_fetcher
@@ -205,6 +208,12 @@ public:
 	/*!
 	 * \brief This method is called when the request is finished either because
 	 * of the error or if all data from the server are received.
+	 *
+	 * Possible errors are all from boost::asio and in addition following categories:
+	 * \li "curl_multi_code" - errors from enum CURLMcode
+	 * \li "curl_easy_code" - errors from enum CURLcode
+	 *
+	 * So i.e. timeout is notified by "curl_easy_code" error category and CURLE_OPERATION_TIMEDOUT error.
 	 */
 	virtual void on_close(const boost::system::error_code &error) = 0;
 };

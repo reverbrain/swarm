@@ -97,7 +97,22 @@ public:
  * \attention It's recommended to use std::enable_shared_from_this for making possible to
  * prolong the life for the stream.
  *
+ * The lifetime of request stream is the following:
+ * \li server receives new HTTP request from client.
+ * \li after all headers are received and parsed request_stream is created, shared pointer to it is stored in reply_stream.
+ * \li shared_pointer to reply stream is stored in request_stream.
+ * \li once reply_stream::close is called shared pointer to request_stream is removed from reply_stream.
+ * \li reply_stream waits for new HTTP request.
+ *
+ * \attention Don't forget to call reply_stream::close as it will lead to memory & resources leak.
+ *
+ * It's always possible to see the number of reply_streams and of request_streams by monitoring.
+ * It's connections and active-connections counters accordingly.
+ *
  * Usually you don't need to derive from this class directly, try to use request_stream instead.
+ *
+ * All user's methods of this object will always be called from the same thread where this object
+ * was created. All other methods are thread-safe.
  *
  * \sa reply_stream
  * \sa request_stream
