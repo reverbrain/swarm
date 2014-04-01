@@ -69,6 +69,7 @@ public:
 	mutable std::string password;
 	mutable std::string host;
 	mutable std::string path;
+	mutable std::vector<std::string> path_components;
 	mutable std::string raw_query;
 	mutable url_query query;
 	mutable std::string fragment;
@@ -206,7 +207,11 @@ void url_private::set_uri(const UriUriA &uri)
 	for (auto it = uri.pathHead; it; it = it->next) {
 		if (it != uri.pathHead)
 			path += "/";
-		path += to_string(it->text);
+
+		auto str = to_string(it->text);
+
+		path += str;
+		path_components.push_back(str);
 	}
 
 	raw_query = to_string(uri.query);
@@ -304,41 +309,30 @@ public:
 		m_uri.query = to_range(m_query);
 		m_uri.fragment = to_range(url.fragment);
 
-		size_t start;
 		if (url.path.compare(0, 1, "/", 1) == 0) {
-			start = 1;
 			m_uri.absolutePath = true;
 		} else {
-			start = 0;
 			m_uri.absolutePath = false;
 		}
 
-		if (url.path.size() != start) {
-			while (true) {
-				size_t next = url.path.find('/', start);
+		for (auto it = url.path_components.begin(); it != url.path_components.end(); ++it) {
+			UriPathSegmentA segment = {
+				{
+					it->c_str(),
+					it->c_str() + it->size()
+				},
+				NULL,
+				NULL
+			};
 
-				UriPathSegmentA segment = {
-					{
-						url.path.c_str() + start,
-						url.path.c_str() + (next == std::string::npos ? url.path.size() : next)
-					},
-					NULL,
-					NULL
-				};
-				m_path_segments.push_back(segment);
-
-				if (next == std::string::npos)
-					break;
-
-				start = next + 1;
-			}
-
-			for (size_t i = 1; i < m_path_segments.size(); ++i) {
-				m_path_segments[i - 1].next = &m_path_segments[i];
-			}
-
-			m_uri.pathHead = &m_path_segments[0];
+			m_path_segments.push_back(segment);
 		}
+
+		for (size_t i = 1; i < m_path_segments.size(); ++i) {
+			m_path_segments[i - 1].next = &m_path_segments[i];
+		}
+
+		m_uri.pathHead = &m_path_segments[0];
 	}
 
 	uri_generator(const uri_generator &other) = delete;
@@ -417,7 +411,7 @@ bool url::is_relative() const
 {
 	p->ensure_data();
 
-	std::cout << "valid: " << is_valid() << ", path: " << path() << ", compare: " << (path().compare(0, 1, "/", 1) != 0) << std::endl;
+	//std::cout << "valid: " << is_valid() << ", path: " << path() << ", compare: " << (path().compare(0, 1, "/", 1) != 0) << std::endl;
 
 	return is_valid() && path().compare(0, 1, "/", 1) != 0;
 }
@@ -468,6 +462,18 @@ void url::set_path(const std::string &path)
 {
 	p->start_modifications();
 	p->path = path;
+}
+
+const std::vector<std::string> &url::path_components() const
+{
+	p->ensure_data();
+	return p->path_components;
+}
+
+void url::set_path_components(const std::vector<std::string> &path_components)
+{
+	p->start_modifications();
+	p->path_components = path_components;
 }
 
 const url_query &url::query() const

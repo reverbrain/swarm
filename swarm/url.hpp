@@ -61,6 +61,9 @@ public:
 	const std::string &path() const;
 	void set_path(const std::string &path);
 
+	const std::vector<std::string> &path_components() const;
+	void set_path_components(const std::vector<std::string> &path_components);
+
 	const url_query &query() const;
 	url_query &query();
 	void set_query(const std::string &query);
