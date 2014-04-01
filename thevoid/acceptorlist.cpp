@@ -38,6 +38,26 @@ static void complete_socket_creation(boost::asio::local::stream_protocol::endpoi
 }
 
 template <typename Connection>
+acceptors_list<Connection>::acceptors_list(server_data &data) : data(data)
+{
+}
+
+template <typename Connection>
+acceptors_list<Connection>::~acceptors_list()
+{
+}
+
+template <>
+acceptors_list<unix_connection>::~acceptors_list()
+{
+	for (size_t i = 0; i < acceptors.size(); ++i) {
+		auto &acceptor = *acceptors[i];
+		auto path = acceptor.local_endpoint().path();
+		unlink(path.c_str());
+	}
+}
+
+template <typename Connection>
 void acceptors_list<Connection>::add_acceptor(const std::string &address)
 {
 	acceptors.emplace_back(new acceptor_type(get_acceptor_service()));
@@ -127,16 +147,6 @@ typename acceptors_list<Connection>::endpoint_type acceptors_list<Connection>::c
 	boost::asio::ip::tcp::endpoint endpoint(address, port);
 
 	return endpoint;
-}
-
-template <>
-acceptors_list<unix_connection>::~acceptors_list()
-{
-	for (size_t i = 0; i < acceptors.size(); ++i) {
-		auto &acceptor = *acceptors[i];
-		auto path = acceptor.local_endpoint().path();
-		unlink(path.c_str());
-	}
 }
 
 template <>

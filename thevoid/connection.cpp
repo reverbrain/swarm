@@ -59,10 +59,10 @@ do { \
 template <typename T>
 connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
 	m_socket(service),
-	m_sending(false),
 	m_buffer(buffer_size),
 	m_content_length(0),
 	m_state(read_headers),
+	m_sending(false),
 	m_keep_alive(false),
 	m_at_read(false)
 {

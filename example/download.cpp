@@ -52,6 +52,9 @@ void set_thread_name(const char *)
 }
 #endif
 
+#if BOOST_VERSION / 100 % 1000 >= 47
+#define USE_BOOST_SIGNALS
+#endif
 
 struct request_handler_functor
 {
@@ -73,8 +76,21 @@ struct request_handler_functor
 	}
 };
 
+#ifdef USE_BOOST_SIGNALS
+static void test_signals(boost::asio::io_service *service,
+		const boost::system::error_code& error, // Result of operation.
+		int signal_number) // Indicates which signal occurred.
+{
+	printf("called signals function: signal: %d, error: %s\n", signal_number, error.message().c_str());
+	if (!error)
+		// this is thread-safe operation
+		service->stop();
+}
+#endif
+
 int main(int argc, char **argv)
 {
+	printf("boost version: %d\n", BOOST_VERSION / 100 % 1000);
 	if (argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " url" << std::endl;
 		return 1;
@@ -94,23 +110,28 @@ int main(int argc, char **argv)
 		sig_watcher.start();
 	}
 
-	const bool use_boost = false;
+	const bool use_boost = true;
 
 	boost::asio::io_service service;
+#ifdef USE_BOOST_SIGNALS
+	boost::asio::signal_set signals(service, SIGINT, SIGTERM);
+	signals.async_wait(std::bind(&test_signals, &service, std::placeholders::_1, std::placeholders::_2));
+#endif
 	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
-	if (use_boost)
+	if (use_boost) {
 		loop_impl.reset(new ioremap::swarm::boost_event_loop(service));
-	else
+	} else {
 		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
+	}
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_NOTICE);
+	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_DEBUG);
 
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
 
 	ioremap::swarm::url_fetcher::request request;
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
-	request.set_timeout(10);
+	request.set_timeout(100); // in milliseconds
 	request.headers().assign({
 		{ "Content-Type", "text/html; always" },
 		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }

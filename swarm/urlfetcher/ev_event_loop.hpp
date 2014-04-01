@@ -39,6 +39,9 @@
 namespace ioremap {
 namespace swarm {
 
+/*!
+ * \brief The ev_event_loop is libev-based event loop.
+ */
 class ev_event_loop : public event_loop
 {
 public:
