@@ -97,16 +97,16 @@ public:
 	swarm::url resolved(const swarm::url &relative) const;
 
 	/*!
-	 * \brief Returnes true if url is non-empty and valid.
+	 * \brief Returns true if url is non-empty and valid.
 	 */
 	bool is_valid() const;
 	/*!
-	 * \brief Returnes true is url is relative (it is valid and starts with '/').
+	 * \brief Returns true is url is relative (it is valid and starts with '/').
 	 */
 	bool is_relative() const;
 
 	/*!
-	 * \brief Returnes scheme of the url if defined and empty string otherwise.
+	 * \brief Returns scheme of the url if defined and empty string otherwise.
 	 */
 	const std::string &scheme() const;
 	/*!
@@ -115,7 +115,7 @@ public:
 	void set_scheme(const std::string &scheme);
 
 	/*!
-	 * \brief Returnes the host of the url if defined and empty string otherwise.
+	 * \brief Returns the host of the url if defined and empty string otherwise.
 	 */
 	const std::string &host() const;
 	/*!
@@ -124,7 +124,7 @@ public:
 	void set_host(const std::string &host);
 
 	/*!
-	 * \brief Returnes port of the url if defined.
+	 * \brief Returns port of the url if defined.
 	 */
 	const boost::optional<uint16_t> &port() const;
 	/*!
@@ -133,7 +133,7 @@ public:
 	void set_port(uint16_t port);
 
 	/*!
-	 * \brief Returnes path of the url if defined and empty string otherwise.
+	 * \brief Returns path of the url if defined and empty string otherwise.
 	 */
 	const std::string &path() const;
 	/*!
@@ -152,13 +152,13 @@ public:
 	void set_path_components(const std::vector<std::string> &path_components);
 
 	/*!
-	 * \brief Returnes query of the url.
+	 * \brief Returns query of the url.
 	 *
 	 * \sa url_query
 	 */
 	const url_query &query() const;
 	/*!
-	 * \brief Returnes query of the url.
+	 * \brief Returns query of the url.
 	 *
 	 * \sa url_query
 	 */
@@ -176,14 +176,14 @@ public:
 	 */
 	void set_query(const swarm::url_query &query);
 	/*!
-	 * \brief Returnes original raw query of the url if defined and empty string otherwise.
+	 * \brief Returns original raw query of the url if defined and empty string otherwise.
 	 *
 	 * \sa url_query
 	 */
 	const std::string &raw_query() const;
 
 	/*!
-	 * \brief Returnes fragment of the url if defined and empty string otherwise.
+	 * \brief Returns fragment of the url if defined and empty string otherwise.
 	 */
 	const std::string &fragment() const;
 	/*!
