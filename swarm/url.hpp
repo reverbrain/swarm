@@ -17,8 +17,10 @@
 #ifndef COCAINE_CRAWLER_NETWORK_URL_H
 #define COCAINE_CRAWLER_NETWORK_URL_H
 
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
+
 #include "url_query.hpp"
 
 namespace ioremap {
