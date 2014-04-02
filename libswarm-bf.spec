@@ -105,6 +105,15 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Apr 03 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.2.0
+- url: added path_components methods
+- swarm/thevoid: documentation added
+- thevoid: Added close shortcut to simple_request_stream
+- UrlFetcher: Add runtime check for curl version
+- example: added boost::asio::signal_set to download example
+- example: updated sources and comments
+- urlfetcher: print socket error with appropriate log level
+
 * Fri Feb 07 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.3
 - thevoid: Final fix for non unlinkable unix sockets
 
