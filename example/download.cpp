@@ -30,6 +30,8 @@
 #  include <atomic>
 #endif
 
+#include <boost/version.hpp>
+
 struct sig_handler
 {
 	ev::loop_ref &loop;
