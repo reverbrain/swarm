@@ -1,3 +1,11 @@
+swarm (0.6.2.1) unstable; urgency=low
+
+  * url: fixed boost::optional dereference
+  * url: added missing include
+  * download: added missing include
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Fri, 04 Apr 2014 01:58:13 +0400
+
 swarm (0.6.2.0) unstable; urgency=low
 
   * url: added path_components methods

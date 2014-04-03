@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.1.3
+Version:	0.6.2.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Apr 04 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.2.1
+- url: fixed boost::optional dereference
+- url: added missing include
+- download: added missing include
+
 * Thu Apr 03 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.2.0
 - url: added path_components methods
 - swarm/thevoid: documentation added
