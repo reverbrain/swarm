@@ -141,7 +141,7 @@ public:
 	T item_value(const char *key, const T &default_value) const
 	{
 		if (auto value = item_value(key))
-			return boost::lexical_cast<T>(value);
+			return boost::lexical_cast<T>(value.get());
 		return default_value;
 	}
 
