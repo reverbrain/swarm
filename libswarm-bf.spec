@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.2.1
+Version:	0.6.3.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Apr 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.0
+- thevoid: added ability to cast own types to buffer
+
 * Fri Apr 04 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.2.1
 - url: fixed boost::optional dereference
 - url: added missing include
