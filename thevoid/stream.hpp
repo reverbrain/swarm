@@ -35,6 +35,33 @@ namespace ioremap {
 namespace thevoid {
 
 /*!
+ * \brief The buffer_traits class makes possible to add support
+ * for own types' convertion to boost::asio::const_buffer.
+ *
+ * \code
+namespace ioremap { namespace thevoid {
+template <>
+struct buffer_traits<elliptics::data_pointer>
+{
+	static boost::asio::const_buffer convert(const elliptics::data_pointer &data)
+	{
+		return boost::asio::const_buffer(data.data(), data.size());
+	}
+};
+}}
+ * \endcode
+ */
+template <typename T>
+struct buffer_traits
+{
+	static boost::asio::const_buffer convert(const T &data)
+	{
+		using boost::asio::buffer;
+		return buffer(data);
+	}
+};
+
+/*!
  * \brief The reply_stream class provides API for accessing reply stream.
  *
  * All methods of this class are thread-safe.
@@ -254,7 +281,7 @@ protected:
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), make_close_handler());
-		auto buffer = boost::asio::buffer(wrapper.data());
+		auto buffer = cast_to_buffer(wrapper);
 		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
 	}
 
@@ -289,7 +316,7 @@ protected:
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
-		auto buffer = boost::asio::buffer(wrapper.data());
+		auto buffer = cast_to_buffer(wrapper);
 		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
 	}
 
@@ -317,7 +344,7 @@ protected:
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
-		auto buffer = boost::asio::buffer(wrapper.data());
+		auto buffer = cast_to_buffer(wrapper);
 		get_reply()->send_data(buffer, std::move(wrapper));
 	}
 
@@ -357,6 +384,15 @@ private:
 			return *m_data;
 		}
 	};
+
+	/*!
+	 * \internal
+	 */
+	template <typename T>
+	boost::asio::const_buffer cast_to_buffer(functor_wrapper<T> &wrapper)
+	{
+		return buffer_traits<T>::convert(wrapper.data());
+	}
 
 	/*!
 	 * \internal
