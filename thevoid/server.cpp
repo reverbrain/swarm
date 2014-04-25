@@ -60,7 +60,8 @@ server_data::server_data() :
 	monitor_acceptors(new acceptors_list<monitor_connection>(*this)),
 	signal_set(global_signal_set.lock()),
 	daemonize(false),
-	safe_mode(false)
+	safe_mode(false),
+	options_parsed(false)
 {
 	if (!signal_set) {
 		signal_set = std::make_shared<signal_handler>();
@@ -360,6 +361,19 @@ struct io_service_runner
 
 int base_server::run(int argc, char **argv)
 {
+	int err = parse_arguments(argc, argv);
+	if (err == 0)
+		err = run();
+	return err;
+}
+
+int base_server::parse_arguments(int argc, char **argv)
+{
+	if (m_data->options_parsed) {
+		std::cerr << "options are already parsed" << std::endl;
+		return -9;
+	}
+
 	namespace po = boost::program_options;
 		po::options_description description("Options");
 
@@ -493,6 +507,18 @@ int base_server::run(int argc, char **argv)
 		return -7;
 	}
 
+	m_data->options_parsed = true;
+
+	return 0;
+}
+
+int base_server::run()
+{
+	if (!m_data->options_parsed) {
+		std::cerr << "options are not parsed" << std::endl;
+		return -9;
+	}
+
 	sigset_t previous_sigset;
 	sigset_t sigset;
 	sigfillset(&sigset);
@@ -532,6 +558,11 @@ int base_server::run(int argc, char **argv)
 	m_data->pid.reset();
 
 	return 0;
+}
+
+void base_server::stop()
+{
+	m_data->handle_stop();
 }
 
 void base_server::set_server(const std::weak_ptr<base_server> &server)

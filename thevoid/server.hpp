@@ -97,6 +97,8 @@ public:
 	
 	/*!
 	 * \brief Run server using provided command line arguments.
+	 *
+	 * This method is equal to iterative calls of parse_arguments and run.
 	 * 
 	 *  Supported arguments are:
 	 *  \li help - show help message and return.
@@ -104,6 +106,28 @@ public:
 	 *  \li pidfile file - write PID file to \a file.
 	 */
 	int run(int argc, char **argv);
+
+	/*!
+	 * \brief Just parse arguments and don't start the server.
+	 *
+	 * \sa run(int,char**)
+	 * \sa parse_arguments
+	 */
+	int parse_arguments(int argc, char **argv);
+	/*!
+	 * \brief Run the server.
+	 *
+	 * \note parse_arguments have to be called before to call this method.
+	 *
+	 * \sa run()
+	 * \sa parse_arguments
+	 */
+	int run();
+
+	/*!
+	 * \brief Stops the server
+	 */
+	void stop();
 
 	/*!
 	 * \brief Ser \a logger as logger of the server.
