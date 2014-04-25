@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.0
+Version:	0.6.3.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Apr 25 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.1
+- swarm: Fixed behaviour of path_components
+- thevoid: Make a LOT of logs for debug
+- thevoid: Make server starting more controlled
+
 * Tue Apr 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.0
 - thevoid: added ability to cast own types to buffer
 

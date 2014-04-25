@@ -1,3 +1,11 @@
+swarm (0.6.3.1) unstable; urgency=low
+
+  * swarm: Fixed behaviour of path_components
+  * thevoid: Make a LOT of logs for debug
+  * thevoid: Make server starting more controlled
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 25 Apr 2014 19:11:44 +0400
+
 swarm (0.6.3.0) unstable; urgency=low
 
   * thevoid: added ability to cast own types to buffer
