@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace ioremap {
 namespace swarm {
@@ -462,18 +463,17 @@ void url::set_path(const std::string &path)
 {
 	p->start_modifications();
 	p->path = path;
+	p->path_components.clear();
+
+	boost::split(p->path_components, path, boost::is_any_of("/"));
+	if (!path.empty() && path.at(0) == '/')
+		p->path_components.erase(p->path_components.begin());
 }
 
 const std::vector<std::string> &url::path_components() const
 {
 	p->ensure_data();
 	return p->path_components;
-}
-
-void url::set_path_components(const std::vector<std::string> &path_components)
-{
-	p->start_modifications();
-	p->path_components = path_components;
 }
 
 const url_query &url::query() const

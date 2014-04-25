@@ -148,10 +148,6 @@ public:
 	 * \brief Sets path components - array of strings, which after being joined by '/' symbol form full path.
 	 */
 	const std::vector<std::string> &path_components() const;
-	/*!
-	 * \brief Returns path components - array of strings, which after being joined by '/' symbol form full path.
-	 */
-	void set_path_components(const std::vector<std::string> &path_components);
 
 	/*!
 	 * \brief Returns query of the url.
