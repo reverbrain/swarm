@@ -127,6 +127,7 @@ private:
 
 	//! Server reference for handler logic
 	std::shared_ptr<base_server> m_server;
+	swarm::logger m_logger;
 
 	//! Socket for the connection.
 	T m_socket;

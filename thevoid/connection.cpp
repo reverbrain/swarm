@@ -25,9 +25,13 @@
 namespace ioremap {
 namespace thevoid {
 
-//#define debug(arg) do { std::cerr << __PRETTY_FUNCTION__ << " (" << __LINE__ << ") " << arg << std::endl; std::cerr.flush(); } while (0)
 
-#define debug(arg) do {} while (0)
+#define debug(arg) \
+	do { if (m_logger.level() >= swarm::SWARM_LOG_DEBUG) { \
+		std::stringstream out; \
+		out << __PRETTY_FUNCTION__ << " (" << __LINE__ << ") " << arg; \
+		m_logger.log(swarm::SWARM_LOG_DEBUG, "%s", out.str().c_str()); \
+	} } while (false)
 
 #define SAFE_SEND_NONE do {} while (0)
 #define SAFE_SEND_ERROR \
@@ -94,6 +98,7 @@ template <typename T>
 void connection<T>::start(const std::shared_ptr<base_server> &server)
 {
 	m_server = server;
+	m_logger = server->logger();
 	++m_server->m_data->connections_counter;
 	async_read();
 }
@@ -115,6 +120,8 @@ void connection<T>::send_headers(swarm::http_response &&rep,
 	const boost::asio::const_buffer &content,
 	std::function<void (const boost::system::error_code &err)> &&handler)
 {
+	debug("send headers: " << rep.code());
+
 	if (m_keep_alive) {
                 rep.headers().set_keep_alive();
                 debug("Added Keep-Alive");
@@ -296,10 +303,14 @@ void connection<T>::send_nolock()
 template <typename T>
 void connection<T>::close_impl(const boost::system::error_code &err)
 {
-	debug(m_state);
+	debug("err: " << err.message() << ", state: " << m_state << ", keep alive: " << m_keep_alive);
+
 	if (m_handler)
 		--m_server->m_data->active_connections_counter;
 	m_handler.reset();
+
+	// Handler is dead so it's free to remove read flag
+	m_at_read = false;
 
 	if (err) {
 		boost::system::error_code ignored_ec;
@@ -311,6 +322,12 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	// Is request data is not fully received yet - receive it
 	if (m_state != processing_request) {
 		m_state |= request_processed;
+
+		if (m_unprocessed_begin != m_unprocessed_end) {
+			process_data(m_unprocessed_begin, m_unprocessed_end);
+		} else {
+			async_read();
+		}
 		return;
 	}
 
@@ -331,6 +348,8 @@ void connection<T>::process_next()
 	m_request_parser.reset();
 
 	m_request = swarm::http_request();
+
+	debug("unprocessed: " << (m_unprocessed_end - m_unprocessed_begin));
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
@@ -364,7 +383,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 template <typename T>
 void connection<T>::process_data(const char *begin, const char *end)
 {
-	debug("data: \"" << std::string(begin, end - begin) << "\"");
+	debug("data: size: " << (end - begin) << ", state: " << m_state);
 	if (m_state & read_headers) {
 		boost::tribool result;
 		const char *new_begin = NULL;
