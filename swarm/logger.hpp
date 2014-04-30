@@ -46,21 +46,69 @@ enum log_level {
 
 class logger_data;
 
+/*!
+ * \brief The logger class is convient class for logging facility.
+ *
+ * Logging level may be changed at any time by \a set_level.
+ * In case of file logger file may be reopened by calling \a reopen method.
+ *
+ * It is explicitly shared object.
+ */
 class logger
 {
 public:
+	/*!
+	 * \brief Constructs a null logger.
+	 */
 	logger();
+	/*!
+	 * \brief Constructs logger from implementation \a impl with \a level.
+	 */
 	logger(logger_interface *impl, int level);
+	/*!
+	 * \brief Constructs file logger with \a level.
+	 *
+	 * Logger will write all entries to \a file.
+	 */
 	logger(const char *file, int level);
+
+	/*!
+	 * \brief Constructs Blackhole logger with \a level.
+	 *
+	 * Logger will write all entries to Blackhole as specified in its \a config.
+	 */
 	logger(const blackhole::log_config_t &config, int level);
+
+	/*!
+	 * Destroyes object.
+	 */
 	~logger();
 
+	/*!
+	 * \brief Returnes level of the logger.
+	 */
 	int level() const;
+	/*!
+	 * \brief Set level of the logger to the \a level.
+	 */
 	void set_level(int level);
 
+	/*!
+	 * \brief Reopens logger.
+	 *
+	 * If logger is not file one this method may have no effect.
+	 */
 	void reopen();
 
+	/*!
+	 * \brief Logs message \a format with \a level.
+	 *
+	 * \attention This method uses printf-like notation.
+	 */
 	void log(int level, const char *format, ...) const __attribute__ ((format(printf, 3, 4)));
+	/*!
+	 * \overload
+	 */
 	void vlog(int level, const char *format, va_list args) const;
 
 private:

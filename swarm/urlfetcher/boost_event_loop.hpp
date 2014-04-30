@@ -28,6 +28,9 @@ namespace swarm {
 
 struct boost_socket_info;
 
+/*!
+ * \brief The boost_event_loop is boost::asio-based event loop.
+ */
 class boost_event_loop : public event_loop
 {
 public:

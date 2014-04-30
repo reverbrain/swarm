@@ -38,6 +38,9 @@
 #  define BOOST_SYSTEM_NOEXCEPT
 #endif
 
+#define MAKE_VERSION(major, minor, patch) (((major) << 16) | ((minor) << 8) | (patch))
+#define IF_CURL_VERSION(major, minor, patch) if (curl_version_info(CURLVERSION_NOW)->version_num >= MAKE_VERSION((major), (minor), (patch)))
+
 namespace ioremap {
 namespace swarm {
 
@@ -266,15 +269,18 @@ public:
 		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 0L);
 		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
 		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
-#if LIBCURL_VERSION_NUM >= 0x071507
-		/*
-		 * If CURL don't support CURLOPT_CLOSESOCKETFUNCTION yet we should fallback
-		 * to dup-method to prevent memory leak
-		 */
-		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETFUNCTION, network_manager_private::open_callback);
-		curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETDATA, &loop);
-		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETFUNCTION, network_manager_private::close_callback);
-		curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETDATA, &loop);
+
+#if LIBCURL_VERSION_NUM >= MAKE_VERSION(7, 21, 7)
+		IF_CURL_VERSION(7, 21, 7) {
+			/*
+			 * If CURL don't support CURLOPT_CLOSESOCKETFUNCTION yet we should fallback
+			 * to dup-method to prevent memory leak
+			 */
+			curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETFUNCTION, network_manager_private::open_callback);
+			curl_easy_setopt(info->easy, CURLOPT_OPENSOCKETDATA, &loop);
+			curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETFUNCTION, network_manager_private::close_callback);
+			curl_easy_setopt(info->easy, CURLOPT_CLOSESOCKETDATA, &loop);
+		}
 #endif
 		curl_easy_setopt(info->easy, CURLOPT_WRITEFUNCTION, network_manager_private::write_callback);
 		curl_easy_setopt(info->easy, CURLOPT_HEADERFUNCTION, network_manager_private::header_callback);

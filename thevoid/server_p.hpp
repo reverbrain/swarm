@@ -138,6 +138,7 @@ public:
 	bool daemonize;
 	//! Safe mode
 	bool safe_mode;
+	bool options_parsed;
 	std::unique_ptr<pid_file> pid;
 	std::string pid_file_path;
 };

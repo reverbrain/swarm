@@ -25,6 +25,17 @@ namespace swarm {
 
 class network_reply_data;
 
+/*!
+ * \brief The http_response class is a convient API for http responses.
+ *
+ * It provides read/write access to all HTTP-specific properties like headers,
+ * result code and reason.
+ *
+ * \attention http_response supports move semantics, so it's cheaper to move it if
+ * it's possible.
+ *
+ * \sa http_request
+ */
 class http_response
 {
 public:

@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.1.3
+Version:	0.6.3.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,28 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Apr 25 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.1
+- swarm: Fixed behaviour of path_components
+- thevoid: Make a LOT of logs for debug
+- thevoid: Make server starting more controlled
+
+* Tue Apr 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.0
+- thevoid: added ability to cast own types to buffer
+
+* Fri Apr 04 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.2.1
+- url: fixed boost::optional dereference
+- url: added missing include
+- download: added missing include
+
+* Thu Apr 03 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.6.2.0
+- url: added path_components methods
+- swarm/thevoid: documentation added
+- thevoid: Added close shortcut to simple_request_stream
+- UrlFetcher: Add runtime check for curl version
+- example: added boost::asio::signal_set to download example
+- example: updated sources and comments
+- urlfetcher: print socket error with appropriate log level
+
 * Fri Feb 07 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.1.3
 - thevoid: Final fix for non unlinkable unix sockets
 

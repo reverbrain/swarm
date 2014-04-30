@@ -157,39 +157,23 @@ private:
 
 		blackhole::mapping::value_t mapper;
 		mapper.add<blackhole::keyword::tag::severity_t<log_level>>(&blackhole_logger_interface::map_severity);
-		mapper.add<blackhole::keyword::tag::timestamp_t>(&blackhole_logger_interface::map_timestamp);
+		mapper.add<blackhole::keyword::tag::timestamp_t>("%Y-%m-%d %H:%M:%S.%f");
 		for (auto it = copy.frontends.begin(); it != copy.frontends.end(); ++it) {
 			it->formatter.mapper = mapper;
 		}
 
-		auto& repository = blackhole::repository_t<log_level>::instance();
-		repository.init(copy);
-		return repository.create(copy.name);
+		auto& repository = blackhole::repository_t::instance();
+		repository.add_config(copy);
+		return repository.create<log_level>(copy.name);
 	}
 
-	static std::string map_severity(log_level lvl) {
+	static void map_severity(blackhole::aux::attachable_ostringstream& stream, const log_level& lvl) {
 		auto value = static_cast<blackhole::aux::underlying_type<log_level>::type>(lvl);
 		if (value < log_level_names_size) {
-			return log_level_names[value];
+			stream << log_level_names[value];
+		} else {
+			stream << lvl;
 		}
-
-		return "UNKNOWN";
-	}
-
-	static std::string map_timestamp(const std::time_t&) {
-		char str[64];
-		struct tm tm;
-		struct timeval tv;
-		char usecs[64];
-
-		gettimeofday(&tv, NULL);
-		localtime_r((time_t *)&tv.tv_sec, &tm);
-		if (std::strftime(str, sizeof(str), "%F %R:%S", &tm)) {
-			snprintf(usecs, sizeof(usecs), ".%06ld", (long)tv.tv_usec);
-			return std::string(str) + usecs;
-		}
-
-		return "UNKNOWN";
 	}
 };
 

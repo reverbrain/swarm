@@ -24,16 +24,15 @@
 #include <chrono>
 #include <thread>
 
-#include <blackhole/log.hpp>
-#include <blackhole/repository.hpp>
-
 #ifdef SWARM_CSTDATOMIC
 #  include <cstdatomic>
 #else
 #  include <atomic>
 #endif
 
-#define USE_BOOST
+#include <boost/version.hpp>
+
+#include <blackhole/blackhole.hpp>
 
 struct sig_handler
 {
@@ -57,46 +56,55 @@ void set_thread_name(const char *)
 }
 #endif
 
+#if BOOST_VERSION / 100 % 1000 >= 47
+#define USE_BOOST_SIGNALS
+#endif
 
 struct request_handler_functor
 {
-#ifdef USE_BOOST
-	boost::asio::io_service &service;
-	blackhole::verbose_logger_t<ioremap::swarm::log_level> &log;
-#else
 	ev::loop_ref &loop;
-#endif
+	blackhole::verbose_logger_t<ioremap::swarm::log_level> &log;
 
 	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) const {
-		BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "resuest finished")(
-			blackhole::attribute::make("request url", reply.request().url().to_string()),
-			blackhole::attribute::make("reply url", reply.url().to_string()),
-			blackhole::attribute::make("status", reply.code()),
-			blackhole::attribute::make("error", error.message())
-		);
-
 		const auto &headers = reply.headers().all();
+		BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "request finished")(blackhole::attribute::list({
+			{ "request url", reply.request().url().to_string() },
+			{ "reply url", reply.url().to_string() },
+			{ "status", reply.code() },
+			{ "error", error.message() }
+		}));
 
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
 			BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "header: %s : %s ", it->first, it->second);
 		}
 		(void) data;
-#ifdef USE_BOOST
-		service.stop();
-#else
+
 		loop.unloop();
-#endif
 	}
 };
 
+#ifdef USE_BOOST_SIGNALS
+static void test_signals(boost::asio::io_service *service,
+		const boost::system::error_code& error, // Result of operation.
+		int signal_number) // Indicates which signal occurred.
+{
+	printf("called signals function: signal: %d, error: %s\n", signal_number, error.message().c_str());
+	if (!error)
+		// this is thread-safe operation
+		service->stop();
+}
+#endif
+
 int main(int argc, char **argv)
 {
+	printf("boost version: %d\n", BOOST_VERSION / 100 % 1000);
 	if (argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " url" << std::endl;
 		return 1;
 	}
 
 	ev::default_loop loop;
+
 	sig_handler shandler = { loop };
 	std::list<ev::sig> sigs;
 	int signal_ids[] = { SIGINT, SIGTERM };
@@ -109,35 +117,40 @@ int main(int argc, char **argv)
 		sig_watcher.start();
 	}
 
-	boost::asio::io_service service;
-	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
-#ifdef USE_BOOST
-	loop_impl.reset(new ioremap::swarm::boost_event_loop(service));
-#else
-	loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
-#endif
+	const bool use_boost = true;
 
-	//! Blackhole initialization
+	boost::asio::io_service service;
+#ifdef USE_BOOST_SIGNALS
+	boost::asio::signal_set signals(service, SIGINT, SIGTERM);
+	signals.async_wait(std::bind(&test_signals, &service, std::placeholders::_1, std::placeholders::_2));
+#endif
+	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
+	if (use_boost) {
+		loop_impl.reset(new ioremap::swarm::boost_event_loop(service));
+	} else {
+		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
+	}
+
+	// Blackhole initialization
 	blackhole::formatter_config_t formatter("string");
 	formatter["pattern"] = "[%(timestamp)s] [%(severity)s]: %(message)s [%(...L)s]";
 
-	blackhole::sink_config_t sink("files");
-	sink["path"] = "/dev/stdout";
-	sink["autoflush"] = true;
+	blackhole::sink_config_t sink("stream");
+	sink["output"] = "stdout";
 
 	blackhole::frontend_config_t frontend = { formatter, sink };
-	blackhole::log_config_t config{ "root", { frontend } };
+	blackhole::log_config_t config{ "default", { frontend } };
 
+	auto& repository = blackhole::repository_t::instance();
 	ioremap::swarm::logger logger(config, ioremap::swarm::SWARM_LOG_DEBUG);
-	blackhole::verbose_logger_t<ioremap::swarm::log_level> log =
-			blackhole::repository_t<ioremap::swarm::log_level>::instance().create(config.name);
-
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
+	blackhole::verbose_logger_t<ioremap::swarm::log_level> log =
+		repository.create<ioremap::swarm::log_level>(config.name);
 
 	ioremap::swarm::url_fetcher::request request;
 	request.set_url(argv[1]);
 	request.set_follow_location(1);
-	request.set_timeout(1000);
+	request.set_timeout(100); // in milliseconds
 	request.headers().assign({
 		{ "Content-Type", "text/html; always" },
 		{ "Additional-Header", "Very long-long\r\n\tsecond line\r\n\tthird line" }
@@ -147,20 +160,16 @@ int main(int argc, char **argv)
 
 	auto begin_time = clock::now();
 
-#ifdef USE_BOOST
-	request_handler_functor request_handler = { service, log };
-#else
-	request_handler_functor request_handler = { loop };
-#endif
+	request_handler_functor request_handler = { loop, log };
 
 	manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
 
-#ifdef USE_BOOST
-	boost::asio::io_service::work work(service);
-	service.run();
-#else
-	loop.loop();
-#endif
+	if (use_boost) {
+		boost::asio::io_service::work work(service);
+		service.run();
+	} else {
+		loop.loop();
+	}
 
 	auto end_time = clock::now();
 

@@ -64,7 +64,8 @@ server_data::server_data() :
 	monitor_acceptors(new acceptors_list<monitor_connection>(*this)),
 	signal_set(global_signal_set.lock()),
 	daemonize(false),
-	safe_mode(false)
+	safe_mode(false),
+	options_parsed(false)
 {
 	if (!signal_set) {
 		signal_set = std::make_shared<signal_handler>();
@@ -238,14 +239,17 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 	const rapidjson::Value &logger_config = config["logger"];
 	try {
 		const std::vector<blackhole::log_config_t> &log_configs =
-				blackhole::repository::config::parser_t<std::vector<blackhole::log_config_t>>::parse(logger_config);
+				blackhole::repository::config::parser_t<
+					rapidjson::Value,
+					std::vector<blackhole::log_config_t>
+				>::parse(logger_config);
 
 		if (log_configs.size() != 1 || log_configs.at(0).name != "root") {
 			throw std::logic_error("only root logger supported");
 		}
-		auto& repository = blackhole::repository_t<swarm::log_level>::instance();
+		auto& repository = blackhole::repository_t::instance();
 		const blackhole::log_config_t &log_config = log_configs.at(0);
-		repository.init(log_config);
+		repository.add_config(log_config);
 
 		int level = swarm::SWARM_LOG_INFO;
 		if (logger_config.HasMember("level")) {
@@ -384,6 +388,19 @@ struct io_service_runner
 
 int base_server::run(int argc, char **argv)
 {
+	int err = parse_arguments(argc, argv);
+	if (err == 0)
+		err = run();
+	return err;
+}
+
+int base_server::parse_arguments(int argc, char **argv)
+{
+	if (m_data->options_parsed) {
+		std::cerr << "options are already parsed" << std::endl;
+		return -9;
+	}
+
 	namespace po = boost::program_options;
 		po::options_description description("Options");
 
@@ -517,6 +534,18 @@ int base_server::run(int argc, char **argv)
 		return -7;
 	}
 
+	m_data->options_parsed = true;
+
+	return 0;
+}
+
+int base_server::run()
+{
+	if (!m_data->options_parsed) {
+		std::cerr << "options are not parsed" << std::endl;
+		return -9;
+	}
+
 	sigset_t previous_sigset;
 	sigset_t sigset;
 	sigfillset(&sigset);
@@ -556,6 +585,11 @@ int base_server::run(int argc, char **argv)
 	m_data->pid.reset();
 
 	return 0;
+}
+
+void base_server::stop()
+{
+	m_data->handle_stop();
 }
 
 void base_server::set_server(const std::weak_ptr<base_server> &server)
