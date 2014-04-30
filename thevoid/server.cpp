@@ -279,7 +279,8 @@ static pid_t start_daemon(pid_file *file)
 		return pid;
 	}
 	setsid();
-	file->write();
+	if (file)
+		file->write();
 
 	return 0;
 }
