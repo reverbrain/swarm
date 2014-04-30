@@ -32,8 +32,7 @@
 #include <swarm/logger.hpp>
 #include <thevoid/rapidjson/filestream.h>
 
-#include <blackhole/log.hpp>
-#include <blackhole/repository.hpp>
+#include <blackhole/blackhole.hpp>
 #include <blackhole/repository/config/parser/rapidjson.hpp>
 
 #include <sys/wait.h>
@@ -239,10 +238,10 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 	const rapidjson::Value &logger_config = config["logger"];
 	try {
 		const std::vector<blackhole::log_config_t> &log_configs =
-				blackhole::repository::config::parser_t<
-					rapidjson::Value,
-					std::vector<blackhole::log_config_t>
-				>::parse(logger_config);
+			blackhole::repository::config::parser_t<
+				rapidjson::Value,
+				std::vector<blackhole::log_config_t>
+			>::parse(logger_config);
 
 		if (log_configs.size() != 1 || log_configs.at(0).name != "root") {
 			throw std::logic_error("only root logger supported");

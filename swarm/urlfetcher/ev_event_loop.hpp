@@ -29,8 +29,12 @@
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 
-#ifdef EV_ERROR
-#undef EV_ERROR
+//!@note: This is workaround libev bug
+//!       http://stackoverflow.com/questions/16660816/libev-4-15-doesnt-compile-on-osx-10-8
+//!       On OSX EV_ERROR declared in `ev.h` conflicts with that declared
+//!       in `/usr/include/sys/event.h`.
+#if defined(__APPLE__) && defined(EV_ERROR)
+	#undef EV_ERROR
 #endif
 
 #define EV_MULTIPLICITY 1
