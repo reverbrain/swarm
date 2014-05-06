@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.1
+Version:	0.6.3.2
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,12 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue May 06 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.2
+- thevoid: Fixed daemonization if pid_file not set
+- swarm: Fix in boost_event_loop::socket_request
+- - Curl accidently sometimes asks to listen socket both for read and write.
+- swarm: Workaround libev bug
+
 * Fri Apr 25 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.1
 - swarm: Fixed behaviour of path_components
 - thevoid: Make a LOT of logs for debug

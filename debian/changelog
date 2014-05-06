@@ -1,3 +1,12 @@
+swarm (0.6.3.2) unstable; urgency=low
+
+  * thevoid: Fixed daemonization if pid_file not set
+  * swarm: Fix in boost_event_loop::socket_request
+  * - Curl accidently sometimes asks to listen socket both for read and write.
+  * swarm: Workaround libev bug
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 06 May 2014 17:03:17 +0400
+
 swarm (0.6.3.1) unstable; urgency=low
 
   * swarm: Fixed behaviour of path_components
