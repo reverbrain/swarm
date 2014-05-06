@@ -136,12 +136,12 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 	boost_socket_info::weak_ptr weak_info = info;
 
-	if (what == poll_in) {
+	if (what & poll_in) {
 		logger().log(SWARM_LOG_DEBUG, "poll in socket: %p, fd: %d", info.get(), fd);
 		info->socket.async_read_some(boost::asio::null_buffers(),
 			boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_read, _1));
 	}
-	if (what == poll_out) {
+	if (what & poll_out) {
 		logger().log(SWARM_LOG_DEBUG, "poll out socket: %p, fd: %d", info.get(), fd);
 		info->socket.async_write_some(boost::asio::null_buffers(),
 			boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_write, _1));
