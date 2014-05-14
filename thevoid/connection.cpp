@@ -309,9 +309,6 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		--m_server->m_data->active_connections_counter;
 	m_handler.reset();
 
-	// Handler is dead so it's free to remove read flag
-	m_at_read = false;
-
 	if (err) {
 		boost::system::error_code ignored_ec;
 		// If there was any error - close the connection, it's broken
@@ -396,6 +393,8 @@ void connection<T>::process_data(const char *begin, const char *end)
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
 			m_keep_alive = false;
+			m_unprocessed_begin = m_unprocessed_end = 0;
+			m_state = processing_request;
 			send_error(swarm::http_response::bad_request);
 			return;
 		} else if (result) {
