@@ -341,7 +341,7 @@ inline void http_headers::add(const std::string &name, Iterator begin, Iterator 
 }
 
 template <typename Range>
-inline void http_headers::add(const std::string &name, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
+inline void http_headers::add(const std::string &/*name*/, const Range &range, typename std::enable_if<!std::is_convertible<Range, std::string>::value>::type *)
 {
 	using boost::begin;
 	using boost::end;
