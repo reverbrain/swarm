@@ -1,3 +1,10 @@
+swarm (0.6.3.3) unstable; urgency=low
+
+  * thevoid: Break connection to client correctly
+  * thevoid: Added more debug logs to connection
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 14 May 2014 17:34:27 +0400
+
 swarm (0.6.3.2) unstable; urgency=low
 
   * thevoid: Fixed daemonization if pid_file not set

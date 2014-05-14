@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.2
+Version:	0.6.3.3
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed May 14 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.3
+- thevoid: Break connection to client correctly
+- thevoid: Added more debug logs to connection
+
 * Tue May 06 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.2
 - thevoid: Fixed daemonization if pid_file not set
 - swarm: Fix in boost_event_loop::socket_request
