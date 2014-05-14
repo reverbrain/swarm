@@ -79,12 +79,13 @@ connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) 
 template <typename T>
 connection<T>::~connection()
 {
-	if (m_server)
+	if (m_server) {
+		debug("Closed connection to client: " << this);
 		--m_server->m_data->connections_counter;
+	}
 
 	if (m_handler)
 		SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
-
 	debug("");
 }
 
@@ -100,6 +101,7 @@ void connection<T>::start(const std::shared_ptr<base_server> &server)
 	m_server = server;
 	m_logger = server->logger();
 	++m_server->m_data->connections_counter;
+	debug("Opened new connection to client: " << this);
 	async_read();
 }
 
@@ -164,6 +166,7 @@ void connection<T>::close(const boost::system::error_code &err)
 template <typename T>
 void connection<T>::want_more_impl()
 {
+	debug("state: " << m_state);
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
 	} else {
@@ -320,6 +323,8 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	if (m_state != processing_request) {
 		m_state |= request_processed;
 
+		debug("We sent reply to client, but still need to get " << m_content_length << " bytes from it");
+
 		if (m_unprocessed_begin != m_unprocessed_end) {
 			process_data(m_unprocessed_begin, m_unprocessed_end);
 		} else {
@@ -329,6 +334,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	}
 
 	if (!m_keep_alive) {
+		debug("Connection was not keep alive, close socket");
 		boost::system::error_code ignored_ec;
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
 		return;
@@ -359,7 +365,7 @@ template <typename T>
 void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred)
 {
 	m_at_read = false;
-	debug("error: " << err.message());
+	debug("error: " << err.message() << ", state: " << m_state << ", bytes: " << bytes_transferred);
 	if (err) {
 		if (m_handler) {
 			SAFE_CALL(m_handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
@@ -439,23 +445,26 @@ void connection<T>::process_data(const char *begin, const char *end)
 		debug(m_state);
 
 		if (data_from_body != processed_size) {
+			debug("Handler processed only " << processed_size << " of " << data_from_body << " bytes");
 			// Handler can't process all data, wait until want_more method is called
 			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 			return;
 		} else if (m_content_length > 0) {
-			debug("");
+			debug("Need to get " << m_content_length << " more bytes");
 			async_read();
 		} else {
 			m_state &= ~read_data;
 			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 
+			debug("Handler processed all data, " << (m_unprocessed_end - m_unprocessed_begin) << " bytes are still unprocessed, state: " << m_state);
+
 			if (m_handler)
 				SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
 
 			if (m_state & request_processed) {
-				debug("");
+				debug("Request processed");
 				process_next();
 			}
 		}
@@ -470,7 +479,7 @@ void connection<T>::async_read()
 	m_at_read = true;
 	m_unprocessed_begin = NULL;
 	m_unprocessed_end = NULL;
-	debug("");
+	debug("state: " << m_state);
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 					 std::bind(&connection::handle_read, this->shared_from_this(),
 						   std::placeholders::_1,
@@ -480,6 +489,7 @@ void connection<T>::async_read()
 template <typename T>
 void connection<T>::send_error(swarm::http_response::status_type type)
 {
+	debug("status: " << type << ", state: " << m_state);
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),
 		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
