@@ -393,10 +393,14 @@ void connection<T>::print_access_log()
 	gettimeofday(&end, NULL);
 
 	unsigned long long delta = 1000000ull * (end.tv_sec - m_access_start.tv_sec) + end.tv_usec - m_access_start.tv_usec;
+	auto local = boost::lexical_cast<std::string>(m_socket.local_endpoint());
+	auto remote = boost::lexical_cast<std::string>(m_socket.remote_endpoint());
 
-	m_logger.log(swarm::SWARM_LOG_INFO, "method: %s, url: %s, status: %d, received: %llu, sent: %llu, time: %llu us",
+	m_logger.log(swarm::SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us",
 		m_access_method.empty() ? "-" : m_access_method.c_str(),
 		m_access_url.empty() ? "-" : m_access_url.c_str(),
+		local.c_str(),
+		remote.c_str(),
 		m_access_status,
 		m_access_received,
 		m_access_sent,

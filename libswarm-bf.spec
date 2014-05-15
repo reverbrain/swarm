@@ -109,6 +109,10 @@ rm -rf %{buildroot}
 - swarm: Fixed http_headers::add overloa
 - thevoid: Added info-level access log
 
+* Thu May 15 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.4
+- swarm: Fixed http_headers::add overloa
+- thevoid: Added info-level access log
+
 * Wed May 14 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.3
 - thevoid: Break connection to client correctly
 - thevoid: Added more debug logs to connection
