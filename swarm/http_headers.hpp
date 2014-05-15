@@ -346,7 +346,7 @@ inline void http_headers::add(const std::string &name, const Range &range, typen
 	using boost::begin;
 	using boost::end;
 
-	add(begin(range), end(range));
+	add(name, begin(range), end(range));
 }
 
 } // namespace swarm
