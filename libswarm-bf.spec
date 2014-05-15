@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.3
+Version:	0.6.3.4
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu May 15 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.4
+- swarm: Fixed http_headers::add overloa
+- thevoid: Added info-level access log
+
 * Wed May 14 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.3
 - thevoid: Break connection to client correctly
 - thevoid: Added more debug logs to connection
