@@ -1,3 +1,9 @@
+swarm (0.6.3.5) unstable; urgency=low
+
+  * thevoid: Added local and remote addr to access log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 15 May 2014 16:58:13 +0400
+
 swarm (0.6.3.4) unstable; urgency=low
 
   * swarm: Fixed http_headers::add overloa

@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.4
+Version:	0.6.3.5
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu May 15 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.5
+- thevoid: Added local and remote addr to access log
+
 * Thu May 15 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.4
 - swarm: Fixed http_headers::add overloa
 - thevoid: Added info-level access log
