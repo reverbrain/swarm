@@ -87,7 +87,8 @@ public:
 		processing_request = 0x00,
 		read_headers	   = 0x01,
 		read_data		  = 0x02,
-		request_processed  = 0x04
+		request_processed  = 0x04,
+		waiting_for_first_data = 0x08
 	};
 
 	//! Construct a connection with the given io_service.
@@ -116,6 +117,7 @@ private:
 
 	void close_impl(const boost::system::error_code &err);
 	void process_next();
+	void print_access_log();
 
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
@@ -141,6 +143,14 @@ private:
 
 	//! The incoming request.
 	swarm::http_request m_request;
+
+	//! Access log info
+	timeval m_access_start;
+	std::string m_access_method;
+	std::string m_access_url;
+	int m_access_status;
+	unsigned long long m_access_received;
+	unsigned long long m_access_sent;
 
 	//! The parser for the incoming request.
 	request_parser m_request_parser;
