@@ -1,3 +1,11 @@
+swarm (0.6.3.6) unstable; urgency=low
+
+  * thevoid: Convert endpoint to strings at the start
+  * * This saves us from situation when socket is already closed and we
+  * * want to write about it to access log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 19 May 2014 22:20:25 +0400
+
 swarm (0.6.3.5) unstable; urgency=low
 
   * thevoid: Added local and remote addr to access log

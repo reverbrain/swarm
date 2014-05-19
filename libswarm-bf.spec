@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.5
+Version:	0.6.3.6
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon May 19 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.6
+- thevoid: Convert endpoint to strings at the start
+- * This saves us from situation when socket is already closed and we
+- * want to write about it to access log
+
 * Thu May 15 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.5
 - thevoid: Added local and remote addr to access log
 
