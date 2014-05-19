@@ -145,6 +145,8 @@ private:
 	swarm::http_request m_request;
 
 	//! Access log info
+	std::string m_access_local;
+	std::string m_access_remote;
 	timeval m_access_start;
 	std::string m_access_method;
 	std::string m_access_url;
