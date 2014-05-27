@@ -106,7 +106,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 		if (what == poll_remove) {
 			info->what = poll_none;
-//			info->socket.cancel();
+			info->socket.cancel();
 		}
 	} else {
 		if (what == poll_remove) {
@@ -192,7 +192,9 @@ void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_
 
 		logger().log(SWARM_LOG_DEBUG, "call on_socket_event: %p, fd: %d", info.get(), fd);
 
-		listener()->on_socket_event(fd, what);
+		if (info->what != poll_none) {
+			listener()->on_socket_event(fd, what);
+		}
 	} else if (logger().level() >= SWARM_LOG_DEBUG) {
 		logger().log(SWARM_LOG_DEBUG, "call on_socket_event: socket_info is destroyed, fd: %d, what: %d, error: %s",
 			     fd, what, error.message().c_str());
