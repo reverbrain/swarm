@@ -42,12 +42,11 @@ protected:
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
 	void async_write(const std::string &data);
 	void handle_write(const boost::system::error_code &err, size_t);
-    void handle_stop_write(const boost::system::error_code &err, size_t);
+	void handle_stop_write(const boost::system::error_code &err, size_t);
 	void close();
 
 private:
-	boost::asio::io_service &m_io_service;
-    std::shared_ptr<base_server> m_server;
+	std::shared_ptr<base_server> m_server;
 	socket_type m_socket;
 	boost::array<char, 64> m_buffer;
 	std::string m_storage;
