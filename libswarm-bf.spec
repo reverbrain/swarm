@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.6
+Version:	0.6.3.7
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,14 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Jun 05 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.7
+- swarm: boost: Cancel socket on pool_remove
+- swarm: Added punycode support to URLs
+- * Added normal percent encoding/decoding for path and fragment parts
+- * Added new dependency - libidn
+- thevoid: Fixed infinity loop
+- * There was infinity loop in case if user writes empty buffer to the client's socket
+
 * Mon May 19 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.6
 - thevoid: Convert endpoint to strings at the start
 - * This saves us from situation when socket is already closed and we

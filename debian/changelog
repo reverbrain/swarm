@@ -1,3 +1,14 @@
+swarm (0.6.3.7) unstable; urgency=low
+
+  * swarm: boost: Cancel socket on pool_remove
+  * swarm: Added punycode support to URLs
+  * * Added normal percent encoding/decoding for path and fragment parts
+  * * Added new dependency - libidn
+  * thevoid: Fixed infinity loop
+  * * There was infinity loop in case if user writes empty buffer to the client's socket
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 05 Jun 2014 21:29:16 +0400
+
 swarm (0.6.3.6) unstable; urgency=low
 
   * thevoid: Convert endpoint to strings at the start
