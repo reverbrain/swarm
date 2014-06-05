@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <iostream>
 #include <vector>
+#include <punycode.h>
+#include <stringprep.h>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
@@ -46,7 +48,8 @@ public:
 		invalid_original= 0x02,
 		has_original    = 0x04,
 		has_changes     = 0x08,
-		query_parsed    = 0x10
+		query_parsed    = 0x10,
+		has_human_readable = 0x20
 	};
 
 	url_private() : state(invalid)
@@ -63,6 +66,7 @@ public:
 		ensure_data();
 		state = parsed | has_changes | (state & query_parsed);
 		original = std::string();
+		human_readable = std::string();
 	}
 
 	mutable std::string scheme;
@@ -74,6 +78,7 @@ public:
 	mutable std::string raw_query;
 	mutable url_query query;
 	mutable std::string fragment;
+	mutable std::string human_readable;
 
 	std::string original;
 
@@ -95,6 +100,117 @@ static char to_hex(int value)
 	return hex[value];
 }
 
+//! Returns puny-encoded host if it's not rfc-compatible
+static std::string encode_host(const std::string &host)
+{
+	bool host_ok = true;
+	// According to RFC-1738 hostname may contain only alpha-numeric characters and dash
+	// Dot is separator for different domain names levels
+	for (size_t i = 0; host_ok && i < host.size(); ++i) {
+		const char ch = host[i];
+		host_ok &= (ch >= 'a' && ch <= 'z')
+			|| (ch >= 'A' && ch <= 'Z')
+			|| (ch >= '0' && ch <= '9')
+			|| (ch == '-')
+			|| (ch == '.');
+	}
+
+	if (host_ok) {
+		return host;
+	}
+
+	std::string new_host;
+	std::vector<char> buffer;
+
+	size_t start = 0;
+	do {
+		size_t next = host.find('.', start);
+		if (next == std::string::npos)
+			next = host.size();
+
+		// Don't know what is a maximum length for punny-encoded string,
+		// but 4-times bigger than original one should fit the requirements
+		buffer.resize(host.size() * 4);
+
+		size_t data_size = 0;
+		size_t buffer_size = buffer.size();
+
+		uint32_t *data = stringprep_utf8_to_ucs4(host.data() + start, next - start, &data_size);
+		auto status = punycode_encode(data_size, data, NULL, &buffer_size, buffer.data());
+		free(data);
+
+		if (status == PUNYCODE_SUCCESS) {
+			buffer.resize(buffer_size);
+
+			new_host += "xn--";
+			new_host.append(buffer.begin(), buffer.end());
+			new_host += '.';
+		} else {
+			return host;
+		}
+
+		start = next + 1;
+	} while (start < host.size());
+
+	new_host.resize(new_host.size() - 1);
+	return new_host;
+}
+
+//! Returns puny-decoded host if it's puny-encoded
+static std::string decode_host(const std::string &host)
+{
+	if (host.empty()) {
+		return host;
+	}
+
+	std::string new_host;
+	std::vector<uint32_t> buffer;
+
+	size_t start = 0;
+	do {
+		size_t next = host.find('.', start);
+		if (next == std::string::npos)
+			next = host.size();
+
+		if (host.compare(start, 4, "xn--", 4) != 0) {
+			new_host.append(host.begin() + start, host.begin() + next);
+			new_host += '.';
+			start = next + 1;
+			continue;
+		}
+
+		// Don't know what is a maximum length for punny-decoded string,
+		// but 4-times bigger than original one should fit the requirements
+		// Especially if result is stored as UCS-4
+		buffer.resize(host.size() * 4);
+
+		size_t data_size = 0;
+		size_t buffer_size = buffer.size();
+
+		auto status = punycode_decode(next - start - 4, host.data() + start + 4, &buffer_size, buffer.data(), NULL);
+
+		if (status == PUNYCODE_SUCCESS) {
+			char *data = stringprep_ucs4_to_utf8(buffer.data(), buffer_size, NULL, &data_size);
+			try {
+				new_host.append(data, data + data_size);
+				new_host += '.';
+			} catch (...) {
+				free(data);
+				throw;
+			}
+			free(data);
+		} else {
+			return host;
+		}
+
+		start = next + 1;
+	} while (start < host.size());
+
+	if (new_host.size() > 1)
+		new_host.resize(new_host.size() - 1);
+	return new_host;
+}
+
 static std::string encode_url(const std::string &url)
 {
 	std::string tmp;
@@ -112,18 +228,28 @@ static std::string encode_url(const std::string &url)
 		tmp.push_back(ch);
 	}
 
-	size_t hostStart = url.find("//");
+	size_t hostStart = tmp.find("//");
 	size_t hostEnd = std::string::npos;
+	size_t firstToFix = 0;
+
 	if (hostStart != std::string::npos) {
 		// Has host part, find delimiter
 		hostStart += 2; // skip "//"
-		hostEnd = url.find('/', hostStart);
+		hostEnd = tmp.find('/', hostStart);
 		if (hostEnd == std::string::npos)
 			hostEnd = tmp.find('#', hostStart);
 		if (hostEnd == std::string::npos)
 			hostEnd = tmp.find('?');
 		if (hostEnd == std::string::npos)
 			hostEnd = tmp.size() - 1;
+
+		if (hostEnd == std::string::npos)
+			hostEnd = tmp.size();
+
+		std::string new_host = encode_host(tmp.substr(hostStart, hostEnd - hostStart));
+		tmp.replace(tmp.begin() + hostStart, tmp.begin() + hostEnd, new_host);
+
+		firstToFix = hostEnd;
 	}
 
 	// Reserved and unreserved characters are fine
@@ -134,11 +260,9 @@ static std::string encode_url(const std::string &url)
 	//                         / "*" / "+" / "," / ";" / "="
 	// Replace everything else with percent encoding
 	static const char doEncode[] = " \"<>[\\]^`{|}";
-	static const char doEncodeHost[] = " \"<>\\^`{|}";
-	for (size_t i = 0; i < tmp.size(); ++i) {
+	for (size_t i = firstToFix; i < tmp.size(); ++i) {
 		unsigned char ch = static_cast<unsigned char>(tmp[i]);
-		if (ch < 32 || ch > 127 ||
-				strchr(hostStart <= i && i <= hostEnd ? doEncodeHost : doEncode, ch)) {
+		if (ch < 32 || ch > 127 || strchr(doEncode, ch)) {
 			char buf[4];
 			buf[0] = '%';
 			buf[1] = to_hex(ch >> 4);
@@ -156,6 +280,49 @@ static std::string to_string(const UriTextRangeA &range)
 	if (!range.first || !range.afterLast)
 		return std::string();
 	return std::string(range.first, range.afterLast);
+}
+
+static std::string to_string_unescaped(const UriTextRangeA &range)
+{
+	if (!range.first || !range.afterLast)
+		return std::string();
+
+	std::vector<char> result(range.first, range.afterLast);
+	result.push_back('\0');
+	auto end = uriUnescapeInPlaceA(result.data());
+	result.resize(end - result.data());
+
+	return std::string(result.begin(), result.end());
+}
+
+static UriTextRangeA to_range(const std::string &str)
+{
+	UriTextRangeA range = {
+		str.empty() ? NULL : str.c_str(),
+		str.empty() ? NULL : (str.c_str() + str.size())
+	};
+	return range;
+}
+
+static UriTextRangeA to_range_escaped(const std::string &str, std::vector<std::vector<char>> &buffers)
+{
+	if (str.empty()) {
+		return {
+			NULL,
+			NULL
+		};
+	}
+
+	buffers.emplace_back();
+	auto &buffer = buffers.back();
+
+	buffer.resize(str.size() * 3 + 1);
+	auto end = uriEscapeExA(str.data(), str.data() + str.size(), buffer.data(), true, false);
+
+	return {
+		buffer.data(),
+		end
+	};
 }
 
 void url_private::ensure_data() const
@@ -209,16 +376,16 @@ void url_private::set_uri(const UriUriA &uri)
 		if (it != uri.pathHead)
 			path += "/";
 
-		auto str = to_string(it->text);
+		auto str = to_string_unescaped(it->text);
 
 		path += str;
 		path_components.push_back(str);
 	}
 
 	raw_query = to_string(uri.query);
-	host = to_string(uri.hostText);
+	host = decode_host(to_string(uri.hostText));
 	scheme = to_string(uri.scheme);
-	fragment = to_string(uri.fragment);
+	fragment = to_string_unescaped(uri.fragment);
 
 	state |= parsed;
 }
@@ -278,15 +445,6 @@ const std::string &url::original() const
 	return p->original;
 }
 
-static UriTextRangeA to_range(const std::string &str)
-{
-	UriTextRangeA range = {
-		str.empty() ? NULL : str.c_str(),
-		str.empty() ? NULL : (str.c_str() + str.size())
-	};
-	return range;
-}
-
 class uri_generator
 {
 public:
@@ -304,11 +462,13 @@ public:
 			m_query = url.raw_query;
 		}
 
+		m_host = encode_host(url.host);
+
 		m_uri.scheme = to_range(url.scheme);
-		m_uri.hostText = to_range(url.host);
+		m_uri.hostText = to_range(m_host);
 		m_uri.portText = to_range(m_port);
 		m_uri.query = to_range(m_query);
-		m_uri.fragment = to_range(url.fragment);
+		m_uri.fragment = to_range_escaped(url.fragment, m_buffers);
 
 		if (url.path.compare(0, 1, "/", 1) == 0) {
 			m_uri.absolutePath = true;
@@ -318,10 +478,7 @@ public:
 
 		for (auto it = url.path_components.begin(); it != url.path_components.end(); ++it) {
 			UriPathSegmentA segment = {
-				{
-					it->c_str(),
-					it->c_str() + it->size()
-				},
+				to_range_escaped(*it, m_buffers),
 				NULL,
 				NULL
 			};
@@ -346,9 +503,11 @@ public:
 
 private:
 	UriUriA m_uri;
+	std::string m_host;
 	std::string m_query;
 	std::string m_port;
 	std::vector<UriPathSegmentA> m_path_segments;
+	std::vector<std::vector<char>> m_buffers;
 };
 
 std::string url::to_string() const
@@ -376,6 +535,56 @@ std::string url::to_string() const
 	}
 
 	result.resize(result_size - 1);
+
+	return result;
+}
+
+std::string url::to_human_readable() const
+{
+	if (!is_valid()) {
+		return std::string();
+	}
+
+	if (p->state & url_private::has_human_readable) {
+		return p->human_readable;
+	}
+
+	std::string result;
+
+	if (!p->scheme.empty()) {
+		result += p->scheme;
+		result += ":";
+	}
+
+	if (!p->host.empty()) {
+		result += "//";
+		result += p->host;
+
+		if (!p->path.empty() && p->path[0] != '/')
+			result += "/";
+	}
+
+	if (!p->path.empty()) {
+		result += p->path;
+	}
+
+	const url_query &query = url::query();
+	if (query.count() > 0) {
+		result += "?";
+		for (size_t i = 0; i < query.count(); ++i) {
+			if (i > 0)
+				result += "&";
+			auto pair = query.item(i);
+			result += pair.first;
+			result += "=";
+			result += pair.second;
+		}
+	}
+
+	if (!p->fragment.empty()) {
+		result += "#";
+		result += p->fragment;
+	}
 
 	return result;
 }
@@ -491,6 +700,7 @@ url_query &url::query()
 	if (is_valid() && !(p->state & url_private::query_parsed)) {
 		p->query = std::move(url_query(p->raw_query));
 		p->state |= url_private::query_parsed;
+		p->state &= ~url_private::has_human_readable;
 	}
 
 	p->start_modifications();

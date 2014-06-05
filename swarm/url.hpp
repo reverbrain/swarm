@@ -92,6 +92,11 @@ public:
 	std::string to_string() const;
 
 	/*!
+	 * \brief Returns human readable url representation
+	 */
+	std::string to_human_readable() const;
+
+	/*!
 	 * \brief Returns the merge of \a relative url with current one.
 	 *
 	 * If \a relative is not relative url it's returned directly.
