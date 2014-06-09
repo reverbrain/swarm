@@ -1,3 +1,10 @@
+swarm (0.6.3.8) unstable; urgency=low
+
+  * thevoid: Added additional error messages
+  * * Write error log message in case of invalid urls and if handler for url is not found
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 09 Jun 2014 20:48:37 +0400
+
 swarm (0.6.3.7) unstable; urgency=low
 
   * swarm: boost: Cancel socket on pool_remove
