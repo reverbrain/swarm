@@ -464,21 +464,28 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			m_access_method = m_request.method();
 			m_access_url = m_request.url().original();
-			auto factory = m_server->factory(m_request);
 
-			if (auto length = m_request.headers().content_length())
-				m_content_length = *length;
-			else
-				m_content_length = 0;
-			m_keep_alive = m_request.is_keep_alive();
-
-			if (factory) {
-				++m_server->m_data->active_connections_counter;
-				m_handler = factory->create();
-				m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
+			if (!m_request.url().is_valid()) {
+				send_error(swarm::http_response::bad_request);
+				m_logger.log(swarm::SWARM_LOG_ERROR, "invalid url: %s", m_access_url.c_str());
 			} else {
-				send_error(swarm::http_response::not_found);
+				auto factory = m_server->factory(m_request);
+
+				if (auto length = m_request.headers().content_length())
+					m_content_length = *length;
+				else
+					m_content_length = 0;
+				m_keep_alive = m_request.is_keep_alive();
+
+				if (factory) {
+					++m_server->m_data->active_connections_counter;
+					m_handler = factory->create();
+					m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
+					SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
+				} else {
+					send_error(swarm::http_response::not_found);
+					m_logger.log(swarm::SWARM_LOG_ERROR, "unknown handler for method: %s, url: %s", m_access_method.c_str(), m_access_url.c_str());
+				}
 			}
 
 			m_state &= ~read_headers;
