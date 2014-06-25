@@ -20,6 +20,11 @@
 #include <memory>
 #include <cstdarg>
 
+
+namespace blackhole {
+struct log_config_t;
+} // namespace blackhole
+
 namespace ioremap {
 namespace swarm {
 
@@ -66,6 +71,14 @@ public:
 	 * Logger will write all entries to \a file.
 	 */
 	logger(const char *file, int level);
+
+	/*!
+	 * \brief Constructs Blackhole logger with \a level.
+	 *
+	 * Logger will write all entries to Blackhole as specified in its \a config.
+	 */
+	logger(const blackhole::log_config_t &config, int level);
+
 	/*!
 	 * Destroyes object.
 	 */

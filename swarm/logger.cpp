@@ -41,6 +41,10 @@ static long get_thread_id()
 }
 #endif
 
+#include <blackhole/log.hpp>
+#include <blackhole/logger.hpp>
+#include <blackhole/repository.hpp>
+
 namespace ioremap {
 namespace swarm {
 
@@ -131,6 +135,48 @@ private:
 	FILE *m_file;
 };
 
+class blackhole_logger_interface : public logger_interface {
+	blackhole::verbose_logger_t<log_level> m_log;
+public:
+	blackhole_logger_interface(const blackhole::log_config_t &config) :
+		m_log(init_from_config(config))
+	{
+	}
+
+	void log(int level, const char *msg) {
+		BH_LOG(m_log, static_cast<log_level>(level), msg);
+	}
+
+	void reopen() {
+		// Do nothing ATM, because logger can rotate itself.
+	}
+
+private:
+	static blackhole::verbose_logger_t<log_level> init_from_config(const blackhole::log_config_t &config) {
+		blackhole::log_config_t copy = config;
+
+		blackhole::mapping::value_t mapper;
+		mapper.add<blackhole::keyword::tag::severity_t<log_level>>(&blackhole_logger_interface::map_severity);
+		mapper.add<blackhole::keyword::tag::timestamp_t>("%Y-%m-%d %H:%M:%S.%f");
+		for (auto it = copy.frontends.begin(); it != copy.frontends.end(); ++it) {
+			it->formatter.mapper = mapper;
+		}
+
+		auto& repository = blackhole::repository_t::instance();
+		repository.add_config(copy);
+		return repository.create<log_level>(copy.name);
+	}
+
+	static void map_severity(blackhole::aux::attachable_ostringstream& stream, const log_level& lvl) {
+		auto value = static_cast<blackhole::aux::underlying_type<log_level>::type>(lvl);
+		if (value < log_level_names_size) {
+			stream << log_level_names[value];
+		} else {
+			stream << lvl;
+		}
+	}
+};
+
 class logger_data
 {
 public:
@@ -152,6 +198,12 @@ logger::logger(logger_interface *impl, int level) : m_data(std::make_shared<logg
 logger::logger(const char *file, int level) : m_data(std::make_shared<logger_data>(level))
 {
 	m_data->impl.reset(new file_logger_interface(file));
+}
+
+logger::logger(const blackhole::log_config_t &config, int level)
+	: m_data(std::make_shared<logger_data>(level))
+{
+	m_data->impl.reset(new blackhole_logger_interface(config));
 }
 
 logger::~logger()

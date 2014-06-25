@@ -20,7 +20,7 @@
 #  define SWARM_CSTDATOMIC
 #  define SWARM_GCC_4_4
 /*
- * GCC-4.4 don''t have noexcept support yet
+ * GCC-4.4 don't have noexcept support yet
  */
 #  define SWARM_NOEXCEPT
 #else

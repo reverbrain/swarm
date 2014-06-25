@@ -32,6 +32,8 @@
 
 #include <boost/version.hpp>
 
+#include <blackhole/blackhole.hpp>
+
 struct sig_handler
 {
 	ev::loop_ref &loop;
@@ -61,16 +63,19 @@ void set_thread_name(const char *)
 struct request_handler_functor
 {
 	ev::loop_ref &loop;
+	blackhole::verbose_logger_t<ioremap::swarm::log_level> &log;
 
 	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) const {
-		std::cout << "Request finished: " << reply.request().url().to_string() << " -> " << reply.url().to_string() << std::endl;
-		std::cout << "HTTP code: " << reply.code() << std::endl;
-		std::cout << "Error: " << error.message() << std::endl;
-
 		const auto &headers = reply.headers().all();
+		BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "request finished")(blackhole::attribute::list({
+			{ "request url", reply.request().url().to_string() },
+			{ "reply url", reply.url().to_string() },
+			{ "status", reply.code() },
+			{ "error", error.message() }
+		}));
 
 		for (auto it = headers.begin(); it != headers.end(); ++it) {
-			std::cout << "header: \"" << it->first << "\": \"" << it->second << "\"" << std::endl;
+			BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "header: %s : %s ", it->first, it->second);
 		}
 		(void) data;
 
@@ -126,9 +131,21 @@ int main(int argc, char **argv)
 		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
 	}
 
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_DEBUG);
+	// Blackhole initialization
+	blackhole::formatter_config_t formatter("string");
+	formatter["pattern"] = "[%(timestamp)s] [%(severity)s]: %(message)s [%(...L)s]";
 
+	blackhole::sink_config_t sink("stream");
+	sink["output"] = "stdout";
+
+	blackhole::frontend_config_t frontend = { formatter, sink };
+	blackhole::log_config_t config{ "default", { frontend } };
+
+	auto& repository = blackhole::repository_t::instance();
+	ioremap::swarm::logger logger(config, ioremap::swarm::SWARM_LOG_DEBUG);
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
+	blackhole::verbose_logger_t<ioremap::swarm::log_level> log =
+		repository.create<ioremap::swarm::log_level>(config.name);
 
 	ioremap::swarm::url_fetcher::request request;
 	request.set_url(argv[1]);
@@ -143,7 +160,7 @@ int main(int argc, char **argv)
 
 	auto begin_time = clock::now();
 
-	request_handler_functor request_handler = { loop };
+	request_handler_functor request_handler = { loop, log };
 
 	manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
 
@@ -157,7 +174,7 @@ int main(int argc, char **argv)
 	auto end_time = clock::now();
 
 	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time);
-	std::cout << "Finished in: " << ms.count() << " ms" << std::endl;
+	BH_LOG(log, ioremap::swarm::SWARM_LOG_INFO, "finished in: %d ms", ms.count());
 
 	return 0;
 }

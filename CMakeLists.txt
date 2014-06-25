@@ -16,7 +16,7 @@ locate_library(CURL "curl.h" "curl" "curl" "libcurl")
 locate_library(URIPARSER "Uri.h" "uriparser" "uriparser")
 locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
 
-find_package(Boost COMPONENTS system thread program_options REQUIRED)
+find_package(Boost COMPONENTS system thread filesystem program_options REQUIRED)
 
 option(BUILD_URLFETCHER "Build url_fetcher" ON)
 option(PERF "Build performance checking tool" ON)
@@ -26,6 +26,8 @@ include_directories(
     ${URIPARSER_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    foreign/blackhole/src
+    foreign/blackhole/foreign/rapidjson/include
 )
 
 link_directories(
