@@ -361,10 +361,10 @@ public:
 				long err = 0;
 				curl_easy_getinfo(easy, CURLINFO_OS_ERRNO, &err);
 
-				if (err) {
-					info->stream->on_close(make_posix_error(err));
-				} else if (msg->data.result == CURLE_OK) {
+				if (msg->data.result == CURLE_OK) {
 					info->stream->on_close(boost::system::error_code());
+				} else if (err) {
+					info->stream->on_close(make_posix_error(err));
 				} else {
 					info->stream->on_close(make_easy_error(msg->data.result));
 				}
