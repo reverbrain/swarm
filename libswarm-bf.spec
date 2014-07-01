@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.8
+Version:	0.6.3.9
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Jul 01 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.9
+- swarm: Don't check OS_ERRNO if request successed
+
 * Mon Jun 09 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.8
 - thevoid: Added additional error messages
 - * Write error log message in case of invalid urls and if handler for url is not found

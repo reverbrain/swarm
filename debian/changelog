@@ -1,3 +1,9 @@
+swarm (0.6.3.9) unstable; urgency=low
+
+  * swarm: Don't check OS_ERRNO if request successed
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 01 Jul 2014 22:09:57 +0400
+
 swarm (0.6.3.8) unstable; urgency=low
 
   * thevoid: Added additional error messages
