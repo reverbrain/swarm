@@ -60,7 +60,8 @@ void set_thread_name(const char *)
 
 struct request_handler_functor
 {
-	ev::loop_ref &loop;
+	ev::loop_ref *loop;
+	boost::asio::io_service *service;
 
 	void operator() (const ioremap::swarm::url_fetcher::response &reply, const std::string &data, const boost::system::error_code &error) const {
 		std::cout << "Request finished: " << reply.request().url().to_string() << " -> " << reply.url().to_string() << std::endl;
@@ -74,7 +75,10 @@ struct request_handler_functor
 		}
 		(void) data;
 
-		loop.unloop();
+		if (loop)
+			loop->unloop();
+		else
+			service->stop();
 	}
 };
 
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
 
 	auto begin_time = clock::now();
 
-	request_handler_functor request_handler = { loop };
+	request_handler_functor request_handler = { use_boost ? NULL : &loop, use_boost ? &service : NULL };
 
 	manager.get(ioremap::swarm::simple_stream::create(request_handler), std::move(request));
 
