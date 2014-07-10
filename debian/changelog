@@ -1,3 +1,12 @@
+swarm (0.6.4.0) unstable; urgency=low
+
+  * thevoid: Added more server::options
+  * * Added path's regular expression match.
+  * * Added query match.
+  * * Added hostname match.
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 10 Jul 2014 21:27:27 +0400
+
 swarm (0.6.3.9) unstable; urgency=low
 
   * swarm: Don't check OS_ERRNO if request successed

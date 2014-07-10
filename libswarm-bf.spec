@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.3.9
+Version:	0.6.4.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,12 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Jul 10 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.4.0
+- thevoid: Added more server::options
+- * Added path's regular expression match.
+- * Added query match.
+- * Added hostname match.
+
 * Tue Jul 01 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.3.9
 - swarm: Don't check OS_ERRNO if request successed
 
