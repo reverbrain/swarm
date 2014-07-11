@@ -366,9 +366,14 @@ void url_private::set_uri(const UriUriA &uri)
 		return;
 	}
 
+	raw_query = to_string(uri.query);
+	host = decode_host(to_string(uri.hostText));
+	scheme = to_string(uri.scheme);
+	fragment = to_string_unescaped(uri.fragment);
+
 	path = std::string();
 
-	if (uri.absolutePath) {
+	if (uri.absolutePath || !scheme.empty()) {
 		path += "/";
 	}
 
@@ -381,11 +386,6 @@ void url_private::set_uri(const UriUriA &uri)
 		path += str;
 		path_components.push_back(str);
 	}
-
-	raw_query = to_string(uri.query);
-	host = decode_host(to_string(uri.hostText));
-	scheme = to_string(uri.scheme);
-	fragment = to_string_unescaped(uri.fragment);
 
 	state |= parsed;
 }

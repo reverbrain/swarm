@@ -8,6 +8,8 @@ int main()
 	{
 		swarm::url url("http://localhost:8080/some/path?a=b&c=d#123");
 		std::cout << (url.is_valid() ? "valid" : "not valid") << " " << url.to_string() << std::endl;
+		std::cout << "path: " << url.path() << std::endl;
+		std::cout << "relative: " << url.is_relative() << std::endl;
 	}
 	{
 		swarm::url url("http://localhost/some/path?a=b&c=d#123");

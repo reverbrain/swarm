@@ -846,16 +846,18 @@ bool base_server::options::check(const swarm::http_request &request) const
 			return false;
 		}
 		const std::string &host = *host_ptr;
+		// Remove port from 'Host: domain.com:8080'
+		const size_t host_size = std::min(host.size(), host.find_first_of(':'));
 
 		if (m_data->flags & server_options_private::check_host_exact) {
-			if (host != m_data->host_string) {
+			if (host.compare(0, host_size, m_data->host_string) != 0) {
 				return false;
 			}
 		} else if (m_data->flags & server_options_private::check_host_suffix) {
-			if (host.size() < m_data->host_string.size()) {
+			if (host_size < m_data->host_string.size()) {
 				return false;
 			}
-			if (host.compare(host.size() - m_data->host_string.size(), m_data->host_string.size(), m_data->host_string) != 0) {
+			if (host.compare(host_size - m_data->host_string.size(), m_data->host_string.size(), m_data->host_string) != 0) {
 				return false;
 			}
 		}
