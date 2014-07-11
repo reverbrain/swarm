@@ -16,7 +16,7 @@ BuildRequires:	gcc44 gcc44-c++
 %define boost_ver %{nil}
 %endif
 BuildRequires:  libxml2-devel libev-devel
-BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread
+BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex
 BuildRequires:  curl-devel
 BuildRequires:	cmake uriparser-devel libidn-devel
 
@@ -61,13 +61,7 @@ libthevoid devel
 %setup -q
 
 %build
-%if %{defined rhel} && 0%{?rhel} < 6
-export CC=gcc44
-export CXX=g++44
-CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake} -DBoost_LIB_DIR=/usr/lib64/boost141 -DBoost_INCLUDE_DIR=/usr/include/boost141 -DBoost_LIBRARYDIR=/usr/lib64/boost141 -DBOOST_LIBRARYDIR=/usr/lib64/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 -DBUILD_URLFETCHER=off -DPERF=off .
-%else
 %{cmake} -DPERF=off .
-%endif
 
 make %{?_smp_mflags}
 
