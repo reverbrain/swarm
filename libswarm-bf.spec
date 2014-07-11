@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.4.0
+Version:	0.6.5.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -105,6 +105,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Jul 11 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.5.0
+- swarm: Fixed behavior of swarm::url::path
+- * Return path "/my/cool/path" for "http://qutim.org/my/cool/path" instead of "my/cool/path" (slash is missed)
+
 * Thu Jul 10 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.4.0
 - thevoid: Added more server::options
 - * Added path's regular expression match.

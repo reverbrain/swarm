@@ -1,3 +1,10 @@
+swarm (0.6.5.0) unstable; urgency=low
+
+  * swarm: Fixed behavior of swarm::url::path
+  * * Return path "/my/cool/path" for "http://qutim.org/my/cool/path" instead of "my/cool/path" (slash is missed)
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 11 Jul 2014 19:17:11 +0400
+
 swarm (0.6.4.0) unstable; urgency=low
 
   * thevoid: Added more server::options
