@@ -28,7 +28,7 @@ class monitor_connection : public std::enable_shared_from_this<monitor_connectio
 {
 public:
 	typedef boost::asio::ip::tcp::socket socket_type;
-	typedef typename socket_type::endpoint_type endpoint_type;
+	typedef socket_type::endpoint_type endpoint_type;
 
 	monitor_connection(boost::asio::io_service &io_service, size_t buffer_size);
 	~monitor_connection();
