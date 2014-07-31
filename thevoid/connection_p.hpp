@@ -82,6 +82,7 @@ class connection : public std::enable_shared_from_this<connection<T>>, public re
 {
 public:
 	typedef T socket_type;
+	typedef typename socket_type::endpoint_type endpoint_type;
 
 	enum state {
 		processing_request = 0x00,
@@ -96,10 +97,11 @@ public:
 	~connection();
 
 	//! Get the socket associated with the connection.
-	T &socket();
+	socket_type &socket();
+	endpoint_type &endpoint();
 
 	//! Start the first asynchronous operation for the connection.
-	void start(const std::shared_ptr<base_server> &server);
+	void start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint);
 
 	virtual void send_headers(swarm::http_response &&rep,
 		const boost::asio::const_buffer &content,
@@ -132,7 +134,8 @@ private:
 	swarm::logger m_logger;
 
 	//! Socket for the connection.
-	T m_socket;
+	socket_type m_socket;
+	endpoint_type m_endpoint;
 
 	//! Buffer for outgoing data
 	std::deque<buffer_info> m_outgoing;

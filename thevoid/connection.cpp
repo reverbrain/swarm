@@ -102,16 +102,22 @@ connection<T>::~connection()
 }
 
 template <typename T>
-T &connection<T>::socket()
+typename connection<T>::socket_type &connection<T>::socket()
 {
 	return m_socket;
 }
 
 template <typename T>
-void connection<T>::start(const std::shared_ptr<base_server> &server)
+typename connection<T>::endpoint_type &connection<T>::endpoint()
 {
-	m_access_local = boost::lexical_cast<std::string>(m_socket.local_endpoint());
-	m_access_remote = boost::lexical_cast<std::string>(m_socket.remote_endpoint());
+	return m_endpoint;
+}
+
+template <typename T>
+void connection<T>::start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint)
+{
+	m_access_local = local_endpoint;
+	m_access_remote = boost::lexical_cast<std::string>(m_endpoint);
 	m_server = server;
 	m_logger = server->logger();
 	++m_server->m_data->connections_counter;

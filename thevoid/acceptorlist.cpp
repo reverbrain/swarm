@@ -72,12 +72,20 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 		acceptor->bind(endpoint);
 		acceptor->listen(data.backlog_size);
 
+		local_endpoints.emplace_back(boost::lexical_cast<std::string>(endpoint));
 		protocols.push_back(endpoint.protocol());
 
 		complete_socket_creation(endpoint);
 	} catch (boost::system::system_error &error) {
 		std::cerr << "Can not bind socket \"" << address << "\": " << error.what() << std::endl;
 		std::cerr.flush();
+
+		acceptors.pop_back();
+		if (local_endpoints.size() > acceptors.size())
+			local_endpoints.pop_back();
+		if (protocols.size() > acceptors.size())
+			protocols.pop_back();
+
 		throw;
 	}
 
@@ -91,7 +99,7 @@ void acceptors_list<Connection>::start_acceptor(size_t index)
 
 	auto conn = std::make_shared<connection_type>(get_connection_service(), data.buffer_size);
 
-	acc.async_accept(conn->socket(), boost::bind(
+	acc.async_accept(conn->socket(), conn->endpoint(), boost::bind(
 				 &acceptors_list::handle_accept, this, index, conn, _1));
 }
 
@@ -100,7 +108,7 @@ void acceptors_list<Connection>::handle_accept(size_t index, connection_ptr_type
 {
 	if (!err) {
 		if (auto server = data.server.lock()) {
-			conn->start(server);
+			conn->start(server, local_endpoints.at(index));
 		} else {
 			throw std::logic_error("server::m_data->server is null");
 		}

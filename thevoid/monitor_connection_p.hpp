@@ -28,13 +28,15 @@ class monitor_connection : public std::enable_shared_from_this<monitor_connectio
 {
 public:
 	typedef boost::asio::ip::tcp::socket socket_type;
+	typedef typename socket_type::endpoint_type endpoint_type;
 
 	monitor_connection(boost::asio::io_service &io_service, size_t buffer_size);
 	~monitor_connection();
 
 	socket_type &socket();
+	endpoint_type &endpoint();
 
-	void start(const std::shared_ptr<base_server> &server);
+	void start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint);
 
 protected:
 	std::string get_information();
@@ -48,6 +50,7 @@ protected:
 private:
 	std::shared_ptr<base_server> m_server;
 	socket_type m_socket;
+	endpoint_type m_endpoint;
 	boost::array<char, 64> m_buffer;
 	std::string m_storage;
 };

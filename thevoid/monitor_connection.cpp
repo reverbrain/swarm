@@ -40,8 +40,14 @@ monitor_connection::socket_type &monitor_connection::socket()
 	return m_socket;
 }
 
-void monitor_connection::start(const std::shared_ptr<base_server> &server)
+monitor_connection::endpoint_type &monitor_connection::endpoint()
 {
+	return m_endpoint;
+}
+
+void monitor_connection::start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint)
+{
+	(void) local_endpoint;
 	m_server = server;
 	async_read();
 }
