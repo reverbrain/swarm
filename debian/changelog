@@ -1,3 +1,9 @@
+swarm (0.6.5.1) unstable; urgency=low
+
+  * thevoid: Get local endpoint at async_accept
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 31 Jul 2014 16:47:28 +0400
+
 swarm (0.6.5.0) unstable; urgency=low
 
   * swarm: Fixed behavior of swarm::url::path
