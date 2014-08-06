@@ -125,12 +125,13 @@ int main(int argc, char *argv[])
                 return -1;
         }
 
+	auto logger_base = ioremap::swarm::utils::logger::create("/dev/stdout", SWARM_LOG_DEBUG);
+	ioremap::swarm::logger logger(logger_base, blackhole::log::attributes_t());
+
 	boost::asio::io_service service;
 	std::unique_ptr<boost::asio::io_service::work> work;
 	work.reset(new boost::asio::io_service::work(service));
-	swarm::boost_event_loop loop(service);
-
-	swarm::logger logger("/dev/stdout", swarm::SWARM_LOG_ERROR);
+	swarm::boost_event_loop loop(service, logger);
 
 	swarm::url_fetcher manager(loop, logger);
 	manager.set_total_limit(connections_limit);

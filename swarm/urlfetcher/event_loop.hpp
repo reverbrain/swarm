@@ -70,7 +70,7 @@ public:
 		poll_remove     = 0x04
 	};
 
-	event_loop();
+	event_loop(const swarm::logger &logger);
 	virtual ~event_loop();
 
 	/*!
@@ -85,13 +85,9 @@ public:
 	event_listener *listener() const;
 
 	/*!
-	 * \brief Set \a logger as event loop's logger.
-	 */
-	void set_logger(const swarm::logger &logger);
-	/*!
 	 * \brief Returns previously set logger.
 	 */
-	swarm::logger logger() const;
+	const swarm::logger &logger() const;
 
 	/*!
 	 * \brief Open socket for \a domain, \a type and \a protocol.

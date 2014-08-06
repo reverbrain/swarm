@@ -58,7 +58,9 @@ class network_connection_info
 public:
 	typedef std::unique_ptr<network_connection_info> ptr;
 
-	network_connection_info() : easy(NULL), redirect_count(0), on_headers_called(false)
+	network_connection_info(const swarm::logger &log, const std::string &url) :
+		easy(NULL), logger(log, blackhole::log::attributes_t({ keyword::url() = url })),
+		redirect_count(0), on_headers_called(false)
 	{
 		//        error[0] = '\0';
 	}
@@ -98,12 +100,11 @@ public:
 class network_manager_private : public event_listener
 {
 public:
-	network_manager_private(event_loop &loop) :
-		loop(loop), still_running(0), prev_running(0),
+	network_manager_private(event_loop &loop, const swarm::logger &logger) :
+		loop(loop), logger(logger, blackhole::log::attributes_t()), still_running(0), prev_running(0),
 		active_connections(0), active_connections_limit(std::numeric_limits<long>::max())
 	{
 		loop.set_listener(this);
-		loop.set_logger(logger);
 	}
 
 	void set_socket_data(int socket, void *data)
@@ -113,7 +114,7 @@ public:
 
 	void on_socket_event(int fd, int revent)
 	{
-		logger.log(SWARM_LOG_DEBUG, "on_socket_event, fd: %d, revent: %d", fd, revent);
+		BH_LOG(logger, SWARM_LOG_DEBUG, "on_socket_event, fd: %d, revent: %d", fd, revent);
 
 		int action = 0;
 		if (revent & socket_read)
@@ -125,7 +126,7 @@ public:
 		do {
 			rc = curl_multi_socket_action(multi, fd, action, &still_running);
 		} while (rc == CURLM_CALL_MULTI_PERFORM);
-		logger.log(SWARM_LOG_DEBUG, "on_socket_event, socket: %d, rc: %d", fd, int(rc));
+		BH_LOG(logger, SWARM_LOG_DEBUG, "on_socket_event, socket: %d, rc: %d", fd, int(rc));
 
 		check_run_count();
 	}
@@ -136,7 +137,7 @@ public:
 		do {
 			rc = curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
 		} while (rc == CURLM_CALL_MULTI_PERFORM);
-		logger.log(SWARM_LOG_DEBUG, "on_timer, rc: %d", int(rc));
+		BH_LOG(logger, SWARM_LOG_DEBUG, "on_timer, rc: %d", int(rc));
 
 		check_run_count();
 	}
@@ -233,14 +234,13 @@ public:
 	{
 //		auto tmp = clock::now();
 
-		network_connection_info::ptr info(new network_connection_info);
+		network_connection_info::ptr info(new network_connection_info(logger, info->reply.request().url().to_string()));
 		info->easy = curl_easy_init();
 		info->reply.set_request(std::move(request->request));
 		info->reply.set_url(info->reply.request().url());
 		info->reply.set_code(200);
 		info->stream = request->stream;
 		info->body = std::move(request->body);
-		info->logger = logger;
 		if (!info->easy) {
 			info->stream->on_close(make_multi_error(multi_error_category::failed_to_create_easy_handle));
 			return;
@@ -419,7 +419,7 @@ public:
 				option = event_loop::poll_all;
 				break;
 			default:
-				manager->p->logger.log(SWARM_LOG_INFO, "socket_callback, unknown what: %d", what);
+				BH_LOG(manager->p->logger, SWARM_LOG_INFO, "socket_callback, unknown what: %d", what);
 				return 0;
 		}
 
@@ -436,7 +436,7 @@ public:
 	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
 	{
 		info->ensure_headers_sent();
-		info->logger.log(SWARM_LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
+		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
 		const size_t real_size = size * nmemb;
 		info->stream->on_data(boost::asio::buffer(data, real_size));
 		return real_size;
@@ -518,21 +518,20 @@ public:
 	}
 
 	event_loop &loop;
+	swarm::logger logger;
 	int still_running;
 	int prev_running;
 	std::atomic_long active_connections;
 	long active_connections_limit;
 	std::queue<request_info::ptr, std::list<request_info::ptr>> requests;
-	swarm::logger logger;
 	CURLM *multi;
 };
 
 url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
-	: p(new network_manager_private(loop))
+	: p(new network_manager_private(loop, logger))
 {
-	p->logger = logger;
-	p->loop.set_logger(logger);
-	p->logger.log(SWARM_LOG_INFO, "Creating network_manager: %p", this);
+	BH_LOG(p->logger, SWARM_LOG_INFO, "Creating network_manager: %p", this);
+
 	p->multi = curl_multi_init();
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
@@ -543,7 +542,7 @@ url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 
 url_fetcher::~url_fetcher()
 {
-	p->logger.log(SWARM_LOG_INFO, "Destroying network_manager: %p", this);
+	BH_LOG(p->logger, SWARM_LOG_INFO, "Destroying network_manager: %p", this);
 	delete p;
 }
 
@@ -552,13 +551,7 @@ void url_fetcher::set_total_limit(long active_connections)
 	p->active_connections_limit = active_connections;
 }
 
-void url_fetcher::set_logger(const swarm::logger &log)
-{
-	p->loop.set_logger(log);
-	p->logger = log;
-}
-
-swarm::logger url_fetcher::logger() const
+const logger &url_fetcher::logger() const
 {
 	return p->logger;
 }

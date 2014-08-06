@@ -96,7 +96,7 @@ typedef std::shared_ptr<base_stream_factory> factory_ptr;
 class server_data
 {
 public:
-	server_data();
+	server_data(base_server *server);
 
 	~server_data();
 
@@ -106,12 +106,13 @@ public:
 	boost::asio::io_service &get_worker_service();
 
 	//! Logger instance
+	swarm::logger_base base_logger;
 	swarm::logger logger;
 	//! Statistics
 	std::atomic_int connections_counter;
 	std::atomic_int active_connections_counter;
-	//! Weak pointer to server itself
-	std::weak_ptr<base_server> server;
+	//! Raw pointer to server itself
+	base_server *server;
 	//! The io_service used to handle new sockets.
 	boost::asio::io_service io_service;
 	//! The io_service used to process monitoring connection.

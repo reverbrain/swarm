@@ -17,90 +17,56 @@
 #ifndef IOREMAP_SWARM_LOGGER_H
 #define IOREMAP_SWARM_LOGGER_H
 
-#include <memory>
-#include <cstdarg>
+#ifndef BOOST_BIND_NO_PLACEHOLDERS
+# define BOOST_BIND_NO_PLACEHOLDERS
+# define BOOST_BIND_NO_PLACEHOLDERS_SET_BY_SWARM
+#endif
+
+#ifndef BLACKHOLE_HEADER_ONLY
+# define BLACKHOLE_HEADER_ONLY
+#endif
+
+#include <blackhole/log.hpp>
+#include <blackhole/logger/wrapper.hpp>
+#include <blackhole/formatter/map/value.hpp>
+#include <blackhole/defaults/severity.hpp>
+
+#ifdef BOOST_BIND_NO_PLACEHOLDERS_SET_BY_SWARM
+# undef BOOST_BIND_NO_PLACEHOLDERS_SET_BY_SWARM
+# undef BOOST_BIND_NO_PLACEHOLDERS
+#endif
+
+#define SWARM_LOG_ERROR blackhole::defaults::severity::error
+#define SWARM_LOG_WARNING blackhole::defaults::severity::warning
+#define SWARM_LOG_INFO blackhole::defaults::severity::info
+#define SWARM_LOG_NOTICE blackhole::defaults::severity::notice
+#define SWARM_LOG_DEBUG blackhole::defaults::severity::debug
 
 namespace ioremap {
 namespace swarm {
 
-class logger_interface
-{
-public:
-	virtual ~logger_interface() {}
-	virtual void log(int level, const char *msg) = 0;
-	virtual void reopen() = 0;
-};
+typedef blackhole::defaults::severity log_level;
+typedef blackhole::verbose_logger_t<log_level> logger_base;
+typedef blackhole::wrapper_t<logger_base> logger;
 
-enum log_level {
-	SWARM_LOG_DATA = 0,
-	SWARM_LOG_ERROR = 1,
-	SWARM_LOG_INFO = 2,
-	SWARM_LOG_NOTICE = 3,
-	SWARM_LOG_DEBUG = 4
-};
+namespace utils {
+namespace logger {
 
-class logger_data;
+blackhole::log::attributes_t default_attributes();
+void init_attributes(logger_base &log);
+void add_file_frontend(logger_base &log, const std::string &file, log_level level);
+std::string format();
+std::string generate_level(log_level level);
+log_level parse_level(const std::string &name);
+blackhole::mapping::value_t mapping();
 
-/*!
- * \brief The logger class is convient class for logging facility.
- *
- * Logging level may be changed at any time by \a set_level.
- * In case of file logger file may be reopened by calling \a reopen method.
- *
- * It is explicitly shared object.
- */
-class logger
-{
-public:
-	/*!
-	 * \brief Constructs a null logger.
-	 */
-	logger();
-	/*!
-	 * \brief Constructs logger from implementation \a impl with \a level.
-	 */
-	logger(logger_interface *impl, int level);
-	/*!
-	 * \brief Constructs file logger with \a level.
-	 *
-	 * Logger will write all entries to \a file.
-	 */
-	logger(const char *file, int level);
-	/*!
-	 * Destroyes object.
-	 */
-	~logger();
+logger_base create(const std::string &file, log_level level);
 
-	/*!
-	 * \brief Returnes level of the logger.
-	 */
-	int level() const;
-	/*!
-	 * \brief Set level of the logger to the \a level.
-	 */
-	void set_level(int level);
+} } // namespace utils::logger
 
-	/*!
-	 * \brief Reopens logger.
-	 *
-	 * If logger is not file one this method may have no effect.
-	 */
-	void reopen();
-
-	/*!
-	 * \brief Logs message \a format with \a level.
-	 *
-	 * \attention This method uses printf-like notation.
-	 */
-	void log(int level, const char *format, ...) const __attribute__ ((format(printf, 3, 4)));
-	/*!
-	 * \overload
-	 */
-	void vlog(int level, const char *format, va_list args) const;
-
-private:
-	std::shared_ptr<logger_data> m_data;
-};
+DECLARE_EVENT_KEYWORD(request_id, uint64_t)
+DECLARE_EVENT_KEYWORD(source, std::string)
+DECLARE_EVENT_KEYWORD(url, std::string)
 
 } // namespace swarm
 } // namespace ioremap

@@ -60,7 +60,7 @@ public:
 	/*!
 	 * \brief Constructs Url Fetcher with \a loop and \a logger.
 	 */
-	url_fetcher(event_loop &loop, const ioremap::swarm::logger &logger);
+	url_fetcher(event_loop &loop, const swarm::logger &logger);
 	~url_fetcher();
 
 	class request : public http_request
@@ -138,11 +138,7 @@ public:
 	 */
 	void set_total_limit(long active_connections);
 
-	/*!
-	 * \brief Set \a log as logger for fetcher.
-	 */
-	void set_logger(const swarm::logger &log);
-	swarm::logger logger() const;
+	const swarm::logger &logger() const;
 
 	/*!
 	 * \brief Make GET HTTP request to server by \a request. Result will be send to \a stream.

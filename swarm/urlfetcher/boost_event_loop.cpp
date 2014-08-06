@@ -17,13 +17,14 @@
 #include "boost_event_loop.hpp"
 
 #include <boost/bind.hpp>
+#include <boost/bind/placeholders.hpp>
 #include <memory>
 
 namespace ioremap {
 namespace swarm {
 
-boost_event_loop::boost_event_loop(boost::asio::io_service &service) :
-	m_service(service), m_timer(service)
+boost_event_loop::boost_event_loop(boost::asio::io_service &service, const swarm::logger &logger) :
+	event_loop(logger), m_service(service), m_timer(service)
 {
 }
 
@@ -65,14 +66,14 @@ int boost_event_loop::open_socket(int domain, int type, int protocol)
 	int fd = event_loop::open_socket(domain, type, protocol);
 	if (fd < 0) {
 		int err = -errno;
-		logger().log(SWARM_LOG_ERROR, "open_socket: failed, domain: %d, type: %d, protocol: %d, err: %d: %s",
+		BH_LOG(logger(), SWARM_LOG_ERROR, "open_socket: failed, domain: %d, type: %d, protocol: %d, err: %d: %s",
 			domain, type, protocol, err, strerror(-err));
 		return -1;
 	}
 
 	auto socket = boost_socket_info::create(m_service, fd);
 
-	logger().log(SWARM_LOG_DEBUG, "open_socket: %p, fd: %d, domain: %d, type: %d, protocol: %d",
+	BH_LOG(logger(), SWARM_LOG_DEBUG, "open_socket: %p, fd: %d, domain: %d, type: %d, protocol: %d",
 		socket.get(), fd, domain, type, protocol);
 
 	m_sockets.insert(std::make_pair(fd, socket));
@@ -81,17 +82,15 @@ int boost_event_loop::open_socket(int domain, int type, int protocol)
 
 int boost_event_loop::close_socket(int fd)
 {
-	if (logger().level() >= SWARM_LOG_DEBUG) {
-		auto it = m_sockets.find(fd);
-		if (it != m_sockets.end()) {
-			logger().log(SWARM_LOG_DEBUG, "close_socket: %p, fd: %d", it->second.get(), fd);
-		}
-	}
+	auto it = m_sockets.find(fd);
 
-	if (m_sockets.erase(fd) == 0) {
+	BH_LOG(logger(), SWARM_LOG_DEBUG, "close_socket: %p, fd: %d", it == m_sockets.end() ? it->second.get() : NULL, fd);
+
+	if (it == m_sockets.end()) {
 		return event_loop::close_socket(fd);
 	}
 
+	m_sockets.erase(it);
 	return 0;
 }
 
@@ -112,7 +111,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 		if (what == poll_remove) {
 			if (data) {
 				listener()->set_socket_data(fd, NULL);
-				logger().log(SWARM_LOG_DEBUG, "remove socket: %p, fd: %d",
+				BH_LOG(logger(), SWARM_LOG_DEBUG, "remove socket: %p, fd: %d",
 					(*reinterpret_cast<boost_socket_info::ptr *>(data)).get(), fd);
 				delete reinterpret_cast<boost_socket_info::ptr *>(data);
 			} else {
@@ -123,7 +122,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 		if (!data) {
 			data = boost_socket_info::make_pointer(m_service, fd, what);
-			logger().log(SWARM_LOG_DEBUG, "create socket: %p, fd: %d",
+			BH_LOG(logger(), SWARM_LOG_DEBUG, "create socket: %p, fd: %d",
 				(*reinterpret_cast<boost_socket_info::ptr *>(data)).get(), fd);
 			listener()->set_socket_data(fd, data);
 		}
@@ -131,18 +130,18 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 		info = *reinterpret_cast<boost_socket_info::ptr *>(data);
 	}
 
-	logger().log(SWARM_LOG_DEBUG, "poll socket: %p, fd: %d, what: %d", info.get(), fd, what);
+	BH_LOG(logger(), SWARM_LOG_DEBUG, "poll socket: %p, fd: %d, what: %d", info.get(), fd, what);
 	info->what = what;
 
 	boost_socket_info::weak_ptr weak_info = info;
 
 	if (what & poll_in) {
-		logger().log(SWARM_LOG_DEBUG, "poll in socket: %p, fd: %d", info.get(), fd);
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "poll in socket: %p, fd: %d", info.get(), fd);
 		info->socket.async_read_some(boost::asio::null_buffers(),
 			boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_read, _1));
 	}
 	if (what & poll_out) {
-		logger().log(SWARM_LOG_DEBUG, "poll out socket: %p, fd: %d", info.get(), fd);
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "poll out socket: %p, fd: %d", info.get(), fd);
 		info->socket.async_write_some(boost::asio::null_buffers(),
 			boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_write, _1));
 	}
@@ -152,7 +151,7 @@ int boost_event_loop::socket_request(int fd, poll_option what, void *data)
 
 int boost_event_loop::timer_request(long timeout_ms)
 {
-	logger().log(SWARM_LOG_DEBUG, "timer: %ld", timeout_ms);
+	BH_LOG(logger(), SWARM_LOG_DEBUG, "timer: %ld", timeout_ms);
 	m_timer.cancel();
 
 	if (timeout_ms == 0) {
@@ -167,36 +166,34 @@ int boost_event_loop::timer_request(long timeout_ms)
 
 void boost_event_loop::post(const std::function<void ()> &func)
 {
-	logger().log(SWARM_LOG_DEBUG, "post");
+	BH_LOG(logger(), SWARM_LOG_DEBUG, "post");
 	m_service.dispatch(func);
 }
 
 void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_info, int what, const boost::system::error_code &error)
 {
 	if (auto info = weak_info.lock()) {
-		if (logger().level() >= SWARM_LOG_DEBUG) {
-			logger().log(SWARM_LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d, error: %s",
-				     info.get(), fd, info->what, what, error.message().c_str());
-		}
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d, error: %s",
+			     info.get(), fd, info->what, what, error.message().c_str());
 
 		if (what == event_listener::socket_read && (info->what & poll_in)) {
-			logger().log(SWARM_LOG_DEBUG, "repoll in socket: %p, fd: %d", info.get(), fd);
+			BH_LOG(logger(), SWARM_LOG_DEBUG, "repoll in socket: %p, fd: %d", info.get(), fd);
 			info->socket.async_read_some(boost::asio::null_buffers(),
 				boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_read, _1));
 		}
 		if (what == event_listener::socket_write && (info->what & poll_out)) {
-			logger().log(SWARM_LOG_DEBUG, "repoll out socket: %p, fd: %d", info.get(), fd);
+			BH_LOG(logger(), SWARM_LOG_DEBUG, "repoll out socket: %p, fd: %d", info.get(), fd);
 			info->socket.async_write_some(boost::asio::null_buffers(),
 				boost::bind(&boost_event_loop::on_event, this, fd, weak_info, event_listener::socket_write, _1));
 		}
 
-		logger().log(SWARM_LOG_DEBUG, "call on_socket_event: %p, fd: %d", info.get(), fd);
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "call on_socket_event: %p, fd: %d", info.get(), fd);
 
 		if (info->what != poll_none) {
 			listener()->on_socket_event(fd, what);
 		}
-	} else if (logger().level() >= SWARM_LOG_DEBUG) {
-		logger().log(SWARM_LOG_DEBUG, "call on_socket_event: socket_info is destroyed, fd: %d, what: %d, error: %s",
+	} else {
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "call on_socket_event: socket_info is destroyed, fd: %d, what: %d, error: %s",
 			     fd, what, error.message().c_str());
 	}
 }

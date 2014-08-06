@@ -53,7 +53,7 @@ namespace swarm {
 class ev_event_loop : public event_loop
 {
 public:
-	ev_event_loop(ev::loop_ref &loop);
+	ev_event_loop(ev::loop_ref &loop, const swarm::logger &logger);
 
 	int socket_request(int socket, poll_option what, void *data);
 	int timer_request(long timeout_ms);

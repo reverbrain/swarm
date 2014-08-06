@@ -25,8 +25,8 @@
 namespace ioremap {
 namespace thevoid {
 
-monitor_connection::monitor_connection(boost::asio::io_service &io_service, size_t buffer_size)
-	: m_socket(io_service)
+monitor_connection::monitor_connection(base_server *server, boost::asio::io_service &io_service, size_t buffer_size)
+	: m_server(server), m_socket(io_service)
 {
 	(void) buffer_size;
 }
@@ -45,10 +45,9 @@ monitor_connection::endpoint_type &monitor_connection::endpoint()
 	return m_endpoint;
 }
 
-void monitor_connection::start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint)
+void monitor_connection::start(const std::string &local_endpoint)
 {
 	(void) local_endpoint;
-	m_server = server;
 	async_read();
 }
 

@@ -27,7 +27,16 @@ event_listener::~event_listener()
 {
 }
 
-event_loop::event_loop() : m_listener(NULL)
+static blackhole::log::attributes_t create_attributes()
+{
+	blackhole::log::attributes_t attributes = {
+		keyword::source() = "event_loop"
+	};
+
+	return attributes;
+}
+
+event_loop::event_loop(const swarm::logger &logger) : m_logger(logger, create_attributes()), m_listener(NULL)
 {
 }
 
@@ -45,12 +54,7 @@ event_listener *event_loop::listener() const
 	return m_listener;
 }
 
-void event_loop::set_logger(const swarm::logger &logger)
-{
-	m_logger = logger;
-}
-
-logger event_loop::logger() const
+const logger &event_loop::logger() const
 {
 	return m_logger;
 }

@@ -39,6 +39,12 @@
 # include <sys/prctl.h>
 #endif
 
+#include <blackhole/repository.hpp>
+#include <blackhole/repository/config/parser/rapidjson.hpp>
+#include <blackhole/frontend/syslog.hpp>
+#include <blackhole/frontend/files.hpp>
+#include <blackhole/sink/socket.hpp>
+
 #define UNIX_PREFIX "unix:"
 #define UNIX_PREFIX_LEN (sizeof(UNIX_PREFIX) / sizeof(char) - 1)
 
@@ -49,9 +55,11 @@ class server_data;
 
 static std::weak_ptr<signal_handler> global_signal_set;
 
-server_data::server_data() :
+server_data::server_data(base_server *server) :
+	logger(base_logger, blackhole::log::attributes_t()),
 	connections_counter(0),
 	active_connections_counter(0),
+	server(server),
 	threads_round_robin(0),
 	threads_count(2),
 	backlog_size(128),
@@ -64,6 +72,8 @@ server_data::server_data() :
 	safe_mode(false),
 	options_parsed(false)
 {
+	swarm::utils::logger::init_attributes(base_logger);
+
 	if (!signal_set) {
 		signal_set = std::make_shared<signal_handler>();
 		global_signal_set = signal_set;
@@ -91,7 +101,6 @@ void server_data::handle_stop()
 
 void server_data::handle_reload()
 {
-	logger.reopen();
 }
 
 boost::asio::io_service &server_data::get_worker_service()
@@ -106,7 +115,7 @@ void signal_handler::stop_handler(int signal_value)
 		std::lock_guard<std::mutex> locker(signal_set->lock);
 
 		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
+			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
 			(*it)->handle_stop();
 		}
 	}
@@ -118,7 +127,7 @@ void signal_handler::reload_handler(int signal_value)
 		std::lock_guard<std::mutex> locker(signal_set->lock);
 
 		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
+			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
 			try {
 				(*it)->handle_reload();
 			} catch (std::exception &e) {
@@ -134,7 +143,7 @@ void signal_handler::ignore_handler(int signal_value)
 		std::lock_guard<std::mutex> locker(signal_set->lock);
 
 		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			(*it)->logger.log(swarm::SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
+			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
 		}
 	}
 }
@@ -197,7 +206,7 @@ bool pid_file::remove()
 	return true;
 }
 
-base_server::base_server() : m_data(new server_data)
+base_server::base_server() : m_data(new server_data(this))
 {
 }
 
@@ -205,12 +214,7 @@ base_server::~base_server()
 {
 }
 
-void base_server::set_logger(const swarm::logger &logger)
-{
-	m_data->logger = logger;
-}
-
-swarm::logger base_server::logger() const
+const swarm::logger &base_server::logger() const
 {
 	return m_data->logger;
 }
@@ -228,35 +232,72 @@ unsigned int base_server::threads_count() const
 bool base_server::initialize_logger(const rapidjson::Value &config)
 {
 	if (!config.HasMember("logger")) {
-		set_logger(swarm::logger("/dev/stderr", swarm::SWARM_LOG_INFO));
-		logger().log(swarm::SWARM_LOG_ERROR, "\"logger\" field is missed, use default logger");
-		return true;
+		std::cerr << "Failed to initialize logger: \"logger\" field is missed" << std::endl;
+		return false;
 	}
 
-	const rapidjson::Value &logger_config = config["logger"];
+	const rapidjson::Value &logger = config["logger"];
 
-	std::string type;
-	if (logger_config.HasMember("type")) {
-		type = logger_config["type"].GetString();
-	} else {
-		type = "file";
+	if (!logger.HasMember("frontends")) {
+		std::cerr << "Failed to initialize logger: \"logger.frontends\" field is missed" << std::endl;
+		return false;
 	}
 
-	if (type == "file") {
-		const char *file = "/dev/stderr";
-		int level = swarm::SWARM_LOG_INFO;
-
-		if (logger_config.HasMember("file"))
-			file = logger_config["file"].GetString();
-
-		if (logger_config.HasMember("level"))
-			level = logger_config["level"].GetInt();
-
-		set_logger(swarm::logger(file, level));
-	} else {
-		set_logger(swarm::logger("/dev/stderr", swarm::SWARM_LOG_INFO));
-		logger().log(swarm::SWARM_LOG_ERROR, "unknown logger type \"%s\", use default, possible values are: file", type.c_str());
+	if (!logger.HasMember("level")) {
+		std::cerr << "Failed to initialize logger: \"logger.level\" field is missed" << std::endl;
+		return false;
 	}
+
+	const rapidjson::Value &frontends = logger["frontends"];
+
+	if (!frontends.IsArray()) {
+		std::cerr << "Failed to initialize logger: \"logger.frontends\" field must be an array" << std::endl;
+		return false;
+	}
+
+	const rapidjson::Value &level = logger["level"];
+
+	if (!level.IsString()) {
+		std::cerr << "Failed to initialize logger: \"logger.level\" field must be a string" << std::endl;
+		return false;
+	}
+
+	using namespace blackhole;
+
+	// Available logging sinks.
+	typedef boost::mpl::vector<
+	    blackhole::sink::files_t<>,
+	    blackhole::sink::syslog_t<swarm::log_level>,
+	    blackhole::sink::socket_t<boost::asio::ip::tcp>,
+	    blackhole::sink::socket_t<boost::asio::ip::udp>
+	> sinks_t;
+
+	// Available logging formatters.
+	typedef boost::mpl::vector<
+	    blackhole::formatter::string_t
+//	    blackhole::formatter::json_t
+	> formatters_t;
+
+	auto &repository = blackhole::repository_t::instance();
+	repository.configure<sinks_t, formatters_t>();
+
+	const dynamic_t &dynamic = repository::config::transformer_t<
+		rapidjson::Value
+        >::transform(frontends);
+
+	log_config_t log_config = repository::config::parser_t<log_config_t>::parse("root", dynamic);
+
+	const auto mapper = swarm::utils::logger::mapping();
+	for(auto it = log_config.frontends.begin(); it != log_config.frontends.end(); ++it) {
+		it->formatter.mapper = mapper;
+	}
+
+	repository.add_config(log_config);
+
+	m_data->base_logger = repository.root<swarm::log_level>();
+	swarm::utils::logger::init_attributes(m_data->base_logger);
+	m_data->base_logger.verbosity(swarm::utils::logger::parse_level(level.GetString()));
+
 	return true;
 }
 
@@ -420,7 +461,7 @@ int base_server::parse_arguments(int argc, char **argv)
 	}
 
 	if (!config.HasMember("application")) {
-		logger().log(swarm::SWARM_LOG_ERROR, "\"application\" field is missed");
+		BH_LOG(logger(), SWARM_LOG_ERROR, "\"application\" field is missed");
 		return -5;
 	}
 
@@ -448,7 +489,7 @@ int base_server::parse_arguments(int argc, char **argv)
 
 	try {
 		if (!initialize(config["application"])) {
-			logger().log(swarm::SWARM_LOG_ERROR, "Failed to initialize application");
+			BH_LOG(logger(), SWARM_LOG_ERROR, "Failed to initialize application");
 			return -5;
 		}
 	} catch (std::exception &exc) {
@@ -457,14 +498,14 @@ int base_server::parse_arguments(int argc, char **argv)
 	}
 
 	if (!config.HasMember("endpoints")) {
-		logger().log(swarm::SWARM_LOG_ERROR, "\"endpoints\" field is missed");
+		BH_LOG(logger(), SWARM_LOG_ERROR, "\"endpoints\" field is missed");
 		return -4;
 	}
 
 	auto &endpoints = config["endpoints"];
 
 	if (!endpoints.IsArray()) {
-		logger().log(swarm::SWARM_LOG_ERROR, "\"endpoints\" field is not an array");
+		BH_LOG(logger(), SWARM_LOG_ERROR, "\"endpoints\" field is not an array");
 		return -4;
 	}
 
@@ -565,11 +606,6 @@ int base_server::run()
 void base_server::stop()
 {
 	m_data->handle_stop();
-}
-
-void base_server::set_server(const std::weak_ptr<base_server> &server)
-{
-	m_data->server = server;
 }
 
 std::shared_ptr<base_stream_factory> base_server::factory(const swarm::http_request &request)

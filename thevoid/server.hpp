@@ -19,9 +19,10 @@
 
 #include "streamfactory.hpp"
 
+#include <swarm/logger.hpp>
+
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/variant.hpp>
 #include <swarm/c++config.hpp>
 
@@ -41,7 +42,6 @@
 
 namespace ioremap {
 namespace swarm {
-class logger;
 class url;
 }
 namespace thevoid {
@@ -130,13 +130,9 @@ public:
 	void stop();
 
 	/*!
-	 * \brief Ser \a logger as logger of the server.
-	 */
-	void set_logger(const swarm::logger &logger);
-	/*!
 	 * \brief Returns logger of the service.
 	 */
-	swarm::logger logger() const;
+	const swarm::logger &logger() const;
 
 	/*!
 	 * \brief Returns server-specific statistics as a key-value map.
@@ -305,10 +301,6 @@ private:
 	/*!
 	 * \internal
 	 */
-	void set_server(const std::weak_ptr<base_server> &server);
-	/*!
-	 * \internal
-	 */
 	std::shared_ptr<base_stream_factory> factory(const swarm::http_request &request);
 
 	std::unique_ptr<server_data> m_data;
@@ -320,7 +312,7 @@ private:
  * This is a base class you really should derive from.
  */
 template <typename Server>
-class server : public base_server, public std::enable_shared_from_this<Server>
+class server : public base_server
 {
 public:
 	/*!
@@ -353,7 +345,7 @@ protected:
 	{
 		options opts;
 		options_pass(apply_option(opts, args)...);
-		base_server::on(std::move(opts), std::make_shared<stream_factory<Server, T>>(this->shared_from_this()));
+		base_server::on(std::move(opts), std::make_shared<stream_factory<Server, T>>(static_cast<Server *>(this)));
 	}
 
 private:
@@ -384,9 +376,7 @@ private:
 template <typename Server, typename... Args>
 std::shared_ptr<Server> create_server(Args &&...args)
 {
-	auto server = std::make_shared<Server>(std::forward<Args>(args)...);
-	server->set_server(server);
-	return server;
+	return std::make_shared<Server>(std::forward<Args>(args)...);
 }
 
 /*!

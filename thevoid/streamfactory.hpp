@@ -25,32 +25,31 @@ namespace thevoid {
 class base_stream_factory
 {
 public:
-    base_stream_factory();
-    virtual ~base_stream_factory();
+	base_stream_factory();
+	virtual ~base_stream_factory();
 
-    virtual std::shared_ptr<base_request_stream> create() = 0;
+	virtual std::shared_ptr<base_request_stream> create() = 0;
 };
 
 template <typename Server, typename T>
 class stream_factory : public base_stream_factory
 {
 public:
-    stream_factory(const std::shared_ptr<Server> &server) : m_server(server) {}
-    ~stream_factory() /*override*/ {}
+	stream_factory(Server *server) : m_server(server) {}
+	~stream_factory() /*override*/ {}
 
-    std::shared_ptr<base_request_stream> create() /*override*/
-    {
-        if (auto server = m_server.lock()) {
-            auto stream = std::make_shared<T>();
-            stream->set_server(server);
-            return stream;
-        }
+	std::shared_ptr<base_request_stream> create() /*override*/
+	{
+		if (__builtin_expect(!m_server, false))
+			throw std::logic_error("stream_factory::m_server is null pointer");
 
-        throw std::logic_error("stream_factory::m_server is null pointer");
-    }
+		auto stream = std::make_shared<T>();
+		stream->set_server(m_server);
+		return stream;
+	}
 
 private:
-    std::weak_ptr<Server> m_server;
+	Server *m_server;
 };
 
 }} // namespace ioremap::thevoid

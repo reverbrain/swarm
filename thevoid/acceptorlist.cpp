@@ -18,6 +18,7 @@
 #include "server_p.hpp"
 #include "monitor_connection_p.hpp"
 #include <boost/bind.hpp>
+#include <boost/bind/placeholders.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <sys/stat.h>
@@ -97,7 +98,7 @@ void acceptors_list<Connection>::start_acceptor(size_t index)
 {
 	acceptor_type &acc = *acceptors[index];
 
-	auto conn = std::make_shared<connection_type>(get_connection_service(), data.buffer_size);
+	auto conn = std::make_shared<connection_type>(data.server, get_connection_service(), data.buffer_size);
 
 	acc.async_accept(conn->socket(), conn->endpoint(), boost::bind(
 				 &acceptors_list::handle_accept, this, index, conn, _1));
@@ -107,13 +108,9 @@ template <typename Connection>
 void acceptors_list<Connection>::handle_accept(size_t index, connection_ptr_type conn, const boost::system::error_code &err)
 {
 	if (!err) {
-		if (auto server = data.server.lock()) {
-			conn->start(server, local_endpoints.at(index));
-		} else {
-			throw std::logic_error("server::m_data->server is null");
-		}
+		conn->start(local_endpoints.at(index));
 	} else {
-		data.logger.log(swarm::SWARM_LOG_ERROR, "Failed to accept connection: %s", err.message().c_str());
+		BH_LOG(data.logger, SWARM_LOG_ERROR, "Failed to accept connection: %s", err.message().c_str());
 	}
 
 	start_acceptor(index);

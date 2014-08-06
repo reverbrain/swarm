@@ -93,7 +93,7 @@ public:
 	};
 
 	//! Construct a connection with the given io_service.
-	explicit connection(boost::asio::io_service &service, size_t buffer_size);
+	explicit connection(base_server *server, boost::asio::io_service &service, size_t buffer_size);
 	~connection();
 
 	//! Get the socket associated with the connection.
@@ -101,7 +101,7 @@ public:
 	endpoint_type &endpoint();
 
 	//! Start the first asynchronous operation for the connection.
-	void start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint);
+	void start(const std::string &local_endpoint);
 
 	virtual void send_headers(swarm::http_response &&rep,
 		const boost::asio::const_buffer &content,
@@ -130,7 +130,7 @@ private:
 	void send_error(swarm::http_response::status_type type);
 
 	//! Server reference for handler logic
-	std::shared_ptr<base_server> m_server;
+	base_server *m_server;
 	swarm::logger m_logger;
 
 	//! Socket for the connection.

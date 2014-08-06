@@ -201,8 +201,20 @@ protected:
 		return m_reply;
 	}
 
+	/*!
+	 * \brief Returns the logger.
+	 */
+	const swarm::logger &logger()
+	{
+		if (__builtin_expect(!m_logger, false))
+			throw std::logic_error("request_stream::m_logger is null");
+
+		return *m_logger;
+	}
+
 private:
 	std::shared_ptr<reply_stream> m_reply;
+	std::unique_ptr<swarm::logger> m_logger;
 };
 
 /*!
@@ -226,7 +238,7 @@ public:
 	/*!
 	 * \internal
 	 */
-	void set_server(const std::shared_ptr<Server> &server)
+	void set_server(Server *server)
 	{
 		m_server = server;
 	}
@@ -235,34 +247,11 @@ protected:
 	/*!
 	 * \brief Returns the pointer to the server.
 	 */
-	std::shared_ptr<Server> server()
+	Server *server()
 	{
 		if (__builtin_expect(!m_server, false))
 			throw std::logic_error("request_stream::m_server must be initialized");
 		return m_server;
-	}
-
-	/*!
-	 * \brief Returns the logger.
-	 */
-	swarm::logger logger()
-	{
-		return server()->logger();
-	}
-
-	/*!
-	 * \brief Write message to the logger.
-	 *
-	 * It's a shortcut for logger().log.
-	 */
-	void log(int level, const char *format, ...) __attribute__ ((format(printf, 3, 4)))
-	{
-		va_list args;
-		va_start(args, format);
-
-		logger().vlog(level, format, args);
-
-		va_end(args);
 	}
 
 	/*!
@@ -412,7 +401,7 @@ private:
 		return std::move(std::bind(&reply_stream::close, get_reply(), std::placeholders::_1));
 	}
 
-	std::shared_ptr<Server> m_server;
+	Server *m_server;
 };
 
 /*!

@@ -16,7 +16,7 @@ locate_library(CURL "curl.h" "curl" "curl" "libcurl")
 locate_library(URIPARSER "Uri.h" "uriparser" "uriparser")
 locate_library(LIBXML2 "libxml/xpath.h" "xml2" "libxml2")
 
-find_package(Boost COMPONENTS system thread program_options regex REQUIRED)
+find_package(Boost COMPONENTS system thread program_options regex filesystem REQUIRED)
 
 option(BUILD_URLFETCHER "Build url_fetcher" ON)
 option(PERF "Build performance checking tool" ON)

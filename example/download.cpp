@@ -118,6 +118,9 @@ int main(int argc, char **argv)
 
 	const bool use_boost = true;
 
+	auto logger_base = ioremap::swarm::utils::logger::create("/dev/stdout", SWARM_LOG_DEBUG);
+	ioremap::swarm::logger logger(logger_base, blackhole::log::attributes_t());
+
 	boost::asio::io_service service;
 #ifdef USE_BOOST_SIGNALS
 	boost::asio::signal_set signals(service, SIGINT, SIGTERM);
@@ -125,12 +128,10 @@ int main(int argc, char **argv)
 #endif
 	std::unique_ptr<ioremap::swarm::event_loop> loop_impl;
 	if (use_boost) {
-		loop_impl.reset(new ioremap::swarm::boost_event_loop(service));
+		loop_impl.reset(new ioremap::swarm::boost_event_loop(service, logger));
 	} else {
-		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop));
+		loop_impl.reset(new ioremap::swarm::ev_event_loop(loop, logger));
 	}
-
-	ioremap::swarm::logger logger("/dev/stdout", ioremap::swarm::SWARM_LOG_DEBUG);
 
 	ioremap::swarm::url_fetcher manager(*loop_impl, logger);
 

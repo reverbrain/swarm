@@ -5,9 +5,21 @@
     "backlog": 128,
     "threads": 2,
     "buffer_size": 65536,
-    "logger": {
-        "file": "/dev/stderr",
-        "level": 4
+	"logger": {
+        "level": "error",
+        "frontends": [
+            {
+                "formatter": {
+                    "type": "string",
+                    "pattern": "%(timestamp)s %(request_id)s/%(lwp)s/%(pid)s %(severity)s: %(message)s, %(...L)s"
+                },
+                "sink": {
+                    "type": "files",
+                    "path": "/dev/stdout",
+                    "autoflush": true
+                }
+            }
+        ]
     },
     "daemon": {
         "fork": false,

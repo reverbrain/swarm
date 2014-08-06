@@ -25,13 +25,11 @@
 namespace ioremap {
 namespace thevoid {
 
-
-#define debug(arg) \
-	do { if (m_logger.level() >= swarm::SWARM_LOG_DEBUG) { \
-		std::stringstream out; \
-		out << __PRETTY_FUNCTION__ << " (" << __LINE__ << ") " << arg; \
-		m_logger.log(swarm::SWARM_LOG_DEBUG, "%s", out.str().c_str()); \
-	} } while (false)
+#define CONNECTION_DEBUG(...) \
+	BH_LOG(m_logger, SWARM_LOG_DEBUG, __VA_ARGS__) \
+		("function", __PRETTY_FUNCTION__) \
+		("line", __LINE__) \
+		("connection_ptr", this)
 
 #define SAFE_SEND_NONE do {} while (0)
 #define SAFE_SEND_ERROR \
@@ -49,12 +47,12 @@ do { \
 		try { \
 			expr; \
 		} catch (const std::exception &ex) { \
-			m_server->logger().log(swarm::SWARM_LOG_ERROR, "%s: uncaught exception: %s", (err_prefix), ex.what()); \
+			BH_LOG(m_logger, SWARM_LOG_ERROR, "%s: uncaught exception: %s", (err_prefix), ex.what()); \
 			m_access_status = 598; \
 			print_access_log(); \
 			error_handler; \
 		} catch (...) { \
-			m_server->logger().log(swarm::SWARM_LOG_ERROR, "%s: uncaught exception: unknown", (err_prefix)); \
+			BH_LOG(m_logger, SWARM_LOG_ERROR, "%s: uncaught exception: unknown", (err_prefix)); \
 			m_access_status = 598; \
 			print_access_log(); \
 			error_handler; \
@@ -65,7 +63,9 @@ do { \
 } while (0)
 
 template <typename T>
-connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) :
+connection<T>::connection(base_server *server, boost::asio::io_service &service, size_t buffer_size) :
+	m_server(server),
+	m_logger(m_server->logger(), blackhole::log::attributes_t()),
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
@@ -82,14 +82,14 @@ connection<T>::connection(boost::asio::io_service &service, size_t buffer_size) 
 	m_access_received = 0;
 	m_access_sent = 0;
 
-	debug(&service);
+	CONNECTION_DEBUG("service: %p", &service);
 }
 
 template <typename T>
 connection<T>::~connection()
 {
 	if (m_server) {
-		debug("Closed connection to client: " << this);
+		CONNECTION_DEBUG("Closed connection to client");
 		--m_server->m_data->connections_counter;
 	}
 
@@ -98,7 +98,7 @@ connection<T>::~connection()
 		print_access_log();
 		SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
 	}
-	debug("");
+	CONNECTION_DEBUG("Connection destroyed");
 }
 
 template <typename T>
@@ -114,14 +114,13 @@ typename connection<T>::endpoint_type &connection<T>::endpoint()
 }
 
 template <typename T>
-void connection<T>::start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint)
+void connection<T>::start(const std::string &local_endpoint)
 {
 	m_access_local = local_endpoint;
 	m_access_remote = boost::lexical_cast<std::string>(m_endpoint);
-	m_server = server;
-	m_logger = server->logger();
+
 	++m_server->m_data->connections_counter;
-	debug("Opened new connection to client: " << this);
+	CONNECTION_DEBUG("Opened new connection to client");
 	async_read();
 }
 
@@ -130,13 +129,13 @@ void connection<T>::send_headers(swarm::http_response &&rep,
 	const boost::asio::const_buffer &content,
 	std::function<void (const boost::system::error_code &err)> &&handler)
 {
-	debug("send headers: " << rep.code());
+	CONNECTION_DEBUG("Send headers: %d", rep.code());
 
 	m_access_status = rep.code();
 
 	if (m_keep_alive) {
                 rep.headers().set_keep_alive();
-                debug("Added Keep-Alive");
+                CONNECTION_DEBUG("Added Keep-Alive");
         }
 
 	buffer_info info(
@@ -176,7 +175,7 @@ void connection<T>::close(const boost::system::error_code &err)
 template <typename T>
 void connection<T>::want_more_impl()
 {
-	debug("state: " << m_state);
+	CONNECTION_DEBUG("State: %d", m_state);
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
 	} else {
@@ -225,7 +224,7 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 	do {
 		std::unique_lock<std::mutex> lock(m_outgoing_mutex);
 		if (m_outgoing.empty()) {
-			m_server->logger().log(swarm::SWARM_LOG_ERROR, "connection::write_finished: extra written bytes: %zu", bytes_written);
+			BH_LOG(m_logger, SWARM_LOG_ERROR, "connection::write_finished: extra written bytes: %zu", bytes_written);
 			break;
 		}
 
@@ -320,7 +319,7 @@ void connection<T>::send_nolock()
 template <typename T>
 void connection<T>::close_impl(const boost::system::error_code &err)
 {
-	debug("err: " << err.message() << ", state: " << m_state << ", keep alive: " << m_keep_alive);
+	CONNECTION_DEBUG("err: %s, state: %d, keep alive: %d", err.message(), m_state, m_keep_alive);
 
 	if (m_handler)
 		--m_server->m_data->active_connections_counter;
@@ -343,7 +342,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	if (m_state != processing_request) {
 		m_state |= request_processed;
 
-		debug("We sent reply to client, but still need to get " << m_content_length << " bytes from it");
+		CONNECTION_DEBUG("We sent reply to client, but still need to get %d bytes from it", m_content_length);
 
 		if (m_unprocessed_begin != m_unprocessed_end) {
 			process_data(m_unprocessed_begin, m_unprocessed_end);
@@ -354,7 +353,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	}
 
 	if (!m_keep_alive) {
-		debug("Connection was not keep alive, close socket");
+		CONNECTION_DEBUG("Connection was not keep alive, close socket");
 		print_access_log();
 		boost::system::error_code ignored_ec;
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
@@ -382,7 +381,7 @@ void connection<T>::process_next()
 
 	m_request = swarm::http_request();
 
-	debug("unprocessed: " << (m_unprocessed_end - m_unprocessed_begin));
+	CONNECTION_DEBUG("unprocessed: %lld", m_unprocessed_end - m_unprocessed_begin);
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
@@ -402,7 +401,7 @@ void connection<T>::print_access_log()
 
 	unsigned long long delta = 1000000ull * (end.tv_sec - m_access_start.tv_sec) + end.tv_usec - m_access_start.tv_usec;
 
-	m_logger.log(swarm::SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us",
+	BH_LOG(m_logger, SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us",
 		m_access_method.empty() ? "-" : m_access_method.c_str(),
 		m_access_url.empty() ? "-" : m_access_url.c_str(),
 		m_access_local.c_str(),
@@ -417,7 +416,7 @@ template <typename T>
 void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred)
 {
 	m_at_read = false;
-	debug("error: " << err.message() << ", state: " << m_state << ", bytes: " << bytes_transferred);
+	CONNECTION_DEBUG("error: %s, state: %d, bytes: %lld", err.message(), m_state, bytes_transferred);
 	if (err) {
 		m_access_status = 499;
 		print_access_log();
@@ -441,7 +440,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 template <typename T>
 void connection<T>::process_data(const char *begin, const char *end)
 {
-	debug("data: size: " << (end - begin) << ", state: " << m_state);
+	CONNECTION_DEBUG("data: size: %lld, state: %d", (end - begin), m_state);
 	if (m_state & read_headers) {
 		if (m_state & waiting_for_first_data) {
 			m_state &= ~waiting_for_first_data;
@@ -452,8 +451,8 @@ void connection<T>::process_data(const char *begin, const char *end)
 		const char *new_begin = NULL;
 		boost::tie(result, new_begin) = m_request_parser.parse(m_request, begin, end);
 
-		debug("parsed: \"" << std::string(begin, new_begin) << '"');
-		debug("parse result: " << (result ? "true" : (!result ? "false" : "unknown_state")));
+		CONNECTION_DEBUG("parsed: \"%s\"", std::string(begin, new_begin));
+		CONNECTION_DEBUG("parse result: %s", (result ? "true" : (!result ? "false" : "unknown_state")));
 
 		m_access_received += (new_begin - begin);
 
@@ -473,7 +472,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			if (!m_request.url().is_valid()) {
 				send_error(swarm::http_response::bad_request);
-				m_logger.log(swarm::SWARM_LOG_ERROR, "invalid url: %s", m_access_url.c_str());
+				BH_LOG(m_logger, SWARM_LOG_ERROR, "invalid url: %s", m_access_url.c_str());
 			} else {
 				auto factory = m_server->factory(m_request);
 
@@ -490,7 +489,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 					SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
 				} else {
 					send_error(swarm::http_response::not_found);
-					m_logger.log(swarm::SWARM_LOG_ERROR, "unknown handler for method: %s, url: %s", m_access_method.c_str(), m_access_url.c_str());
+					BH_LOG(m_logger, SWARM_LOG_ERROR, "unknown handler for method: %s, url: %s", m_access_method.c_str(), m_access_url.c_str());
 				}
 			}
 
@@ -514,29 +513,29 @@ void connection<T>::process_data(const char *begin, const char *end)
 		m_content_length -= processed_size;
 		m_access_received += processed_size;
 
-		debug(m_state);
+		CONNECTION_DEBUG("State: %d", m_state);
 
 		if (data_from_body != processed_size) {
-			debug("Handler processed only " << processed_size << " of " << data_from_body << " bytes");
+			CONNECTION_DEBUG("Handler processed only %lld of %lld bytes", processed_size, data_from_body);
 			// Handler can't process all data, wait until want_more method is called
 			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 			return;
 		} else if (m_content_length > 0) {
-			debug("Need to get " << m_content_length << " more bytes");
+			CONNECTION_DEBUG("Need to get %ld more bytes", m_content_length);
 			async_read();
 		} else {
 			m_state &= ~read_data;
 			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 
-			debug("Handler processed all data, " << (m_unprocessed_end - m_unprocessed_begin) << " bytes are still unprocessed, state: " << m_state);
+			CONNECTION_DEBUG("Handler processed all data, %lld bytes are still unprocessed, state: %d", (m_unprocessed_end - m_unprocessed_begin), m_state);
 
 			if (m_handler)
 				SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
 
 			if (m_state & request_processed) {
-				debug("Request processed");
+				CONNECTION_DEBUG("Request processed");
 				process_next();
 			}
 		}
@@ -551,7 +550,7 @@ void connection<T>::async_read()
 	m_at_read = true;
 	m_unprocessed_begin = NULL;
 	m_unprocessed_end = NULL;
-	debug("state: " << m_state);
+	CONNECTION_DEBUG("State: %d", m_state);
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 					 std::bind(&connection::handle_read, this->shared_from_this(),
 						   std::placeholders::_1,
@@ -561,7 +560,7 @@ void connection<T>::async_read()
 template <typename T>
 void connection<T>::send_error(swarm::http_response::status_type type)
 {
-	debug("status: " << type << ", state: " << m_state);
+	CONNECTION_DEBUG("status: %d, state: %d", type, m_state);
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),
 		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));

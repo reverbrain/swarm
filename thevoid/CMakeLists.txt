@@ -4,6 +4,8 @@ add_library(thevoid SHARED ${THEVOID_SRC_LIST})
 message("THEVOID_SRC_LIST: ${THEVOID_SRC_LIST}")
 message("Boost_LIBRARIES: ${Boost_LIBRARIES}")
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+
 target_link_libraries(thevoid ${Boost_LIBRARIES} pthread swarm)
 set_target_properties(thevoid PROPERTIES
     VERSION ${DEBFULLVERSION}

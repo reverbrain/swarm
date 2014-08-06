@@ -30,13 +30,13 @@ public:
 	typedef boost::asio::ip::tcp::socket socket_type;
 	typedef socket_type::endpoint_type endpoint_type;
 
-	monitor_connection(boost::asio::io_service &io_service, size_t buffer_size);
+	monitor_connection(base_server *server, boost::asio::io_service &io_service, size_t buffer_size);
 	~monitor_connection();
 
 	socket_type &socket();
 	endpoint_type &endpoint();
 
-	void start(const std::shared_ptr<base_server> &server, const std::string &local_endpoint);
+	void start(const std::string &local_endpoint);
 
 protected:
 	std::string get_information();
@@ -48,7 +48,7 @@ protected:
 	void close();
 
 private:
-	std::shared_ptr<base_server> m_server;
+	base_server *m_server;
 	socket_type m_socket;
 	endpoint_type m_endpoint;
 	boost::array<char, 64> m_buffer;

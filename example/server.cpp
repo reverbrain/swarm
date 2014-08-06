@@ -66,7 +66,7 @@ public:
 			(void) buffer;
 			(void) req;
 			if (auto timeout = req.url().query().item_value("timeout")) {
-				log(swarm::SWARM_LOG_DATA, "timeout: %s", timeout->c_str());
+				BH_LOG(logger(), SWARM_LOG_INFO, "timeout: %s", timeout->c_str());
 				usleep(atoi(timeout->c_str()) * 1000);
 			}
 

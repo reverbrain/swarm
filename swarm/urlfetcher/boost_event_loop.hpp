@@ -34,7 +34,7 @@ struct boost_socket_info;
 class boost_event_loop : public event_loop
 {
 public:
-	boost_event_loop(boost::asio::io_service &service);
+	boost_event_loop(boost::asio::io_service &service, const swarm::logger &logger);
 
 	int open_socket(int domain, int type, int protocol);
 	int close_socket(int fd);
