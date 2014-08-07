@@ -19,7 +19,7 @@
 
 #include <boost/logic/tribool.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <swarm/http_request.hpp>
+#include "http_request.hpp"
 
 namespace ioremap {
 namespace thevoid {
@@ -39,9 +39,9 @@ public:
 	//! data is required. The InputIterator return value indicates how much of the
 	//! input has been consumed.
 	boost::tuple<boost::tribool, const char *> parse(
-		swarm::http_request &req, const char *begin, const char *end);
+		http_request &req, const char *begin, const char *end);
 
-    boost::tribool parse_line(swarm::http_request &request, const std::string &line);
+    boost::tribool parse_line(http_request &request, const std::string &line);
 
 
 	enum state_new

@@ -22,18 +22,13 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include <swarm/http_request.hpp>
+#include "http_request.hpp"
 #include "request_parser_p.hpp"
 #include "stream.hpp"
 #include <queue>
 #include <mutex>
 
-#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ < 5
-#  include <cstdatomic>
-#  define SWARM_OLD_GCC
-#else
-#include <atomic>
-#endif
+#include <blackhole/utils/atomic.hpp>
 
 namespace ioremap {
 namespace thevoid {
@@ -72,7 +67,7 @@ struct buffer_info {
 	buffer_info &operator =(const buffer_info &info) = delete;
 
 	std::vector<boost::asio::const_buffer> buffer;
-	swarm::http_response response;
+	http_response response;
 	std::function<void (const boost::system::error_code &err)> handler;
 };
 
@@ -103,12 +98,13 @@ public:
 	//! Start the first asynchronous operation for the connection.
 	void start(const std::string &local_endpoint);
 
-	virtual void send_headers(swarm::http_response &&rep,
+	virtual void send_headers(http_response &&rep,
 		const boost::asio::const_buffer &content,
 		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	virtual void send_data(const boost::asio::const_buffer &buffer,
 		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	void want_more();
+	virtual void initialize(base_request_stream_data *data);
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
@@ -127,7 +123,7 @@ private:
 
 	void async_read();
 
-	void send_error(swarm::http_response::status_type type);
+	void send_error(http_response::status_type type);
 
 	//! Server reference for handler logic
 	base_server *m_server;
@@ -145,7 +141,7 @@ private:
 	std::vector<char> m_buffer;
 
 	//! The incoming request.
-	swarm::http_request m_request;
+	http_request m_request;
 
 	//! Access log info
 	std::string m_access_local;
@@ -153,6 +149,8 @@ private:
 	timeval m_access_start;
 	std::string m_access_method;
 	std::string m_access_url;
+	uint64_t m_access_request;
+	bool m_access_trace;
 	int m_access_status;
 	unsigned long long m_access_received;
 	unsigned long long m_access_sent;

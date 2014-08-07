@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include "server_p.hpp"
+#include "stream_p.hpp"
 #include "stockreplies_p.hpp"
 
 namespace ioremap {
@@ -125,7 +126,7 @@ void connection<T>::start(const std::string &local_endpoint)
 }
 
 template <typename T>
-void connection<T>::send_headers(swarm::http_response &&rep,
+void connection<T>::send_headers(http_response &&rep,
 	const boost::asio::const_buffer &content,
 	std::function<void (const boost::system::error_code &err)> &&handler)
 {
@@ -163,6 +164,12 @@ void connection<T>::want_more()
 {
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
 	m_socket.get_io_service().post(std::bind(&connection::want_more_impl, this->shared_from_this()));
+}
+
+template <typename T>
+void connection<T>::initialize(base_request_stream_data *data)
+{
+	(void) data;
 }
 
 template <typename T>
@@ -378,9 +385,11 @@ void connection<T>::process_next()
 	m_access_received = 0;
 	m_access_sent = 0;
 	m_request_parser.reset();
+	m_access_request = 0;
+	m_access_trace = false;
 
 	m_logger = swarm::logger(m_server->logger(), blackhole::log::attributes_t());
-	m_request = swarm::http_request();
+	m_request = http_request();
 
 	CONNECTION_DEBUG("unprocessed: %lld", m_unprocessed_end - m_unprocessed_begin);
 
@@ -463,16 +472,15 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_keep_alive = false;
 			m_unprocessed_begin = m_unprocessed_end = 0;
 			m_state = processing_request;
-			send_error(swarm::http_response::bad_request);
+			send_error(http_response::bad_request);
 			return;
 		} else if (result) {
 //			std::cerr << "url: " << m_request.uri << std::endl;
 
 			m_access_method = m_request.method();
 			m_access_url = m_request.url().original();
-
-			uint64_t request_id = 0;
-			bool trace_bit = false;
+			m_access_request = 0;
+			m_access_trace = false;
 
 			bool failed_to_parse_request_id = true;
 			const std::string &request_header = m_server->m_data->request_header;
@@ -480,9 +488,9 @@ void connection<T>::process_data(const char *begin, const char *end)
 				if (auto request_ptr = m_request.headers().get(request_header)) {
 					std::string tmp = request_ptr->substr(0, 16);
 					errno = 0;
-					request_id = strtoull(tmp.c_str(), NULL, 16);
+					m_access_request = strtoull(tmp.c_str(), NULL, 16);
 					if (errno != 0) {
-						request_id = 0;
+						m_access_request = 0;
 						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': value: '%s', err: %d",
 							m_request.url().original(), request_header, *request_ptr, -errno);
 					} else {
@@ -492,8 +500,8 @@ void connection<T>::process_data(const char *begin, const char *end)
 			}
 
 			if (failed_to_parse_request_id) {
-				unsigned char *buffer = reinterpret_cast<unsigned char *>(&request_id);
-				for (size_t i = 0; i < sizeof(request_id) / sizeof(unsigned char); ++i) {
+				unsigned char *buffer = reinterpret_cast<unsigned char *>(&m_access_request);
+				for (size_t i = 0; i < sizeof(m_access_request) / sizeof(unsigned char); ++i) {
 					buffer[i] = std::rand();
 				}
 			}
@@ -502,7 +510,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			if (!trace_header.empty()) {
 				if (auto trace_bit_ptr = m_request.headers().get(trace_header)) {
 					try {
-						trace_bit = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
+						m_access_trace = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
 					} catch (std::exception &exc) {
 						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': must be either 0 or 1, but value: '%s', err: %s",
 							m_request.url().original(), trace_header, *trace_bit_ptr, exc.what());
@@ -511,13 +519,13 @@ void connection<T>::process_data(const char *begin, const char *end)
 			}
 
 			blackhole::log::attributes_t attributes = {
-				swarm::keyword::request_id() = request_id,
-				blackhole::keyword::tracebit() = trace_bit
+				swarm::keyword::request_id() = m_access_request,
+				blackhole::keyword::tracebit() = m_access_trace
 			};
 			m_logger = swarm::logger(m_server->logger(), std::move(attributes));
 
 			if (!m_request.url().is_valid()) {
-				send_error(swarm::http_response::bad_request);
+				send_error(http_response::bad_request);
 				BH_LOG(m_logger, SWARM_LOG_ERROR, "invalid url: %s", m_access_url.c_str());
 			} else {
 				auto factory = m_server->factory(m_request);
@@ -534,7 +542,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 					m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
 					SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
 				} else {
-					send_error(swarm::http_response::not_found);
+					send_error(http_response::not_found);
 					BH_LOG(m_logger, SWARM_LOG_ERROR, "unknown handler for method: %s, url: %s", m_access_method.c_str(), m_access_url.c_str());
 				}
 			}
@@ -604,7 +612,7 @@ void connection<T>::async_read()
 }
 
 template <typename T>
-void connection<T>::send_error(swarm::http_response::status_type type)
+void connection<T>::send_error(http_response::status_type type)
 {
 	CONNECTION_DEBUG("status: %d, state: %d", type, m_state);
 	send_headers(stock_replies::stock_reply(type),

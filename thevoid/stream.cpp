@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "stream.hpp"
+#include "stream_p.hpp"
 
 namespace ioremap {
 namespace thevoid {
@@ -25,6 +25,12 @@ reply_stream::reply_stream()
 
 reply_stream::~reply_stream()
 {
+}
+
+void reply_stream::virtual_hook(reply_stream::reply_stream_hook id, void *data)
+{
+	(void) id;
+	(void) data;
 }
 
 base_request_stream::base_request_stream()
@@ -38,6 +44,12 @@ base_request_stream::~base_request_stream()
 void base_request_stream::initialize(const std::shared_ptr<reply_stream> &reply)
 {
 	m_reply = reply;
+}
+
+void base_request_stream::virtual_hook(base_request_stream::request_stream_hook id, void *data)
+{
+	(void) id;
+	(void) data;
 }
 
 } // namespace thevoid

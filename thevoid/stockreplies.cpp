@@ -117,20 +117,20 @@ const char crlf[] = { '\r', '\n' };
 
 } // namespace misc_strings
 
-boost::asio::const_buffer status_to_buffer(swarm::http_response::status_type status)
+boost::asio::const_buffer status_to_buffer(http_response::status_type status)
 {
     return status_strings::to_buffer(status);
 }
 
-swarm::http_response stock_reply(swarm::http_response::status_type status)
+http_response stock_reply(http_response::status_type status)
 {
-	swarm::http_response reply;
+	http_response reply;
 	reply.set_code(status);
 	reply.headers().set_content_length(0);
 	return reply;
 }
 
-std::vector<boost::asio::const_buffer> to_buffers(const swarm::http_response &reply, const boost::asio::const_buffer &content)
+std::vector<boost::asio::const_buffer> to_buffers(const http_response &reply, const boost::asio::const_buffer &content)
 {
 	const auto &headers = reply.headers().all();
 
@@ -171,7 +171,7 @@ static inline void push_back(std::vector<char> &result, const char (&buffer)[N])
 	result.insert(result.end(), buffer, buffer + N);
 }
 
-void to_buffers(const swarm::http_response &reply, std::vector<char> &buffer)
+void to_buffers(const http_response &reply, std::vector<char> &buffer)
 {
 	buffer.reserve(1024);
 

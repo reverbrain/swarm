@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <swarm/http_request.hpp>
-#include <swarm/urlfetcher/url_fetcher.hpp>
 #include <thevoid/server.hpp>
 #include <thevoid/stream.hpp>
 
@@ -53,16 +51,16 @@ public:
 	}
 
 	struct on_ping : public thevoid::simple_request_stream<http_server> {
-		virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+		virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 			(void) buffer;
 			(void) req;
 
-			this->send_reply(swarm::http_response::ok);
+			this->send_reply(thevoid::http_response::ok);
 		}
 	};
 
 	struct on_timeout : public thevoid::simple_request_stream<http_server> {
-		virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+		virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 			(void) buffer;
 			(void) req;
 			if (auto timeout = req.url().query().item_value("timeout")) {
@@ -70,12 +68,12 @@ public:
 				usleep(atoi(timeout->c_str()) * 1000);
 			}
 
-			this->send_reply(swarm::http_response::ok);
+			this->send_reply(thevoid::http_response::ok);
 		}
 	};
 
 	struct on_get : public thevoid::simple_request_stream<http_server> {
-		virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+		virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 			(void) buffer;
 
 			std::string data;
@@ -85,8 +83,8 @@ public:
 			int timeout_ms = 10 + (rand() % 10);
 			usleep(timeout_ms * 1000);
 
-			swarm::http_response reply;
-			reply.set_code(swarm::http_response::ok);
+			thevoid::http_response reply;
+			reply.set_code(thevoid::http_response::ok);
 			reply.headers().set_content_length(data.size());
 
 			this->send_reply(std::move(reply), std::move(data));
@@ -94,12 +92,12 @@ public:
 	};
 
 	struct on_echo : public thevoid::simple_request_stream<http_server> {
-		virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+		virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 			auto data = boost::asio::buffer_cast<const char*>(buffer);
 			auto size = boost::asio::buffer_size(buffer);
 
-			swarm::http_response reply;
-			reply.set_code(swarm::http_response::ok);
+			thevoid::http_response reply;
+			reply.set_code(thevoid::http_response::ok);
 			reply.set_headers(req.headers());
 			reply.headers().set_content_length(size);
 

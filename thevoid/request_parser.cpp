@@ -47,7 +47,7 @@ Iterator find_crlf(Iterator begin, Iterator end)
 }
 
 boost::tuple<boost::tribool, const char *> request_parser::parse(
-	swarm::http_request &request, const char *begin, const char *end)
+	http_request &request, const char *begin, const char *end)
 {
 	while (begin != end) {
 		const char *line_end;
@@ -97,7 +97,7 @@ static inline void trim_line(Iter &begin, Iter &end)
             --end;
 }
 
-boost::tribool request_parser::parse_line(swarm::http_request &request, const std::string &line)
+boost::tribool request_parser::parse_line(http_request &request, const std::string &line)
 {
 	if (line.empty() || line[line.size() - 1] != '\r')
 		return false;

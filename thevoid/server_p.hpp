@@ -27,16 +27,7 @@
 #include <set>
 
 #include <swarm/logger.hpp>
-
-#if __clang__
-#include <atomic>
-#else
-#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
-#  include <cstdatomic>
-#else
-#  include <atomic>
-#endif // gnuc check
-#endif // clang
+#include <blackhole/utils/atomic.hpp>
 
 namespace ioremap {
 namespace thevoid {

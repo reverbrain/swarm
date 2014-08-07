@@ -24,7 +24,7 @@ using namespace ioremap;
 template <typename T>
 struct on_upload : public thevoid::simple_request_stream<T>, public std::enable_shared_from_this<on_upload<T>>
 {
-	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 		const swarm::url_query &query_list = req.url().query();
 
 		(void) buffer;
@@ -32,13 +32,13 @@ struct on_upload : public thevoid::simple_request_stream<T>, public std::enable_
 		auto name = query_list.item_value("name");
 
 		if (!name) {
-			this->send_reply(ioremap::swarm::http_response::bad_request);
+			this->send_reply(ioremap::thevoid::http_response::bad_request);
 			return;
 		}
 
 		std::string data = "POST reply\n";
-		swarm::url_fetcher::response reply;
-		reply.set_code(swarm::url_fetcher::response::ok);
+		thevoid::http_response reply;
+		reply.set_code(thevoid::http_response::ok);
 		reply.headers().set_content_length(data.size());
 		reply.headers().set_content_type("text/plain");
 		this->send_reply(std::move(reply), std::move(data));
@@ -48,15 +48,15 @@ struct on_upload : public thevoid::simple_request_stream<T>, public std::enable_
 template <typename T>
 struct on_get : public thevoid::simple_request_stream<T>, public std::enable_shared_from_this<on_get<T>>
 {
-	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) {
+	virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 		using namespace std::placeholders;
 
 		(void) buffer;
 		(void) req;
 
 		std::string data = "GET reply\n";
-		swarm::url_fetcher::response reply;
-		reply.set_code(swarm::url_fetcher::response::ok);
+		thevoid::http_response reply;
+		reply.set_code(thevoid::http_response::ok);
 		reply.headers().set_content_length(data.size());
 		reply.headers().set_content_type("text/plain");
 

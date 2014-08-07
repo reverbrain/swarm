@@ -18,8 +18,8 @@
 #define IOREMAP_THEVOID_STREAM_HPP
 
 #include <boost/asio.hpp>
-#include <swarm/http_request.hpp>
-#include <swarm/http_response.hpp>
+#include "http_request.hpp"
+#include "http_response.hpp"
 #include <swarm/logger.hpp>
 #include <swarm/c++config.hpp>
 #include <cstdarg>
@@ -61,6 +61,8 @@ struct buffer_traits
 	}
 };
 
+class base_request_stream_data;
+
 /*!
  * \brief The reply_stream class provides API for accessing reply stream.
  *
@@ -69,6 +71,10 @@ struct buffer_traits
 class reply_stream
 {
 public:
+	enum reply_stream_hook
+	{
+	};
+
 	reply_stream();
 	virtual ~reply_stream();
 
@@ -77,7 +83,7 @@ public:
 	 *
 	 * At finish \a handler is called with error_code.
 	 */
-	virtual void send_headers(swarm::http_response &&rep,
+	virtual void send_headers(http_response &&rep,
 				  const boost::asio::const_buffer &content,
 				  std::function<void (const boost::system::error_code &err)> &&handler) = 0;
 	/*!
@@ -108,12 +114,16 @@ public:
 	 *
 	 * This method is a shortcut for:
 	 * \code{.cpp}
-	 * ioremap::swarm::http_response response(type);
+	 * ioremap::http_response response(type);
 	 * send_headers(std::move(response), boost::asio::const_buffer(),
 	 *	std::bind(&reply_stream::close, reply, std::placeholders::_1));
 	 * \endcode
 	 */
-	virtual void send_error(swarm::http_response::status_type type) = 0;
+	virtual void send_error(http_response::status_type type) = 0;
+
+	virtual void initialize(base_request_stream_data *data) = 0;
+
+	virtual void virtual_hook(reply_stream_hook id, void *data);
 };
 
 /*!
@@ -147,6 +157,10 @@ public:
 class base_request_stream
 {
 public:
+	enum request_stream_hook
+	{
+	};
+
 	/*!
 	 * \brief Constructs the object.
 	 */
@@ -161,7 +175,7 @@ public:
 	 *
 	 * You may store \a req anywhere in your class as it's right reference.
 	 */
-	virtual void on_headers(swarm::http_request &&req) = 0;
+	virtual void on_headers(http_request &&req) = 0;
 	/*!
 	 * \brief This method is called at any chunk \a buffer received from the server.
 	 *
@@ -187,18 +201,26 @@ public:
 	 */
 	void initialize(const std::shared_ptr<reply_stream> &reply);
 
+	virtual void virtual_hook(request_stream_hook id, void *data);
+
 protected:
 	/*!
 	 * \brief Returns pointer to reply_stream associated with this stream.
 	 *
 	 * \sa reply_stream
 	 */
-	std::shared_ptr<reply_stream> get_reply()
+	const std::shared_ptr<reply_stream> &reply()
 	{
 		if (__builtin_expect(!m_reply, false))
 			throw std::logic_error("request_stream::m_reply is null");
 
 		return m_reply;
+	}
+
+	__attribute__((deprecated))
+	const std::shared_ptr<reply_stream> &get_reply()
+	{
+		return reply();
 	}
 
 	/*!
@@ -215,6 +237,7 @@ protected:
 private:
 	std::shared_ptr<reply_stream> m_reply;
 	std::unique_ptr<swarm::logger> m_logger;
+	std::unique_ptr<base_request_stream_data> m_data;
 };
 
 /*!
@@ -257,21 +280,21 @@ protected:
 	/*!
 	 * \brief Sends \a rep to client and closes the stream.
 	 */
-	void send_reply(swarm::http_response &&rep)
+	void send_reply(http_response &&rep)
 	{
-		get_reply()->send_headers(std::move(rep), boost::asio::const_buffer(), make_close_handler());
+		reply()->send_headers(std::move(rep), boost::asio::const_buffer(), make_close_handler());
 	}
 
 	/*!
 	 * \brief Sends \a rep with \a data to client and closes the stream.
 	 */
 	template <typename T>
-	void send_reply(swarm::http_response &&rep, T &&data)
+	void send_reply(http_response &&rep, T &&data)
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), make_close_handler());
 		auto buffer = cast_to_buffer(wrapper);
-		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
+		reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
 	}
 
 	/*!
@@ -279,7 +302,7 @@ protected:
 	 */
 	void send_reply(int code)
 	{
-		get_reply()->send_error(static_cast<swarm::http_response::status_type>(code));
+		reply()->send_error(static_cast<http_response::status_type>(code));
 	}
 
 	/*!
@@ -287,10 +310,10 @@ protected:
 	 *
 	 * \sa reply_stream::send_headers
 	 */
-	void send_headers(swarm::http_response &&rep,
+	void send_headers(http_response &&rep,
 			  std::function<void (const boost::system::error_code &err)> &&handler)
 	{
-		get_reply()->send_headers(std::move(rep), boost::asio::const_buffer(), std::move(handler));
+		reply()->send_headers(std::move(rep), boost::asio::const_buffer(), std::move(handler));
 	}
 
 	/*!
@@ -299,14 +322,14 @@ protected:
 	 * \sa reply_stream::send_headers
 	 */
 	template <typename T>
-	void send_headers(swarm::http_response &&rep,
+	void send_headers(http_response &&rep,
 			  T &&data,
 			  std::function<void (const boost::system::error_code &err)> &&handler)
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
 		auto buffer = cast_to_buffer(wrapper);
-		get_reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
+		reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
 	}
 
 	/*!
@@ -319,7 +342,7 @@ protected:
 	void send_data(const boost::asio::const_buffer &data,
 		       std::function<void (const boost::system::error_code &err)> &&handler)
 	{
-		get_reply()->send_data(data, std::move(handler));
+		reply()->send_data(data, std::move(handler));
 	}
 
 	/*!
@@ -334,7 +357,7 @@ protected:
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
 		auto buffer = cast_to_buffer(wrapper);
-		get_reply()->send_data(buffer, std::move(wrapper));
+		reply()->send_data(buffer, std::move(wrapper));
 	}
 
 	/*!
@@ -344,7 +367,7 @@ protected:
 	 */
 	void close(const boost::system::error_code &err)
 	{
-		get_reply()->close(err);
+		reply()->close(err);
 	}
 
 private:
@@ -398,7 +421,7 @@ private:
 	 */
 	std::function<void (const boost::system::error_code &err)> make_close_handler()
 	{
-		return std::move(std::bind(&reply_stream::close, get_reply(), std::placeholders::_1));
+		return std::move(std::bind(&reply_stream::close, reply(), std::placeholders::_1));
 	}
 
 	Server *m_server;
@@ -421,13 +444,13 @@ public:
 	 *
 	 * Http request details are available by \a req, POST data by \a buffer.
 	 */
-	virtual void on_request(const swarm::http_request &req, const boost::asio::const_buffer &buffer) = 0;
+	virtual void on_request(const http_request &req, const boost::asio::const_buffer &buffer) = 0;
 
 protected:
 	/*!
-	 * \brief Returns const reference to ioremap::swarm::http_request associated initiated this handler.
+	 * \brief Returns const reference to ioremap::http_request associated initiated this handler.
 	 */
-	const swarm::http_request &request()
+	const http_request &request()
 	{
 		return m_request;
 	}
@@ -436,7 +459,7 @@ private:
 	/*!
 	 * \internal
 	 */
-	void on_headers(swarm::http_request &&req)
+	void on_headers(http_request &&req)
 	{
 		m_request = std::move(req);
 		if (auto tmp = req.headers().content_length())
@@ -464,7 +487,7 @@ private:
 		}
 	}
 
-	swarm::http_request m_request;
+	http_request m_request;
 	std::vector<char> m_data;
 };
 
@@ -502,7 +525,7 @@ public:
 	/*!
 	 * \brief This method is called as headers \a req are received.
 	 */
-	virtual void on_request(const swarm::http_request &req) = 0;
+	virtual void on_request(const http_request &req) = 0;
 	/*!
 	 * \brief This method is called on every received chunk \a buffer from client.
 	 *
@@ -520,7 +543,7 @@ protected:
 	/*!
 	 * \brief Returns the request initiated this handler.
 	 */
-	const swarm::http_request &request()
+	const http_request &request()
 	{
 		return m_request;
 	}
@@ -563,7 +586,7 @@ private:
 	/*!
 	 * \internal
 	 */
-	void on_headers(swarm::http_request &&req)
+	void on_headers(http_request &&req)
 	{
 		m_request = std::move(req);
 
@@ -634,11 +657,11 @@ private:
 			m_data.resize(0);
 			m_state = 0;
 
-			this->get_reply()->want_more();
+			this->reply()->want_more();
 		}
 	}
 
-	swarm::http_request m_request;
+	http_request m_request;
 	std::vector<char> m_data;
 	size_t m_chunk_size;
 	std::atomic_uint m_state;

@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-#include "http_response.hpp"
-#include "http_request.hpp"
+#include "http_response_p.hpp"
 
 namespace ioremap {
 namespace swarm {
 
-class network_reply_data
+http_response::http_response() : m_data(new http_response_data)
 {
-public:
-	network_reply_data() : code(0)
-	{
-	}
+}
 
-	int code;
-	boost::optional<std::string> reason;
-	http_headers headers;
-};
-
-http_response::http_response() : m_data(new network_reply_data)
+http_response::http_response(http_response_data &data) : m_data(&data)
 {
 }
 
@@ -46,7 +37,7 @@ http_response::http_response(http_response &&other)
 	swap(m_data, other.m_data);
 }
 
-http_response::http_response(const http_response &other) : m_data(new network_reply_data(*other.m_data))
+http_response::http_response(const http_response &other) : m_data(new http_response_data(*other.m_data))
 {
 }
 

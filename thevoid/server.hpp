@@ -46,6 +46,7 @@ class url;
 }
 namespace thevoid {
 
+class base_request_stream_data;
 class server_data;
 template <typename T> class connection;
 class monitor_connection;
@@ -264,9 +265,10 @@ protected:
 		void set_host_suffix(const std::string &host);
 
 		/*!
+		 * \internal
 		 * \brief Returns true if request satisfies all conditions.
 		 */
-		bool check(const swarm::http_request &request) const;
+		bool check(const http_request &request) const;
 
 		/*!
 		 * \brief Swaps this options with \a other.
@@ -301,7 +303,7 @@ private:
 	/*!
 	 * \internal
 	 */
-	std::shared_ptr<base_stream_factory> factory(const swarm::http_request &request);
+	std::shared_ptr<base_stream_factory> factory(const http_request &request);
 
 	std::unique_ptr<server_data> m_data;
 };

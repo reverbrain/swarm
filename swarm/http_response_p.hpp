@@ -14,25 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef IOREMAP_THEVOID_STOCKREPLIES_P_HPP
-#define IOREMAP_THEVOID_STOCKREPLIES_P_HPP
+#ifndef IOREMAP_SWARM_HTTP_RESPONSE_P_HPP
+#define IOREMAP_SWARM_HTTP_RESPONSE_P_HPP
 
-#include <boost/asio/buffer.hpp>
 #include "http_response.hpp"
 
 namespace ioremap {
-namespace thevoid {
+namespace swarm {
 
-namespace stock_replies
+class http_response_data
 {
+public:
+	http_response_data() : code(0)
+	{
+	}
 
-boost::asio::const_buffer status_to_buffer(http_response::status_type status);
-http_response stock_reply(http_response::status_type status);
-std::vector<boost::asio::const_buffer> to_buffers(const http_response &reply, const boost::asio::const_buffer &content);
-void to_buffers(const http_response &reply, std::vector<char> &buffer);
+	int code;
+	boost::optional<std::string> reason;
+	http_headers headers;
+};
 
-}
+} // namespace swarm
+} // namespace ioremap
 
-} } // namespace ioremap::thevoid
-
-#endif // IOREMAP_THEVOID_STOCKREPLIES_P_HPP
+#endif // IOREMAP_SWARM_HTTP_RESPONSE_P_HPP

@@ -14,26 +14,16 @@
  * limitations under the License.
  */
 
-#include "http_request.hpp"
+#include "http_request_p.hpp"
 
 namespace ioremap {
 namespace swarm {
 
-class network_request_data
+http_request::http_request() : m_data(new http_request_data)
 {
-public:
-	network_request_data() : major_version(1), minor_version(1)
-	{
-	}
+}
 
-	swarm::url url;
-	http_headers headers;
-	int major_version;
-	int minor_version;
-	std::string method;
-};
-
-http_request::http_request() : m_data(new network_request_data)
+http_request::http_request(http_request_data &data) : m_data(&data)
 {
 }
 
@@ -41,13 +31,13 @@ http_request::http_request(const boost::none_t &)
 {
 }
 
-http_request::http_request(http_request &&other) : m_data(new network_request_data)
+http_request::http_request(http_request &&other)
 {
 	using std::swap;
 	swap(m_data, other.m_data);
 }
 
-http_request::http_request(const http_request &other) : m_data(new network_request_data(*other.m_data))
+http_request::http_request(const http_request &other) : m_data(new http_request_data(*other.m_data))
 {
 }
 
@@ -97,22 +87,6 @@ const http_headers &http_request::headers() const
 	return m_data->headers;
 }
 
-void http_request::set_http_version(int major_version, int minor_version)
-{
-	m_data->major_version = major_version;
-	m_data->minor_version = minor_version;
-}
-
-int http_request::http_major_version() const
-{
-	return m_data->major_version;
-}
-
-int http_request::http_minor_version() const
-{
-	return m_data->minor_version;
-}
-
 void http_request::set_method(const std::string &method)
 {
 	m_data->method = method;
@@ -121,15 +95,6 @@ void http_request::set_method(const std::string &method)
 std::string http_request::method() const
 {
 	return m_data->method;
-}
-
-bool http_request::is_keep_alive() const
-{
-	if (auto keep_alive = headers().is_keep_alive()) {
-		return *keep_alive;
-	}
-
-	return http_major_version() == 1 && http_minor_version() >= 1;
 }
 
 } // namespace swarm
