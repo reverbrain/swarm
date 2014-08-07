@@ -228,7 +228,7 @@ public:
 	{
 //		auto tmp = clock::now();
 
-		network_connection_info::ptr info(new network_connection_info(logger, info->reply.request().url().to_string()));
+		network_connection_info::ptr info(new network_connection_info(logger, request->request.url().to_string()));
 		info->easy = curl_easy_init();
 		info->reply.set_request(std::move(request->request));
 		info->reply.set_url(info->reply.request().url());
