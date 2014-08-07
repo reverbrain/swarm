@@ -18,12 +18,12 @@
 #define IOREMAP_SWARM_EV_EVENT_LOOP_H
 
 #include "event_loop.hpp"
-#include "../c++config.hpp"
+#include <blackhole/platform/compiler.hpp>
 
 #include <mutex>
 #include <list>
 
-#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
+#if !defined(__clang__) && defined(HAVE_GCC46)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
@@ -40,7 +40,7 @@
 #define EV_MULTIPLICITY 1
 #include <ev++.h>
 
-#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
+#if !defined(__clang__) && defined(HAVE_GCC46)
 #pragma GCC diagnostic pop
 #endif
 

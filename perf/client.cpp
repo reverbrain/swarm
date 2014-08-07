@@ -18,7 +18,6 @@
 #include <swarm/urlfetcher/boost_event_loop.hpp>
 #include <swarm/urlfetcher/ev_event_loop.hpp>
 #include <swarm/urlfetcher/stream.hpp>
-#include <swarm/c++config.hpp>
 #include <list>
 #include <iostream>
 #include <chrono>
@@ -27,12 +26,7 @@
 #include <condition_variable>
 
 #include <iostream>
-
-#ifdef SWARM_CSTDATOMIC
-#  include <cstdatomic>
-#else
-#  include <atomic>
-#endif
+#include <blackhole/utils/atomic.hpp>
 
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>

@@ -24,19 +24,18 @@
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/variant.hpp>
-#include <swarm/c++config.hpp>
 
 #include <string>
 #include <vector>
 
-#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
+#if !defined(__clang__) && defined(HAVE_GCC46)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #endif
 
 #include <thevoid/rapidjson/document.h>
 
-#if !defined(__clang__) && !defined(SWARM_GCC_4_4)
+#if !defined(__clang__) && defined(HAVE_GCC46)
 #pragma GCC diagnostic pop
 #endif
 
@@ -227,7 +226,7 @@ protected:
 		 */
 		options();
 
-		options(options &&other) SWARM_NOEXCEPT;
+		options(options &&other) BLACKHOLE_NOEXCEPT;
 		options(const options &other) = delete;
 		options &operator =(options &&other);
 		options &operator =(const options &other) = delete;

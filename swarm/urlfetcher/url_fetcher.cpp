@@ -15,7 +15,6 @@
  */
 
 #include "url_fetcher.hpp"
-#include "../c++config.hpp"
 
 #include <string.h>
 #include <curl/curl.h>
@@ -23,12 +22,7 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
-
-#ifdef SWARM_CSTDATOMIC
-#  include <cstdatomic>
-#else
-#  include <atomic>
-#endif
+#include <blackhole/utils/atomic.hpp>
 
 #include <queue>
 #include <list>

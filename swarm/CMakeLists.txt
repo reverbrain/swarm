@@ -1,5 +1,4 @@
 set(SWARM_SRC_LIST
-    c++config.hpp
     http_headers.hpp
     http_headers.cpp
     http_request.hpp
@@ -15,7 +14,6 @@ set(SWARM_SRC_LIST
     )
 
 set(SWARM_HDR_LIST
-        c++config.hpp
 	http_headers.hpp
 	http_request.hpp
 	http_response.hpp

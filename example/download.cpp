@@ -18,17 +18,11 @@
 #include <swarm/urlfetcher/ev_event_loop.hpp>
 #include <swarm/urlfetcher/stream.hpp>
 #include <swarm/logger.hpp>
-#include <swarm/c++config.hpp>
 #include <list>
 #include <iostream>
 #include <chrono>
 #include <thread>
-
-#ifdef SWARM_CSTDATOMIC
-#  include <cstdatomic>
-#else
-#  include <atomic>
-#endif
+#include <blackhole/utils/atomic.hpp>
 
 #include <boost/version.hpp>
 
