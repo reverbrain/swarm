@@ -469,6 +469,14 @@ int base_server::parse_arguments(int argc, char **argv)
 		m_data->safe_mode = config["safe_mode"].GetBool();
 	}
 
+	if (config.HasMember("request_header")) {
+		m_data->request_header = config["request_header"].GetString();
+	}
+
+	if (config.HasMember("trace_header")) {
+		m_data->request_header = config["trace_header"].GetString();
+	}
+
 	if (options.count("daemonize")) {
 		m_data->daemonize = true;
 	} else if (config.HasMember("daemon")) {

@@ -142,6 +142,10 @@ public:
 	bool options_parsed;
 	std::unique_ptr<pid_file> pid;
 	std::string pid_file_path;
+
+	//! Request ID/Trace bit
+	std::string request_header;
+	std::string trace_header;
 };
 
 }}

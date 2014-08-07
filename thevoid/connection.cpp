@@ -379,6 +379,7 @@ void connection<T>::process_next()
 	m_access_sent = 0;
 	m_request_parser.reset();
 
+	m_logger = swarm::logger(m_server->logger(), blackhole::log::attributes_t());
 	m_request = swarm::http_request();
 
 	CONNECTION_DEBUG("unprocessed: %lld", m_unprocessed_end - m_unprocessed_begin);
@@ -469,6 +470,51 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			m_access_method = m_request.method();
 			m_access_url = m_request.url().original();
+
+			uint64_t request_id = 0;
+			bool trace_bit = false;
+
+			bool failed_to_parse_request_id = true;
+			const std::string &request_header = m_server->m_data->request_header;
+			if (!request_header.empty()) {
+				if (auto request_ptr = m_request.headers().get(request_header)) {
+					std::string tmp = request_ptr->substr(0, 16);
+					errno = 0;
+					request_id = strtoull(tmp.c_str(), NULL, 16);
+					if (errno != 0) {
+						request_id = 0;
+						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': value: '%s', err: %d",
+							m_request.url().original(), request_header, *request_ptr, -errno);
+					} else {
+						failed_to_parse_request_id = false;
+					}
+				}
+			}
+
+			if (failed_to_parse_request_id) {
+				unsigned char *buffer = reinterpret_cast<unsigned char *>(&request_id);
+				for (size_t i = 0; i < sizeof(request_id) / sizeof(unsigned char); ++i) {
+					buffer[i] = std::rand();
+				}
+			}
+
+			const std::string &trace_header = m_server->m_data->trace_header;
+			if (!trace_header.empty()) {
+				if (auto trace_bit_ptr = m_request.headers().get(trace_header)) {
+					try {
+						trace_bit = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
+					} catch (std::exception &exc) {
+						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': must be either 0 or 1, but value: '%s', err: %s",
+							m_request.url().original(), trace_header, *trace_bit_ptr, exc.what());
+					}
+				}
+			}
+
+			blackhole::log::attributes_t attributes = {
+				swarm::keyword::request_id() = request_id,
+				blackhole::keyword::tracebit() = trace_bit
+			};
+			m_logger = swarm::logger(m_server->logger(), std::move(attributes));
 
 			if (!m_request.url().is_valid()) {
 				send_error(swarm::http_response::bad_request);
