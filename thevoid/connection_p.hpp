@@ -149,8 +149,6 @@ private:
 	timeval m_access_start;
 	std::string m_access_method;
 	std::string m_access_url;
-	uint64_t m_access_request;
-	bool m_access_trace;
 	int m_access_status;
 	unsigned long long m_access_received;
 	unsigned long long m_access_sent;

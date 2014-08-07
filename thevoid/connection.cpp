@@ -385,8 +385,6 @@ void connection<T>::process_next()
 	m_access_received = 0;
 	m_access_sent = 0;
 	m_request_parser.reset();
-	m_access_request = 0;
-	m_access_trace = false;
 
 	m_logger = swarm::logger(m_server->logger(), blackhole::log::attributes_t());
 	m_request = http_request();
@@ -479,8 +477,8 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			m_access_method = m_request.method();
 			m_access_url = m_request.url().original();
-			m_access_request = 0;
-			m_access_trace = false;
+			uint64_t request_id = 0;
+			bool trace_bit = false;
 
 			bool failed_to_parse_request_id = true;
 			const std::string &request_header = m_server->m_data->request_header;
@@ -488,9 +486,9 @@ void connection<T>::process_data(const char *begin, const char *end)
 				if (auto request_ptr = m_request.headers().get(request_header)) {
 					std::string tmp = request_ptr->substr(0, 16);
 					errno = 0;
-					m_access_request = strtoull(tmp.c_str(), NULL, 16);
+					request_id = strtoull(tmp.c_str(), NULL, 16);
 					if (errno != 0) {
-						m_access_request = 0;
+						request_id = 0;
 						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': value: '%s', err: %d",
 							m_request.url().original(), request_header, *request_ptr, -errno);
 					} else {
@@ -500,8 +498,8 @@ void connection<T>::process_data(const char *begin, const char *end)
 			}
 
 			if (failed_to_parse_request_id) {
-				unsigned char *buffer = reinterpret_cast<unsigned char *>(&m_access_request);
-				for (size_t i = 0; i < sizeof(m_access_request) / sizeof(unsigned char); ++i) {
+				unsigned char *buffer = reinterpret_cast<unsigned char *>(&request_id);
+				for (size_t i = 0; i < sizeof(request_id) / sizeof(unsigned char); ++i) {
 					buffer[i] = std::rand();
 				}
 			}
@@ -510,7 +508,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			if (!trace_header.empty()) {
 				if (auto trace_bit_ptr = m_request.headers().get(trace_header)) {
 					try {
-						m_access_trace = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
+						trace_bit = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
 					} catch (std::exception &exc) {
 						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': must be either 0 or 1, but value: '%s', err: %s",
 							m_request.url().original(), trace_header, *trace_bit_ptr, exc.what());
@@ -519,10 +517,15 @@ void connection<T>::process_data(const char *begin, const char *end)
 			}
 
 			blackhole::log::attributes_t attributes = {
-				swarm::keyword::request_id() = m_access_request,
-				blackhole::keyword::tracebit() = m_access_trace
+				swarm::keyword::request_id() = request_id,
+				blackhole::keyword::tracebit() = trace_bit
 			};
 			m_logger = swarm::logger(m_server->logger(), std::move(attributes));
+
+			m_request.set_request_id(request_id);
+			m_request.set_trace_bit(trace_bit);
+			m_request.set_local_endpoint(m_access_local);
+			m_request.set_remote_endpoint(m_access_remote);
 
 			if (!m_request.url().is_valid()) {
 				send_error(http_response::bad_request);
