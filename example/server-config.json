@@ -26,6 +26,8 @@
         "uid": 1000
     },
     "monitor-port": 20000,
+    "request_header": "X-Request",
+    "trace_header": "X-Trace",
     "application": {
     }
 }

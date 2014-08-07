@@ -22,10 +22,6 @@
 # define BOOST_BIND_NO_PLACEHOLDERS_SET_BY_SWARM
 #endif
 
-#ifndef BLACKHOLE_HEADER_ONLY
-# define BLACKHOLE_HEADER_ONLY
-#endif
-
 #include <blackhole/log.hpp>
 #include <blackhole/logger/wrapper.hpp>
 #include <blackhole/formatter/map/value.hpp>

@@ -473,7 +473,7 @@ int base_server::parse_arguments(int argc, char **argv)
 	}
 
 	if (config.HasMember("trace_header")) {
-		m_data->request_header = config["trace_header"].GetString();
+		m_data->trace_header = config["trace_header"].GetString();
 	}
 
 	if (options.count("daemonize")) {
