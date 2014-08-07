@@ -16,6 +16,8 @@ install(FILES
 	server.hpp
 	stream.hpp
 	streamfactory.hpp
+	http_request.hpp
+	http_response.hpp
     DESTINATION include/thevoid/
     )
 

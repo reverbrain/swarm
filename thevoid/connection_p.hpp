@@ -108,6 +108,8 @@ public:
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:
+	std::shared_ptr<base_request_stream> try_handler();
+
 	void want_more_impl();
 	void send_impl(buffer_info &&info);
 	void write_finished(const boost::system::error_code &err, size_t bytes_written);
@@ -159,6 +161,7 @@ private:
 	//! The estimated size of reply content-length which is not processed yet
 	size_t m_content_length;
 
+	std::atomic_bool m_close_invoked;
 	//! This object represents the server logic
 	std::shared_ptr<base_request_stream> m_handler;
 

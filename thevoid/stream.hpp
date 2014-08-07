@@ -65,6 +65,8 @@ class base_request_stream_data;
 class reply_stream
 {
 public:
+	typedef std::function<void (const boost::system::error_code &err)> result_function;
+
 	enum reply_stream_hook
 	{
 	};
@@ -77,16 +79,13 @@ public:
 	 *
 	 * At finish \a handler is called with error_code.
 	 */
-	virtual void send_headers(http_response &&rep,
-				  const boost::asio::const_buffer &content,
-				  std::function<void (const boost::system::error_code &err)> &&handler) = 0;
+	virtual void send_headers(http_response &&rep, const boost::asio::const_buffer &content, result_function &&handler) = 0;
 	/*!
 	 * \brief Sends raw data \a buffer to client.
 	 *
 	 * At finish \a handler is called with error_code.
 	 */
-	virtual void send_data(const boost::asio::const_buffer &buffer,
-			       std::function<void (const boost::system::error_code &err)> &&handler) = 0;
+	virtual void send_data(const boost::asio::const_buffer &buffer, result_function &&handler) = 0;
 	/*!
 	 * \brief Tell event loop to read more data from socket.
 	 *
@@ -151,6 +150,8 @@ public:
 class base_request_stream
 {
 public:
+	typedef reply_stream::result_function result_function;
+
 	enum request_stream_hook
 	{
 	};
@@ -276,7 +277,8 @@ protected:
 	 */
 	void send_reply(http_response &&rep)
 	{
-		reply()->send_headers(std::move(rep), boost::asio::const_buffer(), make_close_handler());
+		reply()->send_headers(std::move(rep), boost::asio::const_buffer(), result_function());
+		reply()->close(boost::system::error_code());
 	}
 
 	/*!
@@ -286,9 +288,10 @@ protected:
 	void send_reply(http_response &&rep, T &&data)
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
-		auto wrapper = make_wrapper(std::forward<T>(data), make_close_handler());
+		auto wrapper = make_wrapper(std::forward<T>(data), result_function());
 		auto buffer = cast_to_buffer(wrapper);
 		reply()->send_headers(std::move(rep), buffer, std::move(wrapper));
+		reply()->close(boost::system::error_code());
 	}
 
 	/*!
@@ -304,8 +307,7 @@ protected:
 	 *
 	 * \sa reply_stream::send_headers
 	 */
-	void send_headers(http_response &&rep,
-			  std::function<void (const boost::system::error_code &err)> &&handler)
+	void send_headers(http_response &&rep, result_function &&handler)
 	{
 		reply()->send_headers(std::move(rep), boost::asio::const_buffer(), std::move(handler));
 	}
@@ -316,9 +318,7 @@ protected:
 	 * \sa reply_stream::send_headers
 	 */
 	template <typename T>
-	void send_headers(http_response &&rep,
-			  T &&data,
-			  std::function<void (const boost::system::error_code &err)> &&handler)
+	void send_headers(http_response &&rep, T &&data, result_function &&handler)
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
@@ -333,8 +333,7 @@ protected:
 	 *
 	 * \sa reply_stream::send_data
 	 */
-	void send_data(const boost::asio::const_buffer &data,
-		       std::function<void (const boost::system::error_code &err)> &&handler)
+	void send_data(const boost::asio::const_buffer &data, result_function &&handler)
 	{
 		reply()->send_data(data, std::move(handler));
 	}
@@ -345,8 +344,7 @@ protected:
 	 * \sa reply_stream::send_data
 	 */
 	template <typename T>
-	void send_data(T &&data,
-		       std::function<void (const boost::system::error_code &err)> &&handler)
+	void send_data(T &&data, result_function &&handler)
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		auto wrapper = make_wrapper(std::forward<T>(data), std::move(handler));
@@ -372,9 +370,9 @@ private:
 	struct functor_wrapper
 	{
 		std::shared_ptr<T> m_data;
-		std::function<void (const boost::system::error_code &err)> m_handler;
+		result_function m_handler;
 
-		functor_wrapper(T &&data, std::function<void (const boost::system::error_code &err)> &&handler)
+		functor_wrapper(T &&data, result_function &&handler)
 			: m_data(std::make_shared<T>(std::forward<T>(data))), m_handler(std::move(handler))
 		{
 		}
@@ -404,18 +402,10 @@ private:
 	 * \internal
 	 */
 	template <typename T>
-	functor_wrapper<typename std::remove_reference<T>::type> make_wrapper(T &&data, std::function<void (const boost::system::error_code &err)> &&handler)
+	functor_wrapper<typename std::remove_reference<T>::type> make_wrapper(T &&data, result_function &&handler)
 	{
 		static_assert(std::is_rvalue_reference<decltype(data)>::value, "data must be rvalue");
 		return functor_wrapper<typename std::remove_reference<T>::type>(std::forward<T>(data), std::move(handler));
-	}
-
-	/*!
-	 * \internal
-	 */
-	std::function<void (const boost::system::error_code &err)> make_close_handler()
-	{
-		return std::move(std::bind(&reply_stream::close, reply(), std::placeholders::_1));
 	}
 
 	Server *m_server;

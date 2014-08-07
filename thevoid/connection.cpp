@@ -70,6 +70,7 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
+	m_close_invoked(false),
 	m_state(read_headers | waiting_for_first_data),
 	m_sending(false),
 	m_keep_alive(false),
@@ -97,8 +98,9 @@ connection<T>::~connection()
 	if (m_handler) {
 		m_access_status = 597;
 		print_access_log();
-		SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
 	}
+	if (auto handler = try_handler())
+		SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
 	CONNECTION_DEBUG("Connection destroyed");
 }
 
@@ -175,8 +177,25 @@ void connection<T>::initialize(base_request_stream_data *data)
 template <typename T>
 void connection<T>::close(const boost::system::error_code &err)
 {
+	m_close_invoked = true;
+
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
-	m_socket.get_io_service().dispatch(std::bind(&connection::close_impl, this->shared_from_this(), err));
+
+	if (err) {
+		m_socket.get_io_service().dispatch(std::bind(&connection::close_impl, this->shared_from_this(), err));
+	} else {
+		send_data(boost::asio::const_buffer(),
+			std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
+	}
+}
+
+template <typename T>
+std::shared_ptr<base_request_stream> connection<T>::try_handler()
+{
+	if (!m_close_invoked)
+		return m_handler;
+	else
+		return std::shared_ptr<base_request_stream>();
 }
 
 template <typename T>
@@ -222,8 +241,8 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 
 		m_access_status = 499;
 
-		if (m_handler)
-			SAFE_CALL(m_handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
+		if (auto handler = try_handler())
+			SAFE_CALL(handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
 		close_impl(err);
 		return;
 	}
@@ -429,11 +448,13 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		m_access_status = 499;
 		print_access_log();
 
-		if (m_handler) {
-			SAFE_CALL(m_handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
-			--m_server->m_data->active_connections_counter;
+		if (auto handler = try_handler()) {
+			SAFE_CALL(handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
 		}
-		m_handler.reset();
+		if (m_handler) {
+			--m_server->m_data->active_connections_counter;
+			m_handler.reset();
+		}
 		return;
 	}
 
@@ -564,8 +585,12 @@ void connection<T>::process_data(const char *begin, const char *end)
 		size_t data_from_body = std::min<size_t>(m_content_length, end - begin);
 		size_t processed_size = data_from_body;
 
-		if (data_from_body && m_handler)
-			SAFE_CALL(processed_size = m_handler->on_data(boost::asio::buffer(begin, data_from_body)), "connection::process_data -> on_data", SAFE_SEND_ERROR);
+		if (data_from_body) {
+			if (auto handler = try_handler()) {
+				SAFE_CALL(processed_size = handler->on_data(boost::asio::buffer(begin, data_from_body)),
+					"connection::process_data -> on_data", SAFE_SEND_ERROR);
+			}
+		}
 
 		m_content_length -= processed_size;
 		m_access_received += processed_size;
@@ -588,8 +613,8 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			CONNECTION_DEBUG("Handler processed all data, %lld bytes are still unprocessed, state: %d", (m_unprocessed_end - m_unprocessed_begin), m_state);
 
-			if (m_handler)
-				SAFE_CALL(m_handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
+			if (auto handler = try_handler())
+				SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
 
 			if (m_state & request_processed) {
 				CONNECTION_DEBUG("Request processed");
