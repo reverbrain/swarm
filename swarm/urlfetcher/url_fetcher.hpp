@@ -57,11 +57,15 @@ class base_stream;
 class url_fetcher
 {
 public:
+	url_fetcher();
 	/*!
 	 * \brief Constructs Url Fetcher with \a loop and \a logger.
 	 */
 	url_fetcher(event_loop &loop, const swarm::logger &logger);
+	url_fetcher(url_fetcher &&other);
 	~url_fetcher();
+
+	url_fetcher &operator =(url_fetcher &&other);
 
 	class request : public http_request
 	{
@@ -164,8 +168,8 @@ public:
 	void post(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body);
 
 private:
-	url_fetcher(const url_fetcher &other);
-	url_fetcher &operator =(const url_fetcher &other);
+	url_fetcher(const url_fetcher &other) = delete;
+	url_fetcher &operator =(const url_fetcher &other) = delete;
 
 	network_manager_private *p;
 

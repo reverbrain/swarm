@@ -153,6 +153,8 @@ int main(int argc, char **argv)
 		loop.loop();
 	}
 
+	manager = ioremap::swarm::url_fetcher();
+
 	auto end_time = clock::now();
 
 	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time);

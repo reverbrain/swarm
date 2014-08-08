@@ -58,11 +58,13 @@ public:
 		easy(NULL), logger(log, blackhole::log::attributes_t({ keyword::url() = url })),
 		redirect_count(0), on_headers_called(false)
 	{
+		BH_LOG(logger, SWARM_LOG_DEBUG, "Created network_connection_info: %p", this);
 		//        error[0] = '\0';
 	}
 	~network_connection_info()
 	{
 		curl_easy_cleanup(easy);
+		BH_LOG(logger, SWARM_LOG_DEBUG, "Destroyed network_connection_info: %p", this);
 		//                error[CURL_ERROR_SIZE - 1] = '\0';
 	}
 
@@ -101,6 +103,20 @@ public:
 		active_connections(0), active_connections_limit(std::numeric_limits<long>::max())
 	{
 		loop.set_listener(this);
+	}
+
+	~network_manager_private()
+	{
+		for (auto it = infos.begin(); it != infos.end(); ++it) {
+			network_connection_info *info = *it;
+			CURLMcode code = curl_multi_remove_handle(multi, info->easy);
+			if (code != CURLM_OK) {
+				BH_LOG(info->logger, SWARM_LOG_ERROR, "Failed to remove easy handle: %s", curl_multi_strerror(code));
+			}
+			delete info;
+		}
+
+		curl_multi_cleanup(multi);
 	}
 
 	void set_socket_data(int socket, void *data)
@@ -306,7 +322,7 @@ public:
 			 * which will free it, so we just forget about info's content here.
 			 * Info's destructor (~network_connection_info()) will not be called.
 			 */
-			info.release();
+			infos.insert(info.release());
 		} else {
 			/*
 			 * If exception is being thrown, info will be deleted and easy handler will be destroyed,
@@ -366,12 +382,14 @@ public:
 				}
 			} catch (...) {
 				curl_multi_remove_handle(multi, easy);
+				infos.erase(info);
 				delete info;
 
 				throw;
 			}
 
 			curl_multi_remove_handle(multi, easy);
+			infos.erase(info);
 			delete info;
 		} while (easy);
 
@@ -395,7 +413,7 @@ public:
 		return loop->close_socket(item);
 	}
 
-	static int socket_callback(CURL *e, curl_socket_t s, int what, url_fetcher *manager, void *data)
+	static int socket_callback(CURL *e, curl_socket_t s, int what, network_manager_private *manager, void *data)
 	{
 		(void) e;
 
@@ -415,24 +433,24 @@ public:
 				option = event_loop::poll_all;
 				break;
 			default:
-				BH_LOG(manager->p->logger, SWARM_LOG_INFO, "socket_callback, unknown what: %d", what);
+				BH_LOG(manager->logger, SWARM_LOG_INFO, "socket_callback, unknown what: %d", what);
 				return 0;
 		}
 
-		return manager->p->loop.socket_request(s, option, data);
+		return manager->loop.socket_request(s, option, data);
 	}
 
-	static int timer_callback(CURLM *multi, long timeout_ms, url_fetcher *manager)
+	static int timer_callback(CURLM *multi, long timeout_ms, network_manager_private *manager)
 	{
 		(void) multi;
 
-		return manager->p->loop.timer_request(timeout_ms);
+		return manager->loop.timer_request(timeout_ms);
 	}
 
 	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
 	{
 		info->ensure_headers_sent();
-		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %zu, nmemb: %zu", size, nmemb);
+		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %llu, nmemb: %llu", size, nmemb);
 		const size_t real_size = size * nmemb;
 		info->stream->on_data(boost::asio::buffer(data, real_size));
 		return real_size;
@@ -520,8 +538,13 @@ public:
 	std::atomic_long active_connections;
 	long active_connections_limit;
 	std::queue<request_info::ptr, std::list<request_info::ptr>> requests;
+	std::set<network_connection_info *> infos;
 	CURLM *multi;
 };
+
+url_fetcher::url_fetcher() : p(NULL)
+{
+}
 
 url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 	: p(new network_manager_private(loop, logger))
@@ -530,16 +553,29 @@ url_fetcher::url_fetcher(event_loop &loop, const swarm::logger &logger)
 
 	p->multi = curl_multi_init();
 	curl_multi_setopt(p->multi, CURLMOPT_SOCKETFUNCTION, network_manager_private::socket_callback);
-	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, this);
+	curl_multi_setopt(p->multi, CURLMOPT_SOCKETDATA, p);
 	curl_multi_setopt(p->multi, CURLMOPT_TIMERFUNCTION, network_manager_private::timer_callback);
-	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, this);
+	curl_multi_setopt(p->multi, CURLMOPT_TIMERDATA, p);
 	curl_multi_setopt(p->multi, CURLMOPT_PIPELINING, long(0));
+}
+
+url_fetcher::url_fetcher(url_fetcher &&other) : p(NULL)
+{
+	std::swap(p, other.p);
 }
 
 url_fetcher::~url_fetcher()
 {
-	BH_LOG(p->logger, SWARM_LOG_INFO, "Destroying network_manager: %p", this);
-	delete p;
+	if (p) {
+		BH_LOG(p->logger, SWARM_LOG_INFO, "Destroying network_manager: %p", this);
+		delete p;
+	}
+}
+
+url_fetcher &url_fetcher::operator =(url_fetcher &&other)
+{
+	std::swap(p, other.p);
+	return *this;
 }
 
 void url_fetcher::set_total_limit(long active_connections)
