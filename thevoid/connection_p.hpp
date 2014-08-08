@@ -105,6 +105,7 @@ public:
 		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	void want_more();
 	virtual void initialize(base_request_stream_data *data);
+	virtual swarm::logger create_logger();
 	virtual void close(const boost::system::error_code &err) /*override*/;
 
 private:

@@ -15,7 +15,7 @@ http_response::http_response() : swarm::http_response(*new http_response_data)
 {
 }
 
-http_response::http_response(const boost::none_t &none) : http_response(none)
+http_response::http_response(const boost::none_t &none) : swarm::http_response(none)
 {
 }
 

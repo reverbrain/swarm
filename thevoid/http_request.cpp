@@ -29,7 +29,7 @@ http_request::http_request() : swarm::http_request(*new http_request_data)
 {
 }
 
-http_request::http_request(const boost::none_t &none) : http_request(none)
+http_request::http_request(const boost::none_t &none) : swarm::http_request(none)
 {
 }
 

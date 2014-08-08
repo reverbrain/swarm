@@ -175,6 +175,12 @@ void connection<T>::initialize(base_request_stream_data *data)
 }
 
 template <typename T>
+swarm::logger connection<T>::create_logger()
+{
+	return swarm::logger(m_logger, blackhole::log::attributes_t());
+}
+
+template <typename T>
 void connection<T>::close(const boost::system::error_code &err)
 {
 	m_close_invoked = true;

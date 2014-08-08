@@ -44,6 +44,7 @@ base_request_stream::~base_request_stream()
 void base_request_stream::initialize(const std::shared_ptr<reply_stream> &reply)
 {
 	m_reply = reply;
+	m_logger.reset(new swarm::logger(reply->create_logger()));
 }
 
 void base_request_stream::virtual_hook(base_request_stream::request_stream_hook id, void *data)

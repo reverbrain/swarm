@@ -116,6 +116,8 @@ public:
 
 	virtual void initialize(base_request_stream_data *data) = 0;
 
+	virtual swarm::logger create_logger() = 0;
+
 	virtual void virtual_hook(reply_stream_hook id, void *data);
 };
 
@@ -196,6 +198,17 @@ public:
 	 */
 	void initialize(const std::shared_ptr<reply_stream> &reply);
 
+	/*!
+	 * \brief Returns the logger.
+	 */
+	const swarm::logger &logger()
+	{
+		if (__builtin_expect(!m_logger, false))
+			throw std::logic_error("request_stream::m_logger is null");
+
+		return *m_logger;
+	}
+
 	virtual void virtual_hook(request_stream_hook id, void *data);
 
 protected:
@@ -216,17 +229,6 @@ protected:
 	const std::shared_ptr<reply_stream> &get_reply()
 	{
 		return reply();
-	}
-
-	/*!
-	 * \brief Returns the logger.
-	 */
-	const swarm::logger &logger()
-	{
-		if (__builtin_expect(!m_logger, false))
-			throw std::logic_error("request_stream::m_logger is null");
-
-		return *m_logger;
 	}
 
 private:
