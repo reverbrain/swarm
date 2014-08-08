@@ -29,6 +29,10 @@ public:
 	{
 	}
 
+	virtual ~http_request_data()
+	{
+	}
+
 	swarm::url url;
 	http_headers headers;
 	std::string method;

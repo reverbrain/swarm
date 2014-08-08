@@ -29,6 +29,10 @@ public:
 	{
 	}
 
+	virtual ~http_response_data()
+	{
+	}
+
 	int code;
 	boost::optional<std::string> reason;
 	http_headers headers;
