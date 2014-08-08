@@ -28,6 +28,7 @@
 
 #include <queue>
 #include <list>
+#include <set>
 #include <algorithm>
 
 #ifndef BOOST_SYSTEM_NOEXCEPT

@@ -23,6 +23,8 @@
 #include <blackhole/formatter/string.hpp>
 #include <blackhole/frontend/files.hpp>
 
+#include <boost/io/ios_state.hpp>
+
 namespace ioremap {
 namespace swarm {
 namespace utils {
@@ -30,7 +32,7 @@ namespace logger {
 
 blackhole::log::attributes_t default_attributes()
 {
-	return {
+	return blackhole::log::attributes_t {
 		keyword::request_id() = 0
 	};
 }
