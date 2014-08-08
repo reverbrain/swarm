@@ -156,7 +156,7 @@ int boost_event_loop::timer_request(long timeout_ms)
 
 	if (timeout_ms == 0) {
 		m_service.post(std::bind(&event_listener::on_timer, listener()));
-	} else {
+	} else if (timeout_ms > 0) {
 		m_timer.expires_from_now(boost::posix_time::millisec(timeout_ms));
 		m_timer.async_wait(std::bind(&event_listener::on_timer, listener()));
 	}

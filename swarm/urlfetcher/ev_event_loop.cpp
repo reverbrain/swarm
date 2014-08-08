@@ -68,8 +68,10 @@ int ev_event_loop::socket_request(int socket, poll_option what, void *data)
 int ev_event_loop::timer_request(long timeout_ms)
 {
 	m_timer.stop();
-	m_timer.set(timeout_ms / 1000.);
-	m_timer.start();
+	if (timeout_ms >= 0) {
+		m_timer.set(timeout_ms / 1000.);
+		m_timer.start();
+	}
 	return 0;
 }
 
