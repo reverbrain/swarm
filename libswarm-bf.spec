@@ -16,7 +16,7 @@ BuildRequires:	gcc44 gcc44-c++
 %define boost_ver %{nil}
 %endif
 BuildRequires:  libxml2-devel libev-devel
-BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex
+BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex, boost%{boost_ver}-filesystem
 BuildRequires:  curl-devel
 BuildRequires:	cmake uriparser-devel libidn-devel
 BuildRequires:  libblackhole-devel
