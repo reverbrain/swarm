@@ -19,6 +19,7 @@ BuildRequires:  libxml2-devel libev-devel
 BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex
 BuildRequires:  curl-devel
 BuildRequires:	cmake uriparser-devel libidn-devel
+BuildRequires:  libblackhole-devel
 
 Obsoletes: srw
 
