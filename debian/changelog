@@ -1,3 +1,15 @@
+swarm (0.7.0.0) unstable; urgency=low
+
+  * logger: Moved to blackhole
+  * thevoid: Added request_id and trace support
+  * thevoid: Introduced thevoid::http_*
+  * both: Moved to blackhole's platform detection
+  * thevoid: Changed close's semantic
+  * urlfetcher: Make class movable, fixed destructor
+  * urlfetcher: Stop timer on negative timeout
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 08 Aug 2014 07:50:14 +0400
+
 swarm (0.6.5.1) unstable; urgency=low
 
   * thevoid: Get local endpoint at async_accept

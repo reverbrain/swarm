@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.6.5.1
+Version:	0.7.0.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -99,6 +99,15 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Aug 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.0
+- logger: Moved to blackhole
+- thevoid: Added request_id and trace support
+- thevoid: Introduced thevoid::http_*
+- both: Moved to blackhole's platform detection
+- thevoid: Changed close's semantic
+- urlfetcher: Make class movable, fixed destructor
+- urlfetcher: Stop timer on negative timeout
+
 * Thu Jul 31 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.6.5.1
 - thevoid: Get local endpoint at async_accept
 
