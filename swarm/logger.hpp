@@ -61,8 +61,8 @@ logger_base create(const std::string &file, log_level level);
 } } // namespace utils::logger
 
 DECLARE_EVENT_KEYWORD(request_id, uint64_t)
-DECLARE_EVENT_KEYWORD(source, std::string)
-DECLARE_EVENT_KEYWORD(url, std::string)
+DECLARE_LOCAL_KEYWORD(source, std::string)
+DECLARE_LOCAL_KEYWORD(url, std::string)
 
 } // namespace swarm
 } // namespace ioremap
