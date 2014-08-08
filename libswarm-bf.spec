@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.0
+Version:	0.7.0.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Aug 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.1
+- packages: Devel package must depend on blackhole
+
 * Fri Aug 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.0
 - logger: Moved to blackhole
 - thevoid: Added request_id and trace support
