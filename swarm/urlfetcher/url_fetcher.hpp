@@ -65,6 +65,7 @@ public:
 
 	class request : public http_request
 	{
+		typedef url_fetcher_request_data data;
 	public:
 		request();
 		request(const boost::none_t &);
@@ -91,13 +92,11 @@ public:
 		 * If requests performs more than \a timeout ms it will be aborted with error code 110.
 		 */
 		void set_timeout(long timeout);
-
-	private:
-		std::unique_ptr<url_fetcher_request_data> m_data;
 	};
 
 	class response : public http_response
 	{
+		typedef url_fetcher_response_data data;
 	public:
 		response();
 		response(const boost::none_t &);
@@ -124,9 +123,6 @@ public:
 		const url_fetcher::request &request() const;
 		void set_request(const url_fetcher::request &request);
 		void set_request(url_fetcher::request &&request);
-
-	private:
-		std::unique_ptr<url_fetcher_response_data> m_data;
 	};
 
 	/*!

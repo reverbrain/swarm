@@ -15,6 +15,8 @@
  */
 
 #include "url_fetcher.hpp"
+#include "../http_request_p.hpp"
+#include "../http_response_p.hpp"
 
 #include <string.h>
 #include <curl/curl.h>
@@ -571,7 +573,9 @@ void url_fetcher::post(const std::shared_ptr<base_stream> &stream, url_fetcher::
 	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
 }
 
-class url_fetcher_request_data
+#define M_DATA() (static_cast<data *>(m_data.get()))
+
+class url_fetcher_request_data : public http_request_data
 {
 public:
 	url_fetcher_request_data() : follow_location(false), timeout(30000)
@@ -582,7 +586,7 @@ public:
 	long timeout;
 };
 
-class url_fetcher_response_data
+class url_fetcher_response_data : public http_response_data
 {
 public:
 	url_fetcher_response_data() : request(boost::none)
@@ -593,7 +597,7 @@ public:
 	url_fetcher::request request;
 };
 
-url_fetcher::request::request() : m_data(new url_fetcher_request_data)
+url_fetcher::request::request() : http_request(*new url_fetcher_request_data)
 {
 }
 
@@ -603,12 +607,12 @@ url_fetcher::request::request(const boost::none_t &none) : http_request(none)
 }
 
 url_fetcher::request::request(url_fetcher::request &&other) :
-	http_request(other), m_data(std::move(other.m_data))
+	http_request(std::move(other))
 {
 }
 
 url_fetcher::request::request(const url_fetcher::request &other) :
-	http_request(other), m_data(new url_fetcher_request_data(*other.m_data))
+	http_request(*new data(*static_cast<data *>(other.m_data.get())))
 {
 }
 
@@ -618,8 +622,9 @@ url_fetcher::request::~request()
 
 url_fetcher::request &url_fetcher::request::operator =(url_fetcher::request &&other)
 {
-	m_data = std::move(other.m_data);
-	http_request::operator =(other);
+	using std::swap;
+	url_fetcher::request tmp(other);
+	swap(m_data, tmp.m_data);
 	return *this;
 }
 
@@ -628,31 +633,30 @@ url_fetcher::request &url_fetcher::request::operator =(const url_fetcher::reques
 	using std::swap;
 	url_fetcher::request tmp(other);
 	swap(m_data, tmp.m_data);
-	http_request::operator =(other);
 	return *this;
 }
 
 bool url_fetcher::request::follow_location() const
 {
-	return m_data->follow_location;
+	return M_DATA()->follow_location;
 }
 
 void url_fetcher::request::set_follow_location(bool follow_location)
 {
-	m_data->follow_location = follow_location;
+	M_DATA()->follow_location = follow_location;
 }
 
 long url_fetcher::request::timeout() const
 {
-	return m_data->timeout;
+	return M_DATA()->timeout;
 }
 
 void url_fetcher::request::set_timeout(long timeout)
 {
-	m_data->timeout = timeout;
+	M_DATA()->timeout = timeout;
 }
 
-url_fetcher::response::response() : m_data(new url_fetcher_response_data)
+url_fetcher::response::response() : http_response(*new url_fetcher_response_data)
 {
 }
 
@@ -661,12 +665,12 @@ url_fetcher::response::response(const boost::none_t &none) : http_response(none)
 }
 
 url_fetcher::response::response(url_fetcher::response &&other) :
-	http_response(other), m_data(std::move(other.m_data))
+	http_response(std::move(other))
 {
 }
 
 url_fetcher::response::response(const url_fetcher::response &other) :
-	http_response(other), m_data(new url_fetcher_response_data(*other.m_data))
+	http_response(*new data(*static_cast<data *>(other.m_data.get())))
 {
 }
 
@@ -676,8 +680,9 @@ url_fetcher::response::~response()
 
 url_fetcher::response &url_fetcher::response::operator =(url_fetcher::response &&other)
 {
-	m_data = std::move(other.m_data);
-	http_response::operator =(other);
+	using std::swap;
+	url_fetcher::response tmp(other);
+	swap(m_data, tmp.m_data);
 	return *this;
 }
 
@@ -686,38 +691,37 @@ url_fetcher::response &url_fetcher::response::operator =(const url_fetcher::resp
 	using std::swap;
 	url_fetcher::response tmp(other);
 	swap(m_data, tmp.m_data);
-	http_response::operator =(other);
 	return *this;
 }
 
 const url &url_fetcher::response::url() const
 {
-	return m_data->url;
+	return M_DATA()->url;
 }
 
 void url_fetcher::response::set_url(const swarm::url &url)
 {
-	m_data->url = url;
+	M_DATA()->url = url;
 }
 
 void url_fetcher::response::set_url(const std::string &url)
 {
-	m_data->url = std::move(swarm::url(url));
+	M_DATA()->url = std::move(swarm::url(url));
 }
 
 const url_fetcher::request &url_fetcher::response::request() const
 {
-	return m_data->request;
+	return M_DATA()->request;
 }
 
 void url_fetcher::response::set_request(const url_fetcher::request &request)
 {
-	m_data->request = request;
+	M_DATA()->request = request;
 }
 
 void url_fetcher::response::set_request(url_fetcher::request &&request)
 {
-	m_data->request = std::move(request);
+	M_DATA()->request = std::move(request);
 }
 
 } // namespace service
