@@ -404,6 +404,7 @@ void connection<T>::process_next()
 	m_access_received = 0;
 	m_access_sent = 0;
 	m_request_parser.reset();
+	m_close_invoked = false;
 
 	m_logger = swarm::logger(m_server->logger(), blackhole::log::attributes_t());
 	m_request = http_request();
