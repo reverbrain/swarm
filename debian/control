@@ -31,7 +31,7 @@ Description: Swarm is aiming at your web. HTTP-parsing tools
 Package: libswarm-dev
 Section: libdevel
 Architecture: any
-Depends: libswarm2 (= ${binary:Version}), libswarm2-urlfetcher (= ${binary:Version}), libswarm2-xml (= ${binary:Version}), libev-dev, libboost-system-dev
+Depends: libswarm2 (= ${binary:Version}), libswarm2-urlfetcher (= ${binary:Version}), libswarm2-xml (= ${binary:Version}), libev-dev, libboost-system-dev, blackhole-dev
 Description: Swarm is aiming at your web (devel)
  Development files
 
@@ -51,6 +51,6 @@ Description: TheVoid
 Package: libthevoid-dev
 Section: libdevel
 Architecture: any
-Depends: libthevoid2 (= ${binary:Version}), libswarm-dev, libboost-system-dev, libboost-thread-dev, libboost-regex-dev
+Depends: libthevoid2 (= ${binary:Version}), libswarm-dev (= ${binary:Version}), libboost-system-dev, libboost-thread-dev, libboost-regex-dev
 Description: TheVoid (devel)
  Development files

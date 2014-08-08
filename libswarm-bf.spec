@@ -32,6 +32,7 @@ object storage.
 Summary: Development files for %{name}
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: libblackhole-devel
 
 
 %description devel
