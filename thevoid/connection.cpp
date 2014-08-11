@@ -70,6 +70,7 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
+	m_access_log_printed(false),
 	m_close_invoked(false),
 	m_state(read_headers | waiting_for_first_data),
 	m_sending(false),
@@ -410,6 +411,7 @@ void connection<T>::process_next()
 	m_access_received = 0;
 	m_access_sent = 0;
 	m_request_parser.reset();
+	m_access_log_printed = false;
 	m_close_invoked = false;
 
 	m_logger = swarm::logger(m_server->logger(), blackhole::log::attributes_t());
@@ -429,6 +431,10 @@ void connection<T>::print_access_log()
 {
 	if (m_state & waiting_for_first_data)
 		return;
+
+	if (m_access_log_printed)
+		return;
+	m_access_log_printed = true;
 
 	timeval end;
 	gettimeofday(&end, NULL);

@@ -162,6 +162,7 @@ private:
 	//! The estimated size of reply content-length which is not processed yet
 	size_t m_content_length;
 
+	bool m_access_log_printed;
 	std::atomic_bool m_close_invoked;
 	//! This object represents the server logic
 	std::shared_ptr<base_request_stream> m_handler;
