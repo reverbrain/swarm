@@ -1,3 +1,9 @@
+swarm (0.7.0.2) unstable; urgency=low
+
+  * thevoid: Don't print access log twice
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 11 Aug 2014 19:13:49 +0400
+
 swarm (0.7.0.1) unstable; urgency=low
 
   * packages: Devel package must depend on blackhole

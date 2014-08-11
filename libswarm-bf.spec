@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.1
+Version:	0.7.0.2
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Aug 11 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.2
+- thevoid: Don't print access log twice
+
 * Fri Aug 08 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.1
 - packages: Devel package must depend on blackhole
 
