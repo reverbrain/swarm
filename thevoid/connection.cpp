@@ -18,6 +18,7 @@
 #include <vector>
 #include <boost/bind.hpp>
 #include <iostream>
+#include <blackhole/scoped_attributes.hpp>
 
 #include "server_p.hpp"
 #include "stream_p.hpp"
@@ -62,6 +63,31 @@ do { \
 		expr; \
 	} \
 } while (0)
+
+template <typename Method>
+struct attributes_bind_handler
+{
+	swarm::logger *logger;
+	blackhole::log::attributes_t *attributes;
+	Method method;
+
+	template <typename... Args>
+	void operator() (Args &&...args)
+	{
+		blackhole::scoped_attributes_t logger_guard(*logger, blackhole::log::attributes_t(*attributes));
+		method(std::forward<Args>(args)...);
+	}
+};
+
+template <typename Method>
+attributes_bind_handler<typename std::remove_reference<Method>::type> attributes_bind(swarm::logger &logger, blackhole::log::attributes_t &attributes, Method &&method)
+{
+	return {
+		&logger,
+		&attributes,
+		std::forward<Method>(method)
+	};
+}
 
 template <typename T>
 connection<T>::connection(base_server *server, boost::asio::io_service &service, size_t buffer_size) :
@@ -344,9 +370,9 @@ void connection<T>::send_nolock()
 {
 	buffers_array data(m_outgoing.begin(), m_outgoing.end());
 
-	m_socket.async_write_some(data, std::bind(
+	m_socket.async_write_some(data, attributes_bind(m_logger, m_attributes, std::bind(
 		&connection::write_finished, this->shared_from_this(),
-		std::placeholders::_1, std::placeholders::_2));
+		std::placeholders::_1, std::placeholders::_2)));
 }
 
 template <typename T>
@@ -414,7 +440,8 @@ void connection<T>::process_next()
 	m_access_log_printed = false;
 	m_close_invoked = false;
 
-	m_logger = swarm::logger(m_server->logger(), blackhole::log::attributes_t());
+	m_attributes.clear();
+	m_logger = swarm::logger(m_server->logger(), m_attributes);
 	m_request = http_request();
 
 	CONNECTION_DEBUG("unprocessed: %lld", m_unprocessed_end - m_unprocessed_begin);
@@ -550,11 +577,13 @@ void connection<T>::process_data(const char *begin, const char *end)
 				}
 			}
 
-			blackhole::log::attributes_t attributes = {
+			m_attributes = blackhole::log::attributes_t {
 				swarm::keyword::request_id() = request_id,
 				blackhole::keyword::tracebit() = trace_bit
 			};
-			m_logger = swarm::logger(m_server->logger(), std::move(attributes));
+			m_logger = swarm::logger(m_server->logger(), m_attributes);
+
+			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
 
 			m_request.set_request_id(request_id);
 			m_request.set_trace_bit(trace_bit);
@@ -647,9 +676,10 @@ void connection<T>::async_read()
 	m_unprocessed_end = NULL;
 	CONNECTION_DEBUG("State: %d", m_state);
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
-					 std::bind(&connection::handle_read, this->shared_from_this(),
-						   std::placeholders::_1,
-						   std::placeholders::_2));
+		attributes_bind(m_logger, m_attributes,
+			std::bind(&connection::handle_read, this->shared_from_this(),
+				std::placeholders::_1,
+				std::placeholders::_2)));
 }
 
 template <typename T>

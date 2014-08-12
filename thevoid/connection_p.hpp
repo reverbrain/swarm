@@ -130,6 +130,7 @@ private:
 
 	//! Server reference for handler logic
 	base_server *m_server;
+	blackhole::log::attributes_t m_attributes;
 	swarm::logger m_logger;
 
 	//! Socket for the connection.
