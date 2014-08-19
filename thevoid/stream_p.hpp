@@ -22,6 +22,11 @@ namespace thevoid {
 class base_request_stream_data
 {
 public:
+	base_request_stream_data() : logger_attributes(NULL)
+	{
+	}
+
+	blackhole::log::attributes_t *logger_attributes;
 };
 
 }

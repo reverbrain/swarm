@@ -24,9 +24,38 @@
 #include <cstdarg>
 #include <type_traits>
 #include <blackhole/utils/atomic.hpp>
+#include <blackhole/scoped_attributes.hpp>
 
 namespace ioremap {
 namespace thevoid {
+
+namespace detail {
+template <typename Method>
+struct attributes_bind_handler
+{
+	swarm::logger *logger;
+	blackhole::log::attributes_t *attributes;
+	Method method;
+
+	template <typename... Args>
+	void operator() (Args &&...args)
+	{
+		blackhole::scoped_attributes_t logger_guard(*logger, blackhole::log::attributes_t(*attributes));
+		method(std::forward<Args>(args)...);
+	}
+};
+
+template <typename Method>
+attributes_bind_handler<typename std::remove_reference<Method>::type> attributes_bind(
+	swarm::logger &logger, blackhole::log::attributes_t &attributes, Method &&method)
+{
+	return {
+		&logger,
+		&attributes,
+		std::forward<Method>(method)
+	};
+}
+}
 
 /*!
  * \brief The buffer_traits class makes possible to add support
@@ -69,6 +98,12 @@ public:
 
 	enum reply_stream_hook
 	{
+		get_logger_attributes_hook
+	};
+
+	struct get_logger_attributes_hook_data
+	{
+		blackhole::log::attributes_t *data;
 	};
 
 	reply_stream();
@@ -119,6 +154,8 @@ public:
 	virtual swarm::logger create_logger() = 0;
 
 	virtual void virtual_hook(reply_stream_hook id, void *data);
+
+	blackhole::log::attributes_t *get_logger_attributes();
 };
 
 /*!
@@ -211,6 +248,12 @@ public:
 
 	virtual void virtual_hook(request_stream_hook id, void *data);
 
+	template <typename Method>
+	detail::attributes_bind_handler<typename std::remove_reference<Method>::type> wrap(Method handler)
+	{
+		return detail::attributes_bind(*m_logger, *logger_attributes(), std::move(handler));
+	}
+
 protected:
 	/*!
 	 * \brief Returns pointer to reply_stream associated with this stream.
@@ -232,6 +275,8 @@ protected:
 	}
 
 private:
+	blackhole::log::attributes_t *logger_attributes();
+
 	std::shared_ptr<reply_stream> m_reply;
 	std::unique_ptr<swarm::logger> m_logger;
 	std::unique_ptr<base_request_stream_data> m_data;

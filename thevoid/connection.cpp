@@ -18,7 +18,6 @@
 #include <vector>
 #include <boost/bind.hpp>
 #include <iostream>
-#include <blackhole/scoped_attributes.hpp>
 
 #include "server_p.hpp"
 #include "stream_p.hpp"
@@ -63,31 +62,6 @@ do { \
 		expr; \
 	} \
 } while (0)
-
-template <typename Method>
-struct attributes_bind_handler
-{
-	swarm::logger *logger;
-	blackhole::log::attributes_t *attributes;
-	Method method;
-
-	template <typename... Args>
-	void operator() (Args &&...args)
-	{
-		blackhole::scoped_attributes_t logger_guard(*logger, blackhole::log::attributes_t(*attributes));
-		method(std::forward<Args>(args)...);
-	}
-};
-
-template <typename Method>
-attributes_bind_handler<typename std::remove_reference<Method>::type> attributes_bind(swarm::logger &logger, blackhole::log::attributes_t &attributes, Method &&method)
-{
-	return {
-		&logger,
-		&attributes,
-		std::forward<Method>(method)
-	};
-}
 
 template <typename T>
 connection<T>::connection(base_server *server, boost::asio::io_service &service, size_t buffer_size) :
@@ -219,6 +193,18 @@ void connection<T>::close(const boost::system::error_code &err)
 	} else {
 		send_data(boost::asio::const_buffer(),
 			std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
+	}
+}
+
+template <typename T>
+void connection<T>::virtual_hook(reply_stream::reply_stream_hook id, void *data)
+{
+	switch (id) {
+	case get_logger_attributes_hook: {
+		auto &attributes_data = *reinterpret_cast<get_logger_attributes_hook_data *>(data);
+		attributes_data.data = &m_attributes;
+		break;
+	}
 	}
 }
 
@@ -370,7 +356,7 @@ void connection<T>::send_nolock()
 {
 	buffers_array data(m_outgoing.begin(), m_outgoing.end());
 
-	m_socket.async_write_some(data, attributes_bind(m_logger, m_attributes, std::bind(
+	m_socket.async_write_some(data, detail::attributes_bind(m_logger, m_attributes, std::bind(
 		&connection::write_finished, this->shared_from_this(),
 		std::placeholders::_1, std::placeholders::_2)));
 }
@@ -676,7 +662,7 @@ void connection<T>::async_read()
 	m_unprocessed_end = NULL;
 	CONNECTION_DEBUG("State: %d", m_state);
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
-		attributes_bind(m_logger, m_attributes,
+		detail::attributes_bind(m_logger, m_attributes,
 			std::bind(&connection::handle_read, this->shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2)));

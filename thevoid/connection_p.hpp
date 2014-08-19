@@ -107,6 +107,7 @@ public:
 	virtual void initialize(base_request_stream_data *data);
 	virtual swarm::logger create_logger();
 	virtual void close(const boost::system::error_code &err) /*override*/;
+	virtual void virtual_hook(reply_stream_hook id, void *data);
 
 private:
 	std::shared_ptr<base_request_stream> try_handler();
