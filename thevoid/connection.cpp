@@ -563,10 +563,10 @@ void connection<T>::process_data(const char *begin, const char *end)
 				}
 			}
 
-			m_attributes = blackhole::log::attributes_t {
+			m_attributes = blackhole::log::attributes_t({
 				swarm::keyword::request_id() = request_id,
 				blackhole::keyword::tracebit() = trace_bit
-			};
+			});
 			m_logger = swarm::logger(m_server->logger(), m_attributes);
 
 			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
