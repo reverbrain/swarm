@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.2
+Version:	0.7.0.3
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed Aug 20 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.3
+- thevoid: Set valid scoped attribute
+- thevoid: Added request_stream::wrap
+
 * Mon Aug 11 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.2
 - thevoid: Don't print access log twice
 

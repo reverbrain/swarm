@@ -1,3 +1,10 @@
+swarm (0.7.0.3) unstable; urgency=low
+
+  * thevoid: Set valid scoped attribute
+  * thevoid: Added request_stream::wrap
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 20 Aug 2014 15:19:55 +0400
+
 swarm (0.7.0.2) unstable; urgency=low
 
   * thevoid: Don't print access log twice
