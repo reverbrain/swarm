@@ -1,3 +1,9 @@
+swarm (0.7.0.4) unstable; urgency=low
+
+  * Logger: Write logs in local time
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 21 Aug 2014 20:17:00 +0400
+
 swarm (0.7.0.3) unstable; urgency=low
 
   * thevoid: Set valid scoped attribute
