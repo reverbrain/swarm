@@ -529,15 +529,16 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 			bool failed_to_parse_request_id = true;
 			const std::string &request_header = m_server->m_data->request_header;
+			int request_header_err = 0;
+
 			if (!request_header.empty()) {
 				if (auto request_ptr = m_request.headers().get(request_header)) {
 					std::string tmp = request_ptr->substr(0, 16);
 					errno = 0;
 					request_id = strtoull(tmp.c_str(), NULL, 16);
-					if (errno != 0) {
+					request_header_err = -errno;
+					if (request_header_err != 0) {
 						request_id = 0;
-						BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': value: '%s', err: %d",
-							m_request.url().original(), request_header, *request_ptr, -errno);
 					} else {
 						failed_to_parse_request_id = false;
 					}
@@ -570,6 +571,11 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_logger = swarm::logger(m_server->logger(), m_attributes);
 
 			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
+
+			if (request_header_err != 0) {
+				BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': value: '%s', err: %d",
+					m_request.url().original(), request_header, *request_ptr, request_header_err);
+			}
 
 			m_request.set_request_id(request_id);
 			m_request.set_trace_bit(trace_bit);
