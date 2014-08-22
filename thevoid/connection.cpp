@@ -573,6 +573,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
 
 			if (request_header_err != 0) {
+				auto request_ptr = m_request.headers().get(request_header);
 				BH_LOG(m_logger, SWARM_LOG_ERROR, "url: %s, failed to parse header '%s': value: '%s', err: %d",
 					m_request.url().original(), request_header, *request_ptr, request_header_err);
 			}
