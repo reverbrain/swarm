@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.4
+Version:	0.7.0.5
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,10 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Fri Aug 22 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.5
+- thevoid: Print request_header with new request_id
+- thevoid: send_error should close connection
+
 * Thu Aug 21 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.4
 - Logger: Write logs in local time
 
