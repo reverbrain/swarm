@@ -2,11 +2,11 @@
     "endpoints": [
         "0.0.0.0:8080"
     ],
-    "backlog": 128,
+    "backlog": 512,
     "threads": 2,
     "buffer_size": 65536,
 	"logger": {
-        "level": "error",
+        "level": "info",
         "frontends": [
             {
                 "formatter": {
