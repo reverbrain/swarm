@@ -520,6 +520,10 @@ int base_server::parse_arguments(int argc, char **argv)
 		m_data->buffer_size = config["buffer_size"].GetUint();
 	}
 
+	if (config.HasMember("backlog")) {
+		m_data->backlog_size = config["backlog"].GetInt();
+	}
+
 	for (size_t i = 0; i < m_data->threads_count; ++i) {
 		m_data->worker_io_services.emplace_back(new boost::asio::io_service(1));
 		m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->worker_io_services[i]));
@@ -545,9 +549,6 @@ int base_server::parse_arguments(int argc, char **argv)
 	if (config.HasMember("monitor-port")) {
 		monitor_port = config["monitor-port"].GetInt();
 	}
-
-	if (config.HasMember("backlog"))
-		m_data->backlog_size = config["backlog"].GetInt();
 
 	try {
 		if (monitor_port != -1) {
