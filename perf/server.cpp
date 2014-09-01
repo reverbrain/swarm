@@ -71,14 +71,14 @@ public:
 	virtual bool initialize(const rapidjson::Value &config) {
 		(void) config;
 
-		on<on_get<http_server>>(
-			options::exact_match("/get"),
-			options::methods("GET")
-		);
-		on<on_upload<http_server>>(
-			options::exact_match("/upload"),
-			options::methods("POST")
-		);
+//		on<on_get<http_server>>(
+//			options::exact_match("/get"),
+//			options::methods("GET")
+//		);
+//		on<on_upload<http_server>>(
+//			options::exact_match("/upload"),
+//			options::methods("POST")
+//		);
 	
 		return true;
 	}

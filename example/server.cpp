@@ -16,8 +16,36 @@
 
 #include <thevoid/server.hpp>
 #include <thevoid/stream.hpp>
+#include <thevoid/options.hpp>
 
 using namespace ioremap;
+
+template <typename T>
+void register_handlers(T)
+{
+}
+
+template <typename T>
+std::shared_ptr<thevoid::base_stream_factory> create_handler()
+{
+	return std::shared_ptr<thevoid::base_stream_factory>();
+}
+
+namespace ioremap { namespace thevoid { namespace options {
+
+template <typename... Args>
+void select(Args... args)
+{
+	typedef decltype(std::make_tuple(args...)) args_tuple;
+	static_assert(std::tuple_size<args_tuple>::value > 0, "There must be at least one argument");
+	static_assert(std::is_same<
+		typename std::tuple_element<std::tuple_size<args_tuple>::value - 1, args_tuple>::type,
+		http_response::status_type
+		>::value,
+		"Last element must be a http_response::status");
+}
+
+} } }
 
 class http_server : public thevoid::server<http_server>
 {
@@ -25,27 +53,64 @@ public:
 	virtual bool initialize(const rapidjson::Value &config) {
 		(void) config;
 
-		on<on_ping>(
-			options::exact_match("/ping"),
-			options::methods("GET")
+		using namespace ioremap::thevoid;
+
+		options::select(thevoid::http_response::method_not_allowed);
+
+		options::select(
+			options::method("GET"),
+			create_handler<on_ping>(),
+			thevoid::http_response::method_not_allowed
 		);
-		on<on_timeout>(
-			options::exact_match("/timeout"),
-			options::methods("GET")
-		);
-		on<on_get>(
-			options::exact_match("/get"),
-			options::methods("GET")
-		);
-		on<on_echo>(
-			options::exact_match("/echo"),
-			options::methods("GET")
-		);
-		on<on_ping>(
-			options::exact_match("/header-check"),
-			options::methods("GET"),
-			options::header("X-CHECK", "SecretKey")
-		);
+
+//		register_handlers(options::select(
+//			options::exact_match("/ping") = options::select(
+//				options::method("GET") = create_handler<on_ping>(),
+//				thevoid::http_response::method_not_allowed
+//			),
+//			options::exact_match("/timeout") = options::select(
+//				options::method("GET") = create_handler<on_timeout>(),
+//				thevoid::http_response::method_not_allowed
+//			),
+//			options::exact_match("/get") = options::select(
+//				options::method("GET") = create_handler<on_get>(),
+//				thevoid::http_response::method_not_allowed
+//			),
+//			options::exact_match("/echo") = options::select(
+//				options::method("GET") = create_handler<on_echo>(),
+//				thevoid::http_response::method_not_allowed
+//			),
+//			options::exact_match("/header-check") = options::select(
+//				options::method("GET") = options::select(
+//					options::header("X-CHECK", "SecretKey") = create_handler<on_ping>(),
+//					thevoid::http_response::not_acceptable
+//				),
+//				thevoid::http_response::method_not_allowed
+//			),
+//			thevoid::http_response::not_found
+//		));
+
+//		on<on_ping>(
+//			options::exact_match("/ping"),
+//			options::methods("GET")
+//		);
+//		on<on_timeout>(
+//			options::exact_match("/timeout"),
+//			options::methods("GET")
+//		);
+//		on<on_get>(
+//			options::exact_match("/get"),
+//			options::methods("GET")
+//		);
+//		on<on_echo>(
+//			options::exact_match("/echo"),
+//			options::methods("GET")
+//		);
+//		on<on_ping>(
+//			options::exact_match("/header-check"),
+//			options::methods("GET"),
+//			options::header("X-CHECK", "SecretKey")
+//		);
 	
 		return true;
 	}
@@ -54,6 +119,12 @@ public:
 		virtual void on_request(const thevoid::http_request &req, const boost::asio::const_buffer &buffer) {
 			(void) buffer;
 			(void) req;
+
+			thevoid::detail::options::option_base<thevoid::detail::options::option_exact_match> first("/ping");
+			thevoid::detail::options::option_base<thevoid::detail::options::option_true> second;
+
+			std::function<bool (const thevoid::http_request &request)> match = std::move(first) && std::move(second);
+			std::cout << "match: " << match(req) << std::endl;
 
 			this->send_reply(thevoid::http_response::ok);
 		}

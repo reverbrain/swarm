@@ -167,121 +167,121 @@ protected:
 	 *
 	 * It makes possible to specify conditions at which handler should be called.
 	 */
-	class options
-	{
-	public:
-		typedef std::function<void (options *)> modificator;
+//	class options
+//	{
+//	public:
+//		typedef std::function<void (options *)> modificator;
 
-		/*!
-		 * \brief Calls options::set_exact_match
-		 *
-		 * \sa set_exact_match
-		 */
-		static modificator exact_match(const std::string &str);
-		/*!
-		 * \brief Calls options::set_prefix_match
-		 *
-		 * \sa set_prefix_match
-		 */
-		static modificator prefix_match(const std::string &str);
-		static modificator regex_match(const std::string &str);
-		/*!
-		 * \brief Calls options::set_methods
-		 *
-		 * \sa set_methods
-		 */
-		static modificator methods(const std::vector<std::string> &methods);
-		/*!
-		 * \brief Calls options::set_methods
-		 *
-		 * Creates std::vector from \a args and passes it to set_methods.
-		 *
-		 * \sa set_methods
-		 */
-		template <typename... String>
-		static modificator methods(String &&...args)
-		{
-			const std::vector<std::string> tmp = { std::forward<std::string>(args)... };
-			return methods(tmp);
-		}
-		/*!
-		 * \brief Calls options::set_header
-		 *
-		 * \sa set_header
-		 */
-		static modificator header(const std::string &name, const std::string &value);
+//		/*!
+//		 * \brief Calls options::set_exact_match
+//		 *
+//		 * \sa set_exact_match
+//		 */
+//		static modificator exact_match(const std::string &str);
+//		/*!
+//		 * \brief Calls options::set_prefix_match
+//		 *
+//		 * \sa set_prefix_match
+//		 */
+//		static modificator prefix_match(const std::string &str);
+//		static modificator regex_match(const std::string &str);
+//		/*!
+//		 * \brief Calls options::set_methods
+//		 *
+//		 * \sa set_methods
+//		 */
+//		static modificator methods(const std::vector<std::string> &methods);
+//		/*!
+//		 * \brief Calls options::set_methods
+//		 *
+//		 * Creates std::vector from \a args and passes it to set_methods.
+//		 *
+//		 * \sa set_methods
+//		 */
+//		template <typename... String>
+//		static modificator methods(String &&...args)
+//		{
+//			const std::vector<std::string> tmp = { std::forward<std::string>(args)... };
+//			return methods(tmp);
+//		}
+//		/*!
+//		 * \brief Calls options::set_header
+//		 *
+//		 * \sa set_header
+//		 */
+//		static modificator header(const std::string &name, const std::string &value);
 
-		static modificator minimal_path_components_count(size_t count);
-		static modificator exact_path_components_count(size_t count);
-		static modificator maximal_path_components_count(size_t count);
+//		static modificator minimal_path_components_count(size_t count);
+//		static modificator exact_path_components_count(size_t count);
+//		static modificator maximal_path_components_count(size_t count);
 
-		static modificator query(const std::string &key);
-		static modificator query(const std::string &key, const std::string &value);
+//		static modificator query(const std::string &key);
+//		static modificator query(const std::string &key, const std::string &value);
 
-		static modificator host_exact(const std::string &host);
-		static modificator host_suffix(const std::string &host);
+//		static modificator host_exact(const std::string &host);
+//		static modificator host_suffix(const std::string &host);
 
-		/*!
-		 * \brief Constructs options object.
-		 */
-		options();
+//		/*!
+//		 * \brief Constructs options object.
+//		 */
+//		options();
 
-		options(options &&other) BLACKHOLE_NOEXCEPT;
-		options(const options &other) = delete;
-		options &operator =(options &&other);
-		options &operator =(const options &other) = delete;
-		/*!
-		 * Destroyes the object.
-		 */
-		~options();
+//		options(options &&other) BLACKHOLE_NOEXCEPT;
+//		options(const options &other) = delete;
+//		options &operator =(options &&other);
+//		options &operator =(const options &other) = delete;
+//		/*!
+//		 * Destroyes the object.
+//		 */
+//		~options();
 
-		/*!
-		 * \brief Makes handler callable only if path of the request is exactly equal to \a str.
-		 */
-		void set_exact_match(const std::string &str);
-		/*!
-		 * \brief Makes handler callable only if path of the request starts with \a str.
-		 */
-		void set_prefix_match(const std::string &str);
-		void set_regex_match(const std::string &str);
-		/*!
-		 * \brief Makes handler callable if HTTP method is one of \a methods.
-		 */
-		void set_methods(const std::vector<std::string> &methods);
-		/*!
-		 * \brief Makes handler callable if HTTP header \a name is equal to \a value.
-		 */
-		void set_header(const std::string &name, const std::string &value);
+//		/*!
+//		 * \brief Makes handler callable only if path of the request is exactly equal to \a str.
+//		 */
+//		void set_exact_match(const std::string &str);
+//		/*!
+//		 * \brief Makes handler callable only if path of the request starts with \a str.
+//		 */
+//		void set_prefix_match(const std::string &str);
+//		void set_regex_match(const std::string &str);
+//		/*!
+//		 * \brief Makes handler callable if HTTP method is one of \a methods.
+//		 */
+//		void set_methods(const std::vector<std::string> &methods);
+//		/*!
+//		 * \brief Makes handler callable if HTTP header \a name is equal to \a value.
+//		 */
+//		void set_header(const std::string &name, const std::string &value);
 
-		void set_minimal_path_components_count(size_t count);
-		void set_exact_path_components_count(size_t count);
-		void set_maximal_path_components_count(size_t count);
+//		void set_minimal_path_components_count(size_t count);
+//		void set_exact_path_components_count(size_t count);
+//		void set_maximal_path_components_count(size_t count);
 
-		void set_query(const std::string &key);
-		void set_query(const std::string &key, const std::string &value);
+//		void set_query(const std::string &key);
+//		void set_query(const std::string &key, const std::string &value);
 
-		void set_host_exact(const std::string &host);
-		void set_host_suffix(const std::string &host);
+//		void set_host_exact(const std::string &host);
+//		void set_host_suffix(const std::string &host);
 
-		/*!
-		 * \internal
-		 * \brief Returns true if request satisfies all conditions.
-		 */
-		bool check(const http_request &request) const;
+//		/*!
+//		 * \internal
+//		 * \brief Returns true if request satisfies all conditions.
+//		 */
+//		bool check(const http_request &request) const;
 
-		/*!
-		 * \brief Swaps this options with \a other.
-		 */
-		void swap(options &other);
+//		/*!
+//		 * \brief Swaps this options with \a other.
+//		 */
+//		void swap(options &other);
 
-	private:
-		std::unique_ptr<server_options_private> m_data;
-	};
+//	private:
+//		std::unique_ptr<server_options_private> m_data;
+//	};
 
 	/*!
 	 * \brief Registers handler producable by \a factory with options \a opts.
 	 */
-	void on(options &&opts, const std::shared_ptr<base_stream_factory> &factory);
+//	void on(options &&opts, const std::shared_ptr<base_stream_factory> &factory);
 
 	/*!
 	 * \internal
@@ -341,32 +341,32 @@ protected:
 	 *
 	 * \sa options
 	 */
-	template <typename T, typename... Options>
-	void on(Options &&...args)
-	{
-		options opts;
-		options_pass(apply_option(opts, args)...);
-		base_server::on(std::move(opts), std::make_shared<stream_factory<Server, T>>(static_cast<Server *>(this)));
-	}
+//	template <typename T, typename... Options>
+//	void on(Options &&...args)
+//	{
+//		options opts;
+//		options_pass(apply_option(opts, args)...);
+//		base_server::on(std::move(opts), std::make_shared<stream_factory<Server, T>>(static_cast<Server *>(this)));
+//	}
 
 private:
-	/*!
-	 * \internal
-	 */
-	template <typename Option>
-	Option &&apply_option(options &opt, Option &&option)
-	{
-		option(&opt);
-		return std::forward<Option>(option);
-	}
+//	/*!
+//	 * \internal
+//	 */
+//	template <typename Option>
+//	Option &&apply_option(options &opt, Option &&option)
+//	{
+//		option(&opt);
+//		return std::forward<Option>(option);
+//	}
 
-	/*!
-	 * \internal
-	 */
-	template <typename... Options>
-	void options_pass(Options &&...)
-	{
-	}
+//	/*!
+//	 * \internal
+//	 */
+//	template <typename... Options>
+//	void options_pass(Options &&...)
+//	{
+//	}
 };
 
 /*!

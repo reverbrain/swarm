@@ -300,10 +300,10 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 	return true;
 }
 
-void base_server::on(base_server::options &&opts, const std::shared_ptr<base_stream_factory> &factory)
-{
-	m_data->handlers.emplace_back(std::move(opts), factory);
-}
+//void base_server::on(base_server::options &&opts, const std::shared_ptr<base_stream_factory> &factory)
+//{
+//	m_data->handlers.emplace_back(std::move(opts), factory);
+//}
 
 static pid_t start_daemon(pid_file *file)
 {
@@ -617,11 +617,11 @@ void base_server::stop()
 
 std::shared_ptr<base_stream_factory> base_server::factory(const http_request &request)
 {
-	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
-		if (it->first.check(request)) {
-			return it->second;
-		}
-	}
+//	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
+//		if (it->first.check(request)) {
+//			return it->second;
+//		}
+//	}
 
 	return std::shared_ptr<base_stream_factory>();
 }
