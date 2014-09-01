@@ -129,6 +129,33 @@ private:
 
 	void send_error(http_response::status_type type);
 
+	template <size_t N>
+	inline void add_state_attribute(std::ostringstream &out, bool &first, state st, const char (&name) [N])
+	{
+		if (m_state & st) {
+			if (first)
+				first = false;
+			else
+				out.write("|", 1);
+
+			out.write(name, N - 1);
+		}
+	}
+
+	inline std::string make_state_attribute()
+	{
+		std::ostringstream out;
+		bool first = true;
+
+		add_state_attribute(out, first, processing_request, "processing_request");
+		add_state_attribute(out, first, read_headers, "read_headers");
+		add_state_attribute(out, first, read_data, "read_data");
+		add_state_attribute(out, first, request_processed, "request_processed");
+		add_state_attribute(out, first, waiting_for_first_data, "waiting_for_first_data");
+
+		return out.str();
+	}
+
 	//! Server reference for handler logic
 	base_server *m_server;
 	blackhole::log::attributes_t m_attributes;
