@@ -32,6 +32,9 @@ namespace thevoid {
 #define CONNECTION_DEBUG(...) \
 	CONNECTION_LOG(SWARM_LOG_DEBUG, __VA_ARGS__)
 
+#define CONNECTION_INFO(...) \
+	CONNECTION_LOG(SWARM_LOG_INFO, __VA_ARGS__)
+
 #define CONNECTION_ERROR(...) \
 	CONNECTION_LOG(SWARM_LOG_ERROR, __VA_ARGS__)
 
@@ -84,7 +87,8 @@ static blackhole::log::attributes_t make_attributes(void *connection)
 template <typename T>
 connection<T>::connection(base_server *server, boost::asio::io_service &service, size_t buffer_size) :
 	m_server(server),
-	m_logger(m_server->logger(), make_attributes(this)),
+	m_base_logger(m_server->logger(), make_attributes(this)),
+	m_logger(m_base_logger, blackhole::log::attributes_t()),
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
@@ -111,7 +115,7 @@ template <typename T>
 connection<T>::~connection()
 {
 	if (m_server) {
-		CONNECTION_DEBUG("connection to client closed");
+		CONNECTION_INFO("connection to client closed");
 		--m_server->m_data->connections_counter;
 	}
 
@@ -145,7 +149,7 @@ void connection<T>::start(const std::string &local_endpoint)
 
 	++m_server->m_data->connections_counter;
 
-	CONNECTION_DEBUG("connection to client opened")
+	CONNECTION_INFO("connection to client opened")
 		("local", m_access_local)
 		("remote", m_access_remote);
 
@@ -470,7 +474,7 @@ void connection<T>::process_next()
 	m_close_invoked = false;
 
 	m_attributes.clear();
-	m_logger = swarm::logger(m_server->logger(), m_attributes);
+	m_logger = swarm::logger(m_base_logger, m_attributes);
 	m_request = http_request();
 
 	CONNECTION_DEBUG("process next request")
@@ -514,8 +518,14 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 {
 	m_at_read = false;
 
-	CONNECTION_LOG(err ? SWARM_LOG_ERROR : SWARM_LOG_DEBUG, "received new data")
+	// This message is not error in case of disconnect between requests
+	const bool error = err && !((m_state & waiting_for_first_data)
+		&& err.category() == boost::asio::error::get_misc_category()
+		&& err.value() == boost::asio::error::eof);
+
+	CONNECTION_LOG(error ? SWARM_LOG_ERROR : SWARM_LOG_DEBUG, "received new data")
 		("error", err.message())
+		("real_error", error)
 		("state", make_state_attribute())
 		("size", bytes_transferred);
 
@@ -620,7 +630,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 				swarm::keyword::request_id() = request_id,
 				blackhole::keyword::tracebit() = trace_bit
 			});
-			m_logger = swarm::logger(m_server->logger(), m_attributes);
+			m_logger = swarm::logger(m_base_logger, m_attributes);
 
 			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
 
