@@ -76,7 +76,7 @@ static blackhole::log::attributes_t make_attributes(void *connection)
 	snprintf(buffer, sizeof(buffer), "%p", connection);
 
 	blackhole::log::attributes_t attributes = {
-		blackhole::attribute::make(std::string("connection"), buffer)
+		blackhole::attribute::make(std::string("connection"), std::string(buffer))
 	};
 	return std::move(attributes);
 }
