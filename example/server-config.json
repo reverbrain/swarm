@@ -6,7 +6,7 @@
     "threads": 2,
     "buffer_size": 65536,
 	"logger": {
-        "level": "info",
+        "level": "debug",
         "frontends": [
             {
                 "formatter": {

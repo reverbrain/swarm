@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.5
+Version:	0.7.0.6
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Sep 02 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.6
+- thevoid: Set correct backlog for sockets
+- example: Changed default backlog and log level
+- thevoid: Changed debug logs to more user-friendly
+
 * Fri Aug 22 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.5
 - thevoid: Print request_header with new request_id
 - thevoid: send_error should close connection
