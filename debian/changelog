@@ -1,3 +1,9 @@
+swarm (0.7.0.7) unstable; urgency=low
+
+  * thevoid: Changed log levels of some messages
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 02 Sep 2014 21:01:46 +0400
+
 swarm (0.7.0.6) unstable; urgency=low
 
   * thevoid: Set correct backlog for sockets

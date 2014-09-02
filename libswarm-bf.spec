@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.6
+Version:	0.7.0.7
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Sep 02 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.7
+- thevoid: Changed log levels of some messages
+
 * Tue Sep 02 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.6
 - thevoid: Set correct backlog for sockets
 - example: Changed default backlog and log level
