@@ -1,3 +1,9 @@
+swarm (0.7.0.8) unstable; urgency=low
+
+  * thevoid: Destroy io_services before server_data
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 11 Sep 2014 16:01:14 +0400
+
 swarm (0.7.0.7) unstable; urgency=low
 
   * thevoid: Changed log levels of some messages

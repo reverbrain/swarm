@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.7
+Version:	0.7.0.8
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Sep 11 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.8
+- thevoid: Destroy io_services before server_data
+
 * Tue Sep 02 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.7
 - thevoid: Changed log levels of some messages
 
