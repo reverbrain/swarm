@@ -59,6 +59,8 @@ server_data::server_data(base_server *server) :
 	connections_counter(0),
 	active_connections_counter(0),
 	server(server),
+	io_service(new boost::asio::io_service),
+	monitor_io_service(new boost::asio::io_service),
 	threads_round_robin(0),
 	threads_count(2),
 	backlog_size(128),
@@ -91,11 +93,11 @@ server_data::~server_data()
 void server_data::handle_stop()
 {
 	worker_works.clear();
-	io_service.stop();
+	io_service->stop();
 	for (auto it = worker_io_services.begin(); it != worker_io_services.end(); ++it) {
 		(*it)->stop();
 	}
-	monitor_io_service.stop();
+	monitor_io_service->stop();
 }
 
 void server_data::handle_reload()
@@ -211,6 +213,11 @@ base_server::base_server() : m_data(new server_data(this))
 
 base_server::~base_server()
 {
+	m_data->handle_stop();
+
+	m_data->worker_io_services.clear();
+	m_data->io_service.reset();
+	m_data->monitor_io_service.reset();
 }
 
 const swarm::logger &base_server::logger() const
@@ -575,8 +582,8 @@ int base_server::run()
 	sigfillset(&sigset);
 	pthread_sigmask(SIG_BLOCK, &sigset, &previous_sigset);
 
-	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->monitor_io_service));
-	m_data->worker_works.emplace_back(new boost::asio::io_service::work(m_data->io_service));
+	m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->monitor_io_service));
+	m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->io_service));
 
 	std::vector<std::unique_ptr<boost::thread> > threads;
 	io_service_runner runner;
@@ -588,11 +595,11 @@ int base_server::run()
 	}
 
 	runner.name = "void_monitor";
-	runner.service = &m_data->monitor_io_service;
+	runner.service = m_data->monitor_io_service.get();
 	threads.emplace_back(new boost::thread(runner));
 
 	runner.name = "void_acceptor";
-	runner.service = &m_data->io_service;
+	runner.service = m_data->io_service.get();
 	threads.emplace_back(new boost::thread(runner));
 
 	pthread_sigmask(SIG_SETMASK, &previous_sigset, NULL);

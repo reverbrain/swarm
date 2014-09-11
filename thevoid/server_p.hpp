@@ -105,9 +105,9 @@ public:
 	//! Raw pointer to server itself
 	base_server *server;
 	//! The io_service used to handle new sockets.
-	boost::asio::io_service io_service;
+	std::unique_ptr<boost::asio::io_service> io_service;
 	//! The io_service used to process monitoring connection.
-	boost::asio::io_service monitor_io_service;
+	std::unique_ptr<boost::asio::io_service> monitor_io_service;
 	//! List of io_services to process connections.
 	std::vector<std::unique_ptr<boost::asio::io_service>> worker_io_services;
 	std::vector<std::unique_ptr<boost::asio::io_service::work>> worker_works;

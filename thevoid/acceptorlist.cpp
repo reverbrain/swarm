@@ -121,7 +121,7 @@ void acceptors_list<Connection>::handle_accept(size_t index, connection_ptr_type
 template <typename Connection>
 boost::asio::io_service &acceptors_list<Connection>::get_acceptor_service()
 {
-	return data.io_service;
+	return *data.io_service;
 }
 
 template <typename Connection>
@@ -133,13 +133,13 @@ boost::asio::io_service &acceptors_list<Connection>::get_connection_service()
 template <>
 boost::asio::io_service &acceptors_list<monitor_connection>::get_acceptor_service()
 {
-	return data.monitor_io_service;
+	return *data.monitor_io_service;
 }
 
 template <>
 boost::asio::io_service &acceptors_list<monitor_connection>::get_connection_service()
 {
-	return data.monitor_io_service;
+	return *data.monitor_io_service;
 }
 
 template <typename Connection>
