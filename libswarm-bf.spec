@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.8
+Version:	0.7.0.10
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Oct 14 2014 Evgeniy Polyakov <zbr@ioremap.net> - 0.7.0.10
+- sync debian/control and spec versions
+
 * Thu Sep 11 2014 Ruslan Nigmatullin <euroelessar@yandex.ru> - 0.7.0.8
 - thevoid: Destroy io_services before server_data
 

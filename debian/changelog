@@ -1,3 +1,9 @@
+swarm (0.7.0.10) unstable; urgency=low
+
+  * sync debian/control and spec versions
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Tue, 14 Oct 2014 21:08:09 +0400
+
 swarm (0.7.0.9) unstable; urgency=low
 
   * Added support for automatically reopening log file after it is moved.
