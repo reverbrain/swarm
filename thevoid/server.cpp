@@ -272,7 +272,13 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 	// Available logging sinks.
 	typedef boost::mpl::vector<
-	    blackhole::sink::files_t<>,
+	    blackhole::sink::files_t<
+			sink::files::boost_backend_t,
+			sink::rotator_t<
+				sink::files::boost_backend_t,
+				sink::rotation::watcher::move_t
+			>
+		>,
 	    blackhole::sink::syslog_t<swarm::log_level>,
 	    blackhole::sink::socket_t<boost::asio::ip::tcp>,
 	    blackhole::sink::socket_t<boost::asio::ip::udp>
