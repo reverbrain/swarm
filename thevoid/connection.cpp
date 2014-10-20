@@ -106,6 +106,7 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_access_status = 0;
 	m_access_received = 0;
 	m_access_sent = 0;
+	m_request_processing_was_finished = false;
 
 	CONNECTION_DEBUG("connection created")
 		("service", &service);
@@ -419,6 +420,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	if (m_handler)
 		--m_server->m_data->active_connections_counter;
 	m_handler.reset();
+	m_request_processing_was_finished = true;
 
 	if (err) {
 		// If access status is set to 499 there was an error during writing the data,
@@ -469,6 +471,7 @@ void connection<T>::process_next()
 	m_access_status = 0;
 	m_access_received = 0;
 	m_access_sent = 0;
+	m_request_processing_was_finished = false;
 	m_request_parser.reset();
 	m_access_log_printed = false;
 	m_close_invoked = false;
@@ -530,7 +533,10 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		("size", bytes_transferred);
 
 	if (err) {
-		m_access_status = 499;
+		if (m_access_status == 0 && !m_request_processing_was_finished) {
+			m_access_status = 499;
+		}
+
 		print_access_log();
 
 		if (auto handler = try_handler()) {
