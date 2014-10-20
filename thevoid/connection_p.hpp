@@ -158,7 +158,7 @@ private:
 
 	//! Server reference for handler logic
 	base_server *m_server;
-	blackhole::log::attributes_t m_attributes;
+	blackhole::attribute::set_t m_attributes;
 	swarm::logger m_base_logger;
 	swarm::logger m_logger;
 

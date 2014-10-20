@@ -56,7 +56,7 @@ public:
 	typedef std::unique_ptr<network_connection_info> ptr;
 
 	network_connection_info(const swarm::logger &log, const std::string &url) :
-		easy(NULL), logger(log, blackhole::log::attributes_t({ keyword::url() = url })),
+		easy(NULL), logger(log, blackhole::attribute::set_t({ keyword::url() = url })),
 		redirect_count(0), on_headers_called(false)
 	{
 		BH_LOG(logger, SWARM_LOG_DEBUG, "Created network_connection_info: %p", this);
@@ -100,7 +100,7 @@ class network_manager_private : public event_listener
 {
 public:
 	network_manager_private(event_loop &loop, const swarm::logger &logger) :
-		loop(loop), logger(logger, blackhole::log::attributes_t()), still_running(0), prev_running(0),
+		loop(loop), logger(logger, blackhole::attribute::set_t()), still_running(0), prev_running(0),
 		active_connections(0), active_connections_limit(std::numeric_limits<long>::max())
 	{
 		loop.set_listener(this);
@@ -461,9 +461,9 @@ public:
 	static inline void trim_line(Iter &begin, Iter &end)
 	{
 		while (begin < end && isspace(*begin))
-		    ++begin;
+			++begin;
 		while (begin < end && isspace(*(end - 1)))
-		    --end;
+			--end;
 	}
 
 	static std::string trimmed(const char *begin, const char *end)

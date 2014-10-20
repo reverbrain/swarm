@@ -48,7 +48,7 @@ typedef blackhole::wrapper_t<logger_base> logger;
 namespace utils {
 namespace logger {
 
-blackhole::log::attributes_t default_attributes();
+blackhole::attribute::set_t default_attributes();
 void init_attributes(logger_base &log);
 void add_file_frontend(logger_base &log, const std::string &file, log_level level);
 std::string format();

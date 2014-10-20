@@ -86,41 +86,41 @@ struct io_service_runner
 
 int main(int argc, char *argv[])
 {
-        namespace bpo = boost::program_options;
+		namespace bpo = boost::program_options;
 
-        bpo::options_description generic("Cocaine-service testing options");
+		bpo::options_description generic("Cocaine-service testing options");
 
-        std::string url;
+		std::string url;
 
 	long request_num, chunk_num, connections_limit;
 
-        generic.add_options()
-                ("help", "This help message")
-                ("url", bpo::value<std::string>(&url)->default_value("http://localhost:8080/get"), "Test URL for GET request")
-                ("requests", bpo::value<long>(&request_num)->default_value(100000), "Number of test calls")
-                ("chunk", bpo::value<long>(&chunk_num)->default_value(1000), "Send this many requests and then synchronously wait for all of them to complete")
+		generic.add_options()
+				("help", "This help message")
+				("url", bpo::value<std::string>(&url)->default_value("http://localhost:8080/get"), "Test URL for GET request")
+				("requests", bpo::value<long>(&request_num)->default_value(100000), "Number of test calls")
+				("chunk", bpo::value<long>(&chunk_num)->default_value(1000), "Send this many requests and then synchronously wait for all of them to complete")
 		("connections", bpo::value<long>(&connections_limit)->default_value(100), "Number of connections limit")
-                ;
+				;
 
-        bpo::options_description cmdline_options;
-        cmdline_options.add(generic);
+		bpo::options_description cmdline_options;
+		cmdline_options.add(generic);
 
-        try {
-                bpo::variables_map vm;
-                bpo::store(bpo::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
-                bpo::notify(vm);
+		try {
+				bpo::variables_map vm;
+				bpo::store(bpo::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
+				bpo::notify(vm);
 
-                if (vm.count("help")) {
-                        std::cerr << cmdline_options << std::endl;
-                        return -1;
-                }
-        } catch (...) {
-                std::cerr << cmdline_options << std::endl;
-                return -1;
-        }
+				if (vm.count("help")) {
+						std::cerr << cmdline_options << std::endl;
+						return -1;
+				}
+		} catch (...) {
+				std::cerr << cmdline_options << std::endl;
+				return -1;
+		}
 
 	auto logger_base = ioremap::swarm::utils::logger::create("/dev/stdout", SWARM_LOG_DEBUG);
-	ioremap::swarm::logger logger(logger_base, blackhole::log::attributes_t());
+	ioremap::swarm::logger logger(logger_base, blackhole::attribute::set_t());
 
 	boost::asio::io_service service;
 	std::unique_ptr<boost::asio::io_service::work> work;
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 		auto tm_result = tm.restart();
 		std::cout << "num: " << handler.total << ", performance: " << handler.total * 1000000 / tm_result << ", time: " << tm_result << " usecs"
 			  << ", preparation: " << preparation_usecs << " usecs" << std::endl;
-        }
+		}
 
 	std::cout << "num: " << request_num << ", performance: " << request_num * 1000000 / total.restart() << std::endl;
 
@@ -168,5 +168,5 @@ int main(int argc, char *argv[])
 	service.stop();
 	thread.join();
 
-        return 0;
+		return 0;
 }

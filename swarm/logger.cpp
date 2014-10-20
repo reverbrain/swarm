@@ -30,16 +30,16 @@ namespace swarm {
 namespace utils {
 namespace logger {
 
-blackhole::log::attributes_t default_attributes()
+blackhole::attribute::set_t default_attributes()
 {
-	return blackhole::log::attributes_t {
+	return blackhole::attribute::set_t {
 		keyword::request_id() = 0
 	};
 }
 
 void init_attributes(logger_base &log)
 {
-	blackhole::log::attributes_t attributes = default_attributes();
+	blackhole::attribute::set_t attributes = default_attributes();
 
 	for (auto it = attributes.begin(); it != attributes.end(); ++it) {
 		log.add_attribute(*it);
