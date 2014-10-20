@@ -1,3 +1,20 @@
+swarm (0.7.0.11) unstable; urgency=low
+
+  * Fixed output of http status in access log
+    There was a following case:
+    Client sent a request. Server received only a part of request and had
+    already known that request cannot be processed (either bad request, or
+    some internal error or something else). Server sent some response for
+    Client. Client got response, interrupted sending of request and
+    shutdowned socket. Thevoid tried to recive the rest of request, got an
+    error of reading from the closed socket, decided that Client went away
+    before request had processed and printed 499 http status.
+    The behaviour for that case was changed:
+    If Client gets whole response from Server, the resposne's http status
+    will be printed in access log instead of 499.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 20 Oct 2014 14:56:49 +0400
+
 swarm (0.7.0.10) unstable; urgency=low
 
   * sync debian/control and spec versions

@@ -185,6 +185,7 @@ private:
 	int m_access_status;
 	unsigned long long m_access_received;
 	unsigned long long m_access_sent;
+	bool m_request_processing_was_finished;
 
 	//! The parser for the incoming request.
 	request_parser m_request_parser;
