@@ -24,7 +24,7 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 
 #include <queue>
 #include <list>

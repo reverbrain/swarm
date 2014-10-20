@@ -26,7 +26,7 @@
 #include <condition_variable>
 
 #include <iostream>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>

@@ -23,7 +23,7 @@
 #include <boost/asio.hpp>
 #include <cstdarg>
 #include <type_traits>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 #include <blackhole/scoped_attributes.hpp>
 
 namespace ioremap {

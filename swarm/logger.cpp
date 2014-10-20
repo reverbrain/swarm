@@ -50,17 +50,23 @@ void add_file_frontend(logger_base &log, const std::string &file, log_level leve
 {
 	log.verbosity(level);
 
-	auto formatter = blackhole::utils::make_unique<blackhole::formatter::string_t>(format());
+	std::unique_ptr<blackhole::formatter::string_t> formatter(new blackhole::formatter::string_t(format()));
 	formatter->set_mapper(mapping());
-	auto sink = blackhole::utils::make_unique<blackhole::sink::files_t<>>(blackhole::sink::files_t<>::config_type(file));
-	auto frontend = blackhole::utils::make_unique<blackhole::frontend_t<blackhole::formatter::string_t, blackhole::sink::files_t<>>>(std::move(formatter), std::move(sink));
+
+	std::unique_ptr<blackhole::sink::files_t<>> sink(new blackhole::sink::files_t<>(blackhole::sink::files_t<>::config_type(file)));
+
+	typedef blackhole::frontend_t<
+		blackhole::formatter::string_t,
+		blackhole::sink::files_t<>
+	> frontend_type;
+	std::unique_ptr<frontend_type>frontend(new frontend_type(std::move(formatter), std::move(sink)));
 
 	log.add_frontend(std::move(frontend));
 }
 
 std::string format()
 {
-	return "%(timestamp)s %(request_id)s/%(lwp)s/%(pid)s %(severity)s: %(message)s, attrs: [%(...L)s]";
+	return "%(timestamp)s %(request_id)s/%(tid)s/%(pid)s %(severity)s: %(message)s, attrs: [%(...L)s]";
 }
 
 static const char *severity_names[] = {
@@ -101,19 +107,19 @@ static void format_request_id(blackhole::aux::attachable_ostringstream &out, uin
 }
 
 struct localtime_formatter_action {
-    blackhole::aux::datetime::generator_t generator;
+	blackhole::aux::datetime::generator_t generator;
 
-    localtime_formatter_action(const std::string &format) :
+	localtime_formatter_action(const std::string &format) :
 	generator(blackhole::aux::datetime::generator_factory_t::make(format))
-    {
-    }
+	{
+	}
 
-    void operator() (blackhole::aux::attachable_ostringstream &stream, const timeval &value) const
-    {
+	void operator() (blackhole::aux::attachable_ostringstream &stream, const timeval &value) const
+	{
 	std::tm tm;
 	localtime_r(&value.tv_sec, &tm);
 	generator(stream, tm, value.tv_usec);
-    }
+	}
 };
 
 blackhole::mapping::value_t mapping()

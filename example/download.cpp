@@ -22,7 +22,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 
 #include <boost/version.hpp>
 
