@@ -549,7 +549,8 @@ public:
 
 	buffered_request_stream() :
 		m_chunk_size(10 * 1024), m_state(1),
-		m_first_chunk(true), m_last_chunk(false)
+		m_first_chunk(true), m_last_chunk(false),
+		m_unprocessed_size(0)
 	{
 	}
 
@@ -605,12 +606,18 @@ protected:
 	 * \brief Tells the server that handler is ready to process next chunk.
 	 *
 	 * Call it after you finished processing of previous chunk.
-	 *
-	 * \attention It may produce immidiate call of on_chunk's method.
 	 */
 	void try_next_chunk()
 	{
-		this->try_next_chunk_internal(1);
+		// mark handler's readiness to process next chunk
+		m_state |= 1;
+
+		/*
+		 * want_more() will produce on_data() call from within io_service's thread pool.
+		 * Thus, on_chunk() method will be called from within single thread,
+		 * while try_next_chunk() method may be called from within user's threads.
+		 */
+		this->reply()->want_more();
 	}
 
 private:
@@ -619,6 +626,7 @@ private:
 	 */
 	void on_headers(http_request &&req)
 	{
+		m_unprocessed_size = req.headers().content_length().get_value_or(0);
 		m_request = std::move(req);
 
 		on_request(m_request);
@@ -631,30 +639,40 @@ private:
 	 */
 	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
-		if (m_state & 2)
+		if (m_state == 3) {
+			// chunk is ready and client is ready.
+			// after process_chunk_internal() call m_state will be cleared.
+			this->process_chunk_internal();
+		}
+
+		if (m_state & 2) {
+			// chunk is ready, but handler is not
 			return 0;
+		}
 
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
-		const auto original_size = size;
 
-		while (size > 0) {
-			const auto delta = std::min(size, m_chunk_size - m_data.size());
-			if (delta == 0) {
-				// We already called try_next_chunk, don't need to call it second time
-				return original_size - size;
-			}
+		// how much data we can consume
+		const auto delta = std::min(size, m_chunk_size - m_data.size());
 
-			m_data.insert(m_data.end(), begin, begin + delta);
-			begin += delta;
-			size -= delta;
-
-			if (m_data.size() == m_chunk_size) {
-				this->try_next_chunk_internal(2);
-				return original_size - size;
+		if (m_data.size() + delta == m_unprocessed_size) {
+			// this data is the last one
+			// if handler is not ready for processing -- wait for it
+			if (!(m_state & 1)) {
+				return 0;
 			}
 		}
-		return original_size;
+
+		m_data.insert(m_data.end(), begin, begin + delta);
+
+		// if the last data does not fill up chunk
+		// process_chunk_internal() will be called from on_close()
+		if (m_data.size() == m_chunk_size) {
+			this->process_chunk_internal();
+		}
+
+		return delta;
 	}
 
 	/*!
@@ -664,30 +682,55 @@ private:
 	{
 		if (err) {
 			on_error(err);
-		} else {
-			m_last_chunk = true;
-			try_next_chunk_internal(2);
+		} else if (m_unprocessed_size) {
+			/*
+			 * there are some unprocessed data of the last chunk
+			 * (if content length is not multiple of chunk size)
+			 */
+			this->process_chunk_internal();
 		}
 	}
 
 	/*!
 	 * \internal
+	 *
+	 * process_chunk_internal() will be called only if both chunk and client
+	 * are ready for processing (m_state is in valid state).
 	 */
-	void try_next_chunk_internal(unsigned int flag)
+	void process_chunk_internal()
 	{
-		if ((m_state |= flag) == 3) {
-			int flags = 0;
-			if (m_first_chunk)
-				flags |= first_chunk;
-			m_first_chunk = false;
-			if (m_last_chunk)
-				flags |= last_chunk;
+		int flags = 0;
+		if (m_first_chunk)
+			flags |= first_chunk;
+		m_first_chunk = false;
 
-			on_chunk(boost::asio::buffer(m_data), flags);
+		/*
+		 * last_chunk logic must rely on actual unprocessed size,
+		 * not on on_close() method call because on_close() method might be called after
+		 * "last chunk" processing (if content length is multiple of chunk size).
+		 */
+		m_unprocessed_size -= m_data.size();
+		if (!m_unprocessed_size) {
+			m_last_chunk = true;
+			flags |= last_chunk;
+		}
 
-			m_data.resize(0);
-			m_state = 0;
+		/*
+		 * m_state must be cleared before on_chunk() call
+		 * because handler is allowed to call try_next_chunk() at the end of on_chunk() method
+		 * (in case of synchronous chunk processing)
+		 * and mark handler's readiness for processing next chunk.
+		 */
+		m_state = 0;
 
+		on_chunk(boost::asio::buffer(m_data), flags);
+
+		m_data.resize(0);
+
+		/*
+		 * ask for more data only if there're remaining data
+		 */
+		if (m_unprocessed_size) {
 			this->reply()->want_more();
 		}
 	}
@@ -698,6 +741,7 @@ private:
 	std::atomic_uint m_state;
 	bool m_first_chunk;
 	bool m_last_chunk;
+	size_t m_unprocessed_size;
 };
 
 }} // namespace ioremap::thevoid
