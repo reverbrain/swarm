@@ -264,7 +264,8 @@ void connection<T>::want_more_impl()
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
-	} else {
+	} else if (m_content_length) {
+		// call async_read() only if there are some unreceived data
 		async_read();
 	}
 }
