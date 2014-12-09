@@ -765,8 +765,7 @@ void connection<T>::send_error(http_response::status_type type)
 
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),
-		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
-	close(boost::system::error_code());
+		std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
 }
 
 template class connection<boost::asio::local::stream_protocol::socket>;
