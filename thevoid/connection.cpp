@@ -476,6 +476,7 @@ void connection<T>::process_next()
 	m_request_parser.reset();
 	m_access_log_printed = false;
 	m_close_invoked = false;
+	m_content_length = 0;
 
 	m_attributes.clear();
 	m_logger = swarm::logger(m_base_logger, m_attributes);
