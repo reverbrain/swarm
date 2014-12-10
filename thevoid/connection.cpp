@@ -658,9 +658,15 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_request.set_remote_endpoint(m_access_remote);
 
 			if (!m_request.url().is_valid()) {
-				send_error(http_response::bad_request);
 				CONNECTION_ERROR("failed to parse invalid url")
 					("url", m_access_url);
+
+				// terminate connection on invalid url
+				m_keep_alive = false;
+				m_unprocessed_begin = m_unprocessed_end = 0;
+				m_state = processing_request;
+				send_error(http_response::bad_request);
+				return;
 			} else {
 				auto factory = m_server->factory(m_request);
 
@@ -680,7 +686,12 @@ void connection<T>::process_data(const char *begin, const char *end)
 						("method", m_access_method)
 						("url", m_access_url);
 
+					// terminate connection if appropriate handler is not found
+					m_keep_alive = false;
+					m_unprocessed_begin = m_unprocessed_end = 0;
+					m_state = processing_request;
 					send_error(http_response::not_found);
+					return;
 				}
 			}
 
