@@ -325,11 +325,6 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 
 		auto it = buffers.begin();
 
-		size_t buffer_size = 0;
-		for (auto jt = buffers.begin(); jt != buffers.end(); ++jt) {
-			buffer_size += boost::asio::buffer_size(*jt);
-		}
-
 		for (; it != buffers.end(); ++it) {
 			const size_t size = boost::asio::buffer_size(*it);
 			if (size <= bytes_written) {
