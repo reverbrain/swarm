@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.0.10
+Version:	0.7.1.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,12 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Dec 15 2014 Danil Osherov <shindo@yandex-team.ru> - 0.7.1.0
+- read no more than request's content length data from client.
+- buffered_request_stream class reworked.
+- reply_stream::send_error() implementation fixed according to the documentation (in comment section).
+- terminate connection on invalid URL or missing handler.
+
 * Mon Oct 20 2014 Artem Sokolov <derikon@yandex-team.ru> - 0.7.0.11
 - Fixed output of http status in access log
 - * There was a following case:
