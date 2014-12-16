@@ -264,7 +264,8 @@ void connection<T>::want_more_impl()
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data(m_unprocessed_begin, m_unprocessed_end);
-	} else {
+	} else if (m_content_length) {
+		// call async_read() only if there are some unreceived data
 		async_read();
 	}
 }
@@ -323,11 +324,6 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 		auto &buffers = m_outgoing.front().buffer;
 
 		auto it = buffers.begin();
-
-		size_t buffer_size = 0;
-		for (auto jt = buffers.begin(); jt != buffers.end(); ++jt) {
-			buffer_size += boost::asio::buffer_size(*jt);
-		}
 
 		for (; it != buffers.end(); ++it) {
 			const size_t size = boost::asio::buffer_size(*it);
@@ -475,6 +471,7 @@ void connection<T>::process_next()
 	m_request_parser.reset();
 	m_access_log_printed = false;
 	m_close_invoked = false;
+	m_content_length = 0;
 
 	m_attributes.clear();
 	m_logger = swarm::logger(m_base_logger, m_attributes);
@@ -656,9 +653,15 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_request.set_remote_endpoint(m_access_remote);
 
 			if (!m_request.url().is_valid()) {
-				send_error(http_response::bad_request);
 				CONNECTION_ERROR("failed to parse invalid url")
 					("url", m_access_url);
+
+				// terminate connection on invalid url
+				m_keep_alive = false;
+				m_unprocessed_begin = m_unprocessed_end = 0;
+				m_state = processing_request;
+				send_error(http_response::bad_request);
+				return;
 			} else {
 				auto factory = m_server->factory(m_request);
 
@@ -678,7 +681,12 @@ void connection<T>::process_data(const char *begin, const char *end)
 						("method", m_access_method)
 						("url", m_access_url);
 
+					// terminate connection if appropriate handler is not found
+					m_keep_alive = false;
+					m_unprocessed_begin = m_unprocessed_end = 0;
+					m_state = processing_request;
 					send_error(http_response::not_found);
+					return;
 				}
 			}
 
@@ -764,8 +772,7 @@ void connection<T>::send_error(http_response::status_type type)
 
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),
-		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
-	close(boost::system::error_code());
+		std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
 }
 
 template class connection<boost::asio::local::stream_protocol::socket>;

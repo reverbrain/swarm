@@ -1,3 +1,13 @@
+swarm (0.7.1.0) unstable; urgency=low
+
+  * read no more than request's content length data from client.
+  * buffered_request_stream class reworked.
+  * reply_stream::send_error() implementation fixed according to the
+    documentation (in comment section).
+  * terminate connection on invalid URL or missing handler.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Mon, 15 Dec 2014 18:00:00 +0400
+
 swarm (0.7.0.11) unstable; urgency=low
 
   * Fixed output of http status in access log
