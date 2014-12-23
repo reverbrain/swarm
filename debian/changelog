@@ -1,3 +1,12 @@
+swarm (0.7.2.0) unstable; urgency=low
+
+  * send_reply(int code) method doesn't defer close() method invocation.
+  * buffered_request_stream's on_chunk() method is called only when
+    handler's ready to process it (either it's first chunk or
+    try_next_chunk() method is called).
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Tue, 23 Dec 2014 14:00:00 +0400
+
 swarm (0.7.1.0) unstable; urgency=low
 
   * read no more than request's content length data from client.

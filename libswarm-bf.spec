@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.1.0
+Version:	0.7.2.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Dec 23 2014 Danil Osherov <shindo@yandex-team.ru> - 0.7.2.0
+- send_reply(int code) method doesn't defer close() method invocation.
+- buffered_request_stream's on_chunk() method is called only when handler's ready to process it.
+- * either it's first chunk or try_next_chunk() method is called.
+
 * Mon Dec 15 2014 Danil Osherov <shindo@yandex-team.ru> - 0.7.1.0
 - read no more than request's content length data from client.
 - buffered_request_stream class reworked.
