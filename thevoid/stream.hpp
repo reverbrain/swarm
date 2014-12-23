@@ -346,7 +346,11 @@ protected:
 	 */
 	void send_reply(int code)
 	{
-		reply()->send_error(static_cast<http_response::status_type>(code));
+		http_response response;
+		response.set_code(code);
+		response.headers().set_content_length(0);
+
+		send_reply(std::move(response));
 	}
 
 	/*!
