@@ -548,7 +548,7 @@ public:
 	};
 
 	buffered_request_stream() :
-		m_chunk_size(10 * 1024), m_state(1),
+		m_chunk_size(10 * 1024), m_client_asked_chunk(true),
 		m_first_chunk(true), m_last_chunk(false),
 		m_unprocessed_size(0)
 	{
@@ -610,7 +610,7 @@ protected:
 	void try_next_chunk()
 	{
 		// mark handler's readiness to process next chunk
-		m_state |= 1;
+		m_client_asked_chunk = true;
 
 		/*
 		 * want_more() will produce on_data() call from within io_service's thread pool.
@@ -639,40 +639,44 @@ private:
 	 */
 	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
-		if (m_state == 3) {
-			// chunk is ready and client is ready.
-			// after process_chunk_internal() call m_state will be cleared.
-			this->process_chunk_internal();
-		}
-
-		if (m_state & 2) {
-			// chunk is ready, but handler is not
-			return 0;
-		}
-
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
 
-		// how much data we can consume
-		const auto delta = std::min(size, m_chunk_size - m_data.size());
+		size_t buffered_size = 0;
 
-		if (m_data.size() + delta == m_unprocessed_size) {
-			// this data is the last one
-			// if handler is not ready for processing -- wait for it
-			if (!(m_state & 1)) {
-				return 0;
+		// Loop invariant is m_data is not ready to be processed at the beginning of each iteration.
+		while (size) {
+			// The size that we need to pass to the client
+			const auto real_chunk_size = std::min(m_unprocessed_size, m_chunk_size);
+
+			// If client is ready to get next chunk, we will obtain as much data as we can.
+			// Otherwise keep one byte in connection in order to be able to call on_data later.
+			const auto boundary_chunk_size =
+				m_client_asked_chunk ? real_chunk_size : real_chunk_size - 1;
+
+			const auto delta = std::min(size, boundary_chunk_size - m_data.size());
+
+			// That means nothing to add into the chunk and according to loop invariant m_data is
+			// not ready to be processed.
+			if (delta == 0) {
+				break;
+			}
+
+			buffered_size += delta;
+			m_data.insert(m_data.end(), begin, begin + delta);
+			begin += delta;
+			size -= delta;
+
+			// We will call on_chunk if both conditions are true
+			// 1. Client asked next chunk
+			// 2. The chunk is ready to be processed
+			// The second condition means either chunk is full or chunk contains last data
+			if (m_data.size() == real_chunk_size && m_client_asked_chunk) {
+				this->process_chunk_internal();
 			}
 		}
 
-		m_data.insert(m_data.end(), begin, begin + delta);
-
-		// if the last data does not fill up chunk
-		// process_chunk_internal() will be called from on_close()
-		if (m_data.size() == m_chunk_size) {
-			this->process_chunk_internal();
-		}
-
-		return delta;
+		return buffered_size;
 	}
 
 	/*!
@@ -682,12 +686,6 @@ private:
 	{
 		if (err) {
 			on_error(err);
-		} else if (m_unprocessed_size) {
-			/*
-			 * there are some unprocessed data of the last chunk
-			 * (if content length is not multiple of chunk size)
-			 */
-			this->process_chunk_internal();
 		}
 	}
 
@@ -695,7 +693,7 @@ private:
 	 * \internal
 	 *
 	 * process_chunk_internal() will be called only if both chunk and client
-	 * are ready for processing (m_state is in valid state).
+	 * are ready for processing (m_client_asked_chunk is true).
 	 */
 	void process_chunk_internal()
 	{
@@ -716,29 +714,22 @@ private:
 		}
 
 		/*
-		 * m_state must be cleared before on_chunk() call
+		 * m_client_asked_chunk must be cleared before on_chunk() call
 		 * because handler is allowed to call try_next_chunk() at the end of on_chunk() method
 		 * (in case of synchronous chunk processing)
 		 * and mark handler's readiness for processing next chunk.
 		 */
-		m_state = 0;
+		m_client_asked_chunk = false;
 
 		on_chunk(boost::asio::buffer(m_data), flags);
 
 		m_data.resize(0);
-
-		/*
-		 * ask for more data only if there're remaining data
-		 */
-		if (m_unprocessed_size) {
-			this->reply()->want_more();
-		}
 	}
 
 	http_request m_request;
 	std::vector<char> m_data;
 	size_t m_chunk_size;
-	std::atomic_uint m_state;
+	std::atomic<bool> m_client_asked_chunk;
 	bool m_first_chunk;
 	bool m_last_chunk;
 	size_t m_unprocessed_size;
