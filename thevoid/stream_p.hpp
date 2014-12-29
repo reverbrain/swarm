@@ -26,7 +26,7 @@ public:
 	{
 	}
 
-	blackhole::log::attributes_t *logger_attributes;
+	blackhole::attribute::set_t *logger_attributes;
 };
 
 }

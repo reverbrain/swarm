@@ -22,7 +22,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 
 #include <boost/version.hpp>
 
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 	const bool use_boost = true;
 
 	auto logger_base = ioremap::swarm::utils::logger::create("/dev/stdout", SWARM_LOG_DEBUG);
-	ioremap::swarm::logger logger(logger_base, blackhole::log::attributes_t());
+	ioremap::swarm::logger logger(logger_base, ioremap::swarm::utils::logger::default_attributes());
 
 	boost::asio::io_service service;
 #ifdef USE_BOOST_SIGNALS

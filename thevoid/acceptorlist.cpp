@@ -17,6 +17,7 @@
 #include "acceptorlist_p.hpp"
 #include "server_p.hpp"
 #include "monitor_connection_p.hpp"
+#include <blackhole/macro.hpp>
 #include <boost/bind.hpp>
 #include <boost/bind/placeholders.hpp>
 #include <boost/lexical_cast.hpp>
@@ -73,7 +74,7 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 		acceptor->bind(endpoint);
 		acceptor->listen(data.backlog_size);
 
-		BH_LOG(data.logger, SWARM_LOG_INFO, "Started to listen address: %s, backlog: %d", address, data.backlog_size);
+		BH_LOG(data.logger, SWARM_LOG_INFO, "Started to listen address: %s, backlog: %d", address.c_str(), data.backlog_size);
 
 		local_endpoints.emplace_back(boost::lexical_cast<std::string>(endpoint));
 		protocols.push_back(endpoint.protocol());

@@ -16,6 +16,7 @@
 
 #include "connection_p.hpp"
 #include <vector>
+#include <blackhole/macro.hpp>
 #include <boost/bind.hpp>
 #include <iostream>
 
@@ -73,12 +74,12 @@ do { \
 	} \
 } while (0)
 
-static blackhole::log::attributes_t make_attributes(void *connection)
+static blackhole::attribute::set_t make_attributes(void *connection)
 {
 	char buffer[128];
 	snprintf(buffer, sizeof(buffer), "%p", connection);
 
-	blackhole::log::attributes_t attributes = {
+	blackhole::attribute::set_t attributes = {
 		blackhole::attribute::make(std::string("connection"), std::string(buffer))
 	};
 	return std::move(attributes);
@@ -88,7 +89,7 @@ template <typename T>
 connection<T>::connection(base_server *server, boost::asio::io_service &service, size_t buffer_size) :
 	m_server(server),
 	m_base_logger(m_server->logger(), make_attributes(this)),
-	m_logger(m_base_logger, blackhole::log::attributes_t()),
+	m_logger(m_base_logger, blackhole::attribute::set_t()),
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
@@ -165,8 +166,8 @@ void connection<T>::send_headers(http_response &&rep,
 	m_access_status = rep.code();
 
 	if (m_keep_alive) {
-                rep.headers().set_keep_alive();
-        }
+				rep.headers().set_keep_alive();
+		}
 
 	CONNECTION_DEBUG("handler sends headers to client")
 		("keep_alive", m_keep_alive)
@@ -213,7 +214,7 @@ void connection<T>::initialize(base_request_stream_data *data)
 template <typename T>
 swarm::logger connection<T>::create_logger()
 {
-	return swarm::logger(m_logger, blackhole::log::attributes_t());
+	return swarm::logger(m_logger, blackhole::attribute::set_t());
 }
 
 template <typename T>
@@ -629,13 +630,13 @@ void connection<T>::process_data(const char *begin, const char *end)
 				}
 			}
 
-			m_attributes = blackhole::log::attributes_t({
+			m_attributes = blackhole::attribute::set_t({
 				swarm::keyword::request_id() = request_id,
 				blackhole::keyword::tracebit() = trace_bit
 			});
 			m_logger = swarm::logger(m_base_logger, m_attributes);
 
-			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
+			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::attribute::set_t(m_attributes));
 
 			if (request_header_err != 0) {
 				auto request_ptr = m_request.headers().get(request_header);

@@ -23,7 +23,7 @@
 #include <boost/asio.hpp>
 #include <cstdarg>
 #include <type_traits>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 #include <blackhole/scoped_attributes.hpp>
 
 namespace ioremap {
@@ -34,20 +34,20 @@ template <typename Method>
 struct attributes_bind_handler
 {
 	swarm::logger *logger;
-	blackhole::log::attributes_t *attributes;
+	blackhole::attribute::set_t *attributes;
 	Method method;
 
 	template <typename... Args>
 	void operator() (Args &&...args)
 	{
-		blackhole::scoped_attributes_t logger_guard(*logger, blackhole::log::attributes_t(*attributes));
+		blackhole::scoped_attributes_t logger_guard(*logger, blackhole::attribute::set_t(*attributes));
 		method(std::forward<Args>(args)...);
 	}
 };
 
 template <typename Method>
 attributes_bind_handler<typename std::remove_reference<Method>::type> attributes_bind(
-	swarm::logger &logger, blackhole::log::attributes_t &attributes, Method &&method)
+	swarm::logger &logger, blackhole::attribute::set_t &attributes, Method &&method)
 {
 	return {
 		&logger,
@@ -103,7 +103,7 @@ public:
 
 	struct get_logger_attributes_hook_data
 	{
-		blackhole::log::attributes_t *data;
+		blackhole::attribute::set_t *data;
 	};
 
 	reply_stream();
@@ -155,7 +155,7 @@ public:
 
 	virtual void virtual_hook(reply_stream_hook id, void *data);
 
-	blackhole::log::attributes_t *get_logger_attributes();
+	blackhole::attribute::set_t *get_logger_attributes();
 };
 
 /*!
@@ -275,7 +275,7 @@ protected:
 	}
 
 private:
-	blackhole::log::attributes_t *logger_attributes();
+	blackhole::attribute::set_t *logger_attributes();
 
 	std::shared_ptr<reply_stream> m_reply;
 	std::unique_ptr<swarm::logger> m_logger;

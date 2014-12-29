@@ -33,7 +33,7 @@ void reply_stream::virtual_hook(reply_stream::reply_stream_hook id, void *data)
 	(void) data;
 }
 
-blackhole::log::attributes_t *reply_stream::get_logger_attributes()
+blackhole::attribute::set_t *reply_stream::get_logger_attributes()
 {
 	get_logger_attributes_hook_data result;
 	result.data = NULL;
@@ -62,7 +62,7 @@ void base_request_stream::virtual_hook(base_request_stream::request_stream_hook 
 	(void) data;
 }
 
-blackhole::log::attributes_t *base_request_stream::logger_attributes()
+blackhole::attribute::set_t *base_request_stream::logger_attributes()
 {
 	return m_data->logger_attributes;
 }
