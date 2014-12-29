@@ -452,7 +452,7 @@ public:
 	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
 	{
 		info->ensure_headers_sent();
-		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %llu, nmemb: %llu", size, nmemb);
+		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %lu, nmemb: %lu", size, nmemb);
 		const size_t real_size = size * nmemb;
 		info->stream->on_data(boost::asio::buffer(data, real_size));
 		return real_size;
