@@ -22,7 +22,7 @@
 # define BOOST_BIND_NO_PLACEHOLDERS_SET_BY_SWARM
 #endif
 
-#include <blackhole/log.hpp>
+#include <blackhole/logger.hpp>
 #include <blackhole/logger/wrapper.hpp>
 #include <blackhole/formatter/map/value.hpp>
 #include <blackhole/defaults/severity.hpp>

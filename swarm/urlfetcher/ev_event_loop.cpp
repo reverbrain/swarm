@@ -15,6 +15,7 @@
  */
 
 #include "ev_event_loop.hpp"
+#include <blackhole/macro.hpp>
 
 namespace ioremap {
 namespace swarm {
@@ -23,8 +24,8 @@ ev_event_loop::ev_event_loop(ev::loop_ref &loop, const swarm::logger &logger) :
 	event_loop(logger), m_loop(loop), m_timer(loop), m_async(loop)
 {
 	m_timer.set<ev_event_loop, &ev_event_loop::on_timer>(this);
-        m_async.set<ev_event_loop, &ev_event_loop::on_async>(this);
-        m_async.start();
+		m_async.set<ev_event_loop, &ev_event_loop::on_async>(this);
+		m_async.start();
 }
 
 static void delete_later(ev::io *object)
@@ -86,21 +87,21 @@ void ev_event_loop::post(const std::function<void ()> &func)
 
 void ev_event_loop::on_socket_event(ev::io &io, int revent)
 {
-        BH_LOG(logger(), SWARM_LOG_DEBUG, "on_socket_event, io: %p, socket: %d, revent: %d", &io, io.fd, revent);
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "on_socket_event, io: %p, socket: %d, revent: %d", &io, io.fd, revent);
 
 
-        int action = 0;
-        if (revent & EV_READ)
-	        action |= event_listener::socket_read;
-        if (revent & EV_WRITE)
-	        action |= event_listener::socket_write;
+		int action = 0;
+		if (revent & EV_READ)
+			action |= event_listener::socket_read;
+		if (revent & EV_WRITE)
+			action |= event_listener::socket_write;
 
 	listener()->on_socket_event(io.fd, action);
 }
 
 void ev_event_loop::on_timer(ev::timer &, int)
 {
-        BH_LOG(logger(), SWARM_LOG_DEBUG, "on_timer");
+		BH_LOG(logger(), SWARM_LOG_DEBUG, "on_timer");
 	listener()->on_timer();
 }
 

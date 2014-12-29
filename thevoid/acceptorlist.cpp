@@ -17,6 +17,7 @@
 #include "acceptorlist_p.hpp"
 #include "server_p.hpp"
 #include "monitor_connection_p.hpp"
+#include <blackhole/macro.hpp>
 #include <boost/bind.hpp>
 #include <boost/bind/placeholders.hpp>
 #include <boost/lexical_cast.hpp>

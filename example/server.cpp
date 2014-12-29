@@ -16,6 +16,7 @@
 
 #include <thevoid/server.hpp>
 #include <thevoid/stream.hpp>
+#include <blackhole/macro.hpp>
 
 using namespace ioremap;
 
@@ -46,7 +47,7 @@ public:
 			options::methods("GET"),
 			options::header("X-CHECK", "SecretKey")
 		);
-	
+
 		return true;
 	}
 

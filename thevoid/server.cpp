@@ -38,6 +38,7 @@
 # include <sys/prctl.h>
 #endif
 
+#include <blackhole/macro.hpp>
 #include <blackhole/repository.hpp>
 #include <blackhole/repository/config/parser/rapidjson.hpp>
 #include <blackhole/frontend/syslog.hpp>

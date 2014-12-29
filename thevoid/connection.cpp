@@ -16,6 +16,7 @@
 
 #include "connection_p.hpp"
 #include <vector>
+#include <blackhole/macro.hpp>
 #include <boost/bind.hpp>
 #include <iostream>
 

@@ -16,6 +16,7 @@
 
 #include "boost_event_loop.hpp"
 
+#include <blackhole/macro.hpp>
 #include <boost/bind.hpp>
 #include <boost/bind/placeholders.hpp>
 #include <memory>
@@ -174,7 +175,7 @@ void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_
 {
 	if (auto info = weak_info.lock()) {
 		BH_LOG(logger(), SWARM_LOG_DEBUG, "on_event socket: %p, fd: %d, info->what: %d, what: %d, error: %s",
-			     info.get(), fd, info->what, what, error.message().c_str());
+				 info.get(), fd, info->what, what, error.message().c_str());
 
 		if (what == event_listener::socket_read && (info->what & poll_in)) {
 			BH_LOG(logger(), SWARM_LOG_DEBUG, "repoll in socket: %p, fd: %d", info.get(), fd);
@@ -194,7 +195,7 @@ void boost_event_loop::on_event(int fd, const boost_socket_info::weak_ptr &weak_
 		}
 	} else {
 		BH_LOG(logger(), SWARM_LOG_DEBUG, "call on_socket_event: socket_info is destroyed, fd: %d, what: %d, error: %s",
-			     fd, what, error.message().c_str());
+				 fd, what, error.message().c_str());
 	}
 }
 
