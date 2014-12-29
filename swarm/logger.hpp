@@ -49,8 +49,7 @@ namespace utils {
 namespace logger {
 
 blackhole::attribute::set_t default_attributes();
-void init_attributes(logger_base &log);
-void add_file_frontend(logger_base &log, const std::string &file, log_level level);
+void add_file_frontend(logger_base &log, const std::string &file);
 std::string format();
 std::string generate_level(log_level level);
 log_level parse_level(const std::string &name);

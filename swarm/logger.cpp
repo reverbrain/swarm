@@ -37,28 +37,16 @@ blackhole::attribute::set_t default_attributes()
 	};
 }
 
-void init_attributes(logger_base &log)
+void add_file_frontend(logger_base &log, const std::string &file)
 {
-	blackhole::attribute::set_t attributes = default_attributes();
+	typedef blackhole::formatter::string_t formatter_type;
+	typedef blackhole::sink::files_t<> sink_type;
+	typedef blackhole::frontend_t<formatter_type, sink_type> frontend_type;
 
-	for (auto it = attributes.begin(); it != attributes.end(); ++it) {
-		log.add_attribute(*it);
-	}
-}
-
-void add_file_frontend(logger_base &log, const std::string &file, log_level level)
-{
-	log.verbosity(level);
-
-	std::unique_ptr<blackhole::formatter::string_t> formatter(new blackhole::formatter::string_t(format()));
+	std::unique_ptr<formatter_type> formatter(new formatter_type(format()));
 	formatter->set_mapper(mapping());
 
-	std::unique_ptr<blackhole::sink::files_t<>> sink(new blackhole::sink::files_t<>(blackhole::sink::files_t<>::config_type(file)));
-
-	typedef blackhole::frontend_t<
-		blackhole::formatter::string_t,
-		blackhole::sink::files_t<>
-	> frontend_type;
+	std::unique_ptr<sink_type> sink(new sink_type(sink_type::config_type(file)));
 	std::unique_ptr<frontend_type>frontend(new frontend_type(std::move(formatter), std::move(sink)));
 
 	log.add_frontend(std::move(frontend));
@@ -133,9 +121,8 @@ blackhole::mapping::value_t mapping()
 
 logger_base create(const std::string &file, log_level level)
 {
-	logger_base logger;
-	init_attributes(logger);
-	add_file_frontend(logger, file, level);
+	logger_base logger(level);
+	add_file_frontend(logger, file);
 	return logger;
 }
 

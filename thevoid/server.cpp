@@ -55,7 +55,8 @@ class server_data;
 static std::weak_ptr<signal_handler> global_signal_set;
 
 server_data::server_data(base_server *server) :
-	logger(base_logger, blackhole::attribute::set_t()),
+	base_logger(swarm::log_level::info),
+	logger(base_logger, swarm::utils::logger::default_attributes()),
 	connections_counter(0),
 	active_connections_counter(0),
 	server(server),
@@ -73,8 +74,6 @@ server_data::server_data(base_server *server) :
 	safe_mode(false),
 	options_parsed(false)
 {
-	swarm::utils::logger::init_attributes(base_logger);
-
 	if (!signal_set) {
 		signal_set = std::make_shared<signal_handler>();
 		global_signal_set = signal_set;
@@ -306,9 +305,9 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 	repository.add_config(log_config);
 
-	m_data->base_logger = repository.create<blackhole::verbose_logger_t<swarm::log_level>>("root");
-	swarm::utils::logger::init_attributes(m_data->base_logger);
-	m_data->base_logger.verbosity(swarm::utils::logger::parse_level(level.GetString()));
+	m_data->base_logger = repository.create<
+		blackhole::verbose_logger_t<swarm::log_level>
+	>("root", swarm::utils::logger::parse_level(level.GetString()));
 
 	return true;
 }
