@@ -313,8 +313,6 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 				it->handler(err);
 		}
 
-		m_access_status = 499;
-
 		if (auto handler = try_handler()) {
 			SAFE_CALL(handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
 		}
@@ -324,46 +322,48 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 			m_handler.reset();
 		}
 
+		m_access_status = 499;
+
 		close_impl(err);
-		return;
 	}
-
-	do {
-		std::unique_lock<std::mutex> lock(m_outgoing_mutex);
-		if (m_outgoing.empty()) {
-			CONNECTION_ERROR("wrote extra bytes")
-				("size", bytes_written)
-				("state", make_state_attribute());
-			break;
-		}
-
-		auto &buffers = m_outgoing.front().buffer;
-
-		auto it = buffers.begin();
-
-		for (; it != buffers.end(); ++it) {
-			const size_t size = boost::asio::buffer_size(*it);
-			if (size <= bytes_written) {
-				bytes_written -= size;
-			} else {
-				*it = bytes_written + *it;
-				bytes_written = 0;
+	else {
+		do {
+			std::unique_lock<std::mutex> lock(m_outgoing_mutex);
+			if (m_outgoing.empty()) {
+				CONNECTION_ERROR("wrote extra bytes")
+					("size", bytes_written)
+					("state", make_state_attribute());
 				break;
 			}
-		}
 
-		if (it == buffers.end()) {
-			const auto handler = std::move(m_outgoing.front().handler);
-			m_outgoing.pop_front();
-			if (handler) {
-				lock.unlock();
-				handler(err);
-				lock.lock();
+			auto &buffers = m_outgoing.front().buffer;
+
+			auto it = buffers.begin();
+
+			for (; it != buffers.end(); ++it) {
+				const size_t size = boost::asio::buffer_size(*it);
+				if (size <= bytes_written) {
+					bytes_written -= size;
+				} else {
+					*it = bytes_written + *it;
+					bytes_written = 0;
+					break;
+				}
 			}
-		} else {
-			buffers.erase(buffers.begin(), it);
-		}
-	} while (bytes_written);
+
+			if (it == buffers.end()) {
+				const auto handler = std::move(m_outgoing.front().handler);
+				m_outgoing.pop_front();
+				if (handler) {
+					lock.unlock();
+					handler(err);
+					lock.lock();
+				}
+			} else {
+				buffers.erase(buffers.begin(), it);
+			}
+		} while (bytes_written);
+	}
 
 	std::unique_lock<std::mutex> lock(m_outgoing_mutex);
 	if (m_outgoing.empty()) {
