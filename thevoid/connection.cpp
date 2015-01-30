@@ -44,8 +44,10 @@ do { \
 	boost::system::error_code ignored_ec; \
 	m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
 	m_socket.close(ignored_ec); \
-	--m_server->m_data->active_connections_counter; \
-	m_handler.reset(); \
+	if (m_handler) { \
+		--m_server->m_data->active_connections_counter; \
+		m_handler.reset(); \
+	} \
 	return; \
 } while (0)
 
@@ -313,8 +315,15 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 
 		m_access_status = 499;
 
-		if (auto handler = try_handler())
+		if (auto handler = try_handler()) {
 			SAFE_CALL(handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
+		}
+
+		if (m_handler) {
+			--m_server->m_data->active_connections_counter;
+			m_handler.reset();
+		}
+
 		close_impl(err);
 		return;
 	}
@@ -420,9 +429,10 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		("unreceived_size", m_content_length)
 		("state", make_state_attribute());
 
-	if (m_handler)
+	if (m_handler) {
 		--m_server->m_data->active_connections_counter;
-	m_handler.reset();
+		m_handler.reset();
+	}
 	m_request_processing_was_finished = true;
 
 	if (err) {
@@ -548,10 +558,13 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		if (auto handler = try_handler()) {
 			SAFE_CALL(handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
 		}
+
 		if (m_handler) {
 			--m_server->m_data->active_connections_counter;
 			m_handler.reset();
 		}
+
+		close_impl(err);
 		return;
 	}
 
@@ -742,8 +755,14 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 
-			if (auto handler = try_handler())
+			if (auto handler = try_handler()) {
 				SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
+			}
+
+			if (m_handler) {
+				--m_server->m_data->active_connections_counter;
+				m_handler.reset();
+			}
 
 			if (m_state & request_processed) {
 				process_next();
