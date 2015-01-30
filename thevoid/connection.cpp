@@ -125,8 +125,14 @@ connection<T>::~connection()
 		m_access_status = 597;
 		print_access_log();
 	}
+
+	// This isn't actually possible.
+	// Handler keeps pointer to the connection, if the connection has pointer to the handler
+	// they prolong lifetime of each other.
+	/*
 	if (auto handler = try_handler())
 		SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
+	*/
 
 	CONNECTION_DEBUG("connection destroyed");
 }
