@@ -166,8 +166,8 @@ void connection<T>::send_headers(http_response &&rep,
 	m_access_status = rep.code();
 
 	if (m_keep_alive) {
-                rep.headers().set_keep_alive();
-        }
+		rep.headers().set_keep_alive();
+	}
 
 	CONNECTION_DEBUG("handler sends headers to client")
 		("keep_alive", m_keep_alive)
