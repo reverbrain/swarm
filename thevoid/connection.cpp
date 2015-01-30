@@ -43,6 +43,7 @@ namespace thevoid {
 do { \
 	boost::system::error_code ignored_ec; \
 	m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
+	m_socket.close(ignored_ec); \
 	--m_server->m_data->active_connections_counter; \
 	m_handler.reset(); \
 	return; \
@@ -428,6 +429,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		boost::system::error_code ignored_ec;
 		// If there was any error - close the connection, it's broken
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+		m_socket.close(ignored_ec);
 		return;
 	}
 
@@ -447,6 +449,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		print_access_log();
 		boost::system::error_code ignored_ec;
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+		m_socket.close(ignored_ec);
 		return;
 	}
 
