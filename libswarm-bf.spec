@@ -101,6 +101,11 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Feb 03 2015 Danil Osherov <shindo@yandex-team.ru> - 0.7.3.0
+- call close() on socket along with shutdown() for graceful shutdown.
+- remove handler from the connection once handler's on_close() method is called.
+- keep sending loop running even in case of failed writes.
+
 * Tue Dec 23 2014 Danil Osherov <shindo@yandex-team.ru> - 0.7.2.0
 - send_reply(int code) method doesn't defer close() method invocation.
 - buffered_request_stream's on_chunk() method is called only when handler's ready to process it.
