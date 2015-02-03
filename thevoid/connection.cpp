@@ -43,8 +43,11 @@ namespace thevoid {
 do { \
 	boost::system::error_code ignored_ec; \
 	m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec); \
-	--m_server->m_data->active_connections_counter; \
-	m_handler.reset(); \
+	m_socket.close(ignored_ec); \
+	if (m_handler) { \
+		--m_server->m_data->active_connections_counter; \
+		m_handler.reset(); \
+	} \
 	return; \
 } while (0)
 
@@ -124,8 +127,14 @@ connection<T>::~connection()
 		m_access_status = 597;
 		print_access_log();
 	}
+
+	// This isn't actually possible.
+	// Handler keeps pointer to the connection, if the connection has pointer to the handler
+	// they prolong lifetime of each other.
+	/*
 	if (auto handler = try_handler())
 		SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::~connection -> on_close", SAFE_SEND_NONE);
+	*/
 
 	CONNECTION_DEBUG("connection destroyed");
 }
@@ -165,8 +174,8 @@ void connection<T>::send_headers(http_response &&rep,
 	m_access_status = rep.code();
 
 	if (m_keep_alive) {
-                rep.headers().set_keep_alive();
-        }
+		rep.headers().set_keep_alive();
+	}
 
 	CONNECTION_DEBUG("handler sends headers to client")
 		("keep_alive", m_keep_alive)
@@ -304,50 +313,57 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 				it->handler(err);
 		}
 
+		if (auto handler = try_handler()) {
+			SAFE_CALL(handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
+		}
+
+		if (m_handler) {
+			--m_server->m_data->active_connections_counter;
+			m_handler.reset();
+		}
+
 		m_access_status = 499;
 
-		if (auto handler = try_handler())
-			SAFE_CALL(handler->on_close(err), "connection::write_finished -> on_close", SAFE_SEND_NONE);
 		close_impl(err);
-		return;
 	}
-
-	do {
-		std::unique_lock<std::mutex> lock(m_outgoing_mutex);
-		if (m_outgoing.empty()) {
-			CONNECTION_ERROR("wrote extra bytes")
-				("size", bytes_written)
-				("state", make_state_attribute());
-			break;
-		}
-
-		auto &buffers = m_outgoing.front().buffer;
-
-		auto it = buffers.begin();
-
-		for (; it != buffers.end(); ++it) {
-			const size_t size = boost::asio::buffer_size(*it);
-			if (size <= bytes_written) {
-				bytes_written -= size;
-			} else {
-				*it = bytes_written + *it;
-				bytes_written = 0;
+	else {
+		do {
+			std::unique_lock<std::mutex> lock(m_outgoing_mutex);
+			if (m_outgoing.empty()) {
+				CONNECTION_ERROR("wrote extra bytes")
+					("size", bytes_written)
+					("state", make_state_attribute());
 				break;
 			}
-		}
 
-		if (it == buffers.end()) {
-			const auto handler = std::move(m_outgoing.front().handler);
-			m_outgoing.pop_front();
-			if (handler) {
-				lock.unlock();
-				handler(err);
-				lock.lock();
+			auto &buffers = m_outgoing.front().buffer;
+
+			auto it = buffers.begin();
+
+			for (; it != buffers.end(); ++it) {
+				const size_t size = boost::asio::buffer_size(*it);
+				if (size <= bytes_written) {
+					bytes_written -= size;
+				} else {
+					*it = bytes_written + *it;
+					bytes_written = 0;
+					break;
+				}
 			}
-		} else {
-			buffers.erase(buffers.begin(), it);
-		}
-	} while (bytes_written);
+
+			if (it == buffers.end()) {
+				const auto handler = std::move(m_outgoing.front().handler);
+				m_outgoing.pop_front();
+				if (handler) {
+					lock.unlock();
+					handler(err);
+					lock.lock();
+				}
+			} else {
+				buffers.erase(buffers.begin(), it);
+			}
+		} while (bytes_written);
+	}
 
 	std::unique_lock<std::mutex> lock(m_outgoing_mutex);
 	if (m_outgoing.empty()) {
@@ -413,9 +429,10 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		("unreceived_size", m_content_length)
 		("state", make_state_attribute());
 
-	if (m_handler)
+	if (m_handler) {
 		--m_server->m_data->active_connections_counter;
-	m_handler.reset();
+		m_handler.reset();
+	}
 	m_request_processing_was_finished = true;
 
 	if (err) {
@@ -428,6 +445,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		boost::system::error_code ignored_ec;
 		// If there was any error - close the connection, it's broken
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+		m_socket.close(ignored_ec);
 		return;
 	}
 
@@ -447,6 +465,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		print_access_log();
 		boost::system::error_code ignored_ec;
 		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+		m_socket.close(ignored_ec);
 		return;
 	}
 
@@ -539,10 +558,13 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		if (auto handler = try_handler()) {
 			SAFE_CALL(handler->on_close(err), "connection::handle_read -> on_close", SAFE_SEND_NONE);
 		}
+
 		if (m_handler) {
 			--m_server->m_data->active_connections_counter;
 			m_handler.reset();
 		}
+
+		close_impl(err);
 		return;
 	}
 
@@ -733,8 +755,14 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_unprocessed_begin = begin + processed_size;
 			m_unprocessed_end = end;
 
-			if (auto handler = try_handler())
+			if (auto handler = try_handler()) {
 				SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
+			}
+
+			if (m_handler) {
+				--m_server->m_data->active_connections_counter;
+				m_handler.reset();
+			}
 
 			if (m_state & request_processed) {
 				process_next();

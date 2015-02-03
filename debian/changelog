@@ -1,3 +1,12 @@
+swarm (0.7.3.0) unstable; urgency=low
+
+  * call close() on socket along with shutdown() for graceful shutdown.
+  * remove handler from the connection once handler's on_close() method
+    is called.
+  * keep sending loop running even in case of failed writes.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Fri, 30 Jan 2015 14:00:00 +0400
+
 swarm (0.7.2.0) unstable; urgency=low
 
   * send_reply(int code) method doesn't defer close() method invocation.
