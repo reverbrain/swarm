@@ -50,9 +50,62 @@
 namespace ioremap {
 namespace thevoid {
 
-class server_data;
+namespace signal_handler {
 
-static std::weak_ptr<signal_handler> global_signal_set;
+std::mutex lock;
+std::set<base_server*> all_servers;
+
+static
+void stop(int signal_value)
+{
+	std::lock_guard<std::mutex> locker(lock);
+
+	for (auto it = all_servers.begin(); it != all_servers.end(); ++it) {
+		BH_LOG((*it)->logger(), SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
+		(*it)->stop();
+	}
+}
+
+static
+void reload(int signal_value)
+{
+	std::lock_guard<std::mutex> locker(lock);
+
+	for (auto it = all_servers.begin(); it != all_servers.end(); ++it) {
+		BH_LOG((*it)->logger(), SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
+		try {
+			(*it)->reload();
+		} catch (std::exception &e) {
+			BH_LOG((*it)->logger(), SWARM_LOG_ERROR, "Failed to reload configuration: %s", e.what());
+		}
+	}
+}
+
+static
+bool register_handler(void (*handler)(int), int signal_value)
+{
+	return ::signal(signal_value, handler) != SIG_ERR;
+}
+
+bool register_stop(int signal_value)
+{
+	return register_handler(stop, signal_value);
+}
+
+bool register_reload(int signal_value)
+{
+	return register_handler(reload, signal_value);
+}
+
+void add_server(base_server* server) {
+	all_servers.insert(server);
+}
+
+void remove_server(base_server* server) {
+	all_servers.erase(server);
+}
+
+} // namespace signal_handler
 
 server_data::server_data(base_server *server) :
 	logger(base_logger, blackhole::log::attributes_t()),
@@ -68,26 +121,15 @@ server_data::server_data(base_server *server) :
 	local_acceptors(new acceptors_list<unix_connection>(*this)),
 	tcp_acceptors(new acceptors_list<tcp_connection>(*this)),
 	monitor_acceptors(new acceptors_list<monitor_connection>(*this)),
-	signal_set(global_signal_set.lock()),
 	daemonize(false),
 	safe_mode(false),
 	options_parsed(false)
 {
 	swarm::utils::logger::init_attributes(base_logger);
-
-	if (!signal_set) {
-		signal_set = std::make_shared<signal_handler>();
-		global_signal_set = signal_set;
-	}
-
-	std::lock_guard<std::mutex> locker(signal_set->lock);
-	signal_set->all_servers.insert(this);
 }
 
 server_data::~server_data()
 {
-	std::lock_guard<std::mutex> locker(signal_set->lock);
-	signal_set->all_servers.erase(this);
 }
 
 void server_data::handle_stop()
@@ -108,45 +150,6 @@ boost::asio::io_service &server_data::get_worker_service()
 {
 	const uint id = (threads_round_robin++ % threads_count);
 	return *worker_io_services[id];
-}
-
-void signal_handler::stop_handler(int signal_value)
-{
-	if (auto signal_set = global_signal_set.lock()) {
-		std::lock_guard<std::mutex> locker(signal_set->lock);
-
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
-			(*it)->handle_stop();
-		}
-	}
-}
-
-void signal_handler::reload_handler(int signal_value)
-{
-	if (auto signal_set = global_signal_set.lock()) {
-		std::lock_guard<std::mutex> locker(signal_set->lock);
-
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
-			try {
-				(*it)->handle_reload();
-			} catch (std::exception &e) {
-				std::fprintf(stderr, "Failed to reload configuration: %s", e.what());
-			}
-		}
-	}
-}
-
-void signal_handler::ignore_handler(int signal_value)
-{
-	if (auto signal_set = global_signal_set.lock()) {
-		std::lock_guard<std::mutex> locker(signal_set->lock);
-
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
-		}
-	}
 }
 
 pid_file::pid_file(const std::string &path) : m_path(path), m_file(NULL)
@@ -218,6 +221,8 @@ base_server::~base_server()
 	m_data->worker_io_services.clear();
 	m_data->io_service.reset();
 	m_data->monitor_io_service.reset();
+
+	signal_handler::remove_server(this);
 }
 
 const swarm::logger &base_server::logger() const
@@ -583,11 +588,6 @@ int base_server::run()
 		return -9;
 	}
 
-	sigset_t previous_sigset;
-	sigset_t sigset;
-	sigfillset(&sigset);
-	pthread_sigmask(SIG_BLOCK, &sigset, &previous_sigset);
-
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->monitor_io_service));
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->io_service));
 
@@ -608,8 +608,6 @@ int base_server::run()
 	runner.service = m_data->io_service.get();
 	threads.emplace_back(new boost::thread(runner));
 
-	pthread_sigmask(SIG_SETMASK, &previous_sigset, NULL);
-
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)
 		threads[i]->join();
@@ -627,6 +625,11 @@ int base_server::run()
 void base_server::stop()
 {
 	m_data->handle_stop();
+}
+
+void base_server::reload()
+{
+	m_data->handle_reload();
 }
 
 std::shared_ptr<base_stream_factory> base_server::factory(const http_request &request)

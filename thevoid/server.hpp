@@ -25,6 +25,8 @@
 #include <boost/noncopyable.hpp>
 #include <boost/variant.hpp>
 
+#include <signal.h>
+
 #include <string>
 #include <vector>
 
@@ -50,6 +52,32 @@ class server_data;
 template <typename T> class connection;
 class monitor_connection;
 class server_options_private;
+class base_server;
+
+/*
+ * Library-wide signal handling mechanics.
+ */
+namespace signal_handler {
+
+/*!
+ * \brief Adds server to library-wide signal handling.
+ */
+void add_server(base_server* server);
+
+/*!
+ * \brief Removes server from library-wide signal handling.
+ */
+void remove_server(base_server* server);
+
+/*!
+ * \brief Registers stop/reload action on signal.
+ *
+ * Returns result of signal registration (was it successful or not).
+ */
+bool register_stop(int signal_value);
+bool register_reload(int signal_value);
+
+}
 
 /*!
  * \brief The daemon_exception is thrown in case if daemonization fails.
@@ -128,6 +156,11 @@ public:
 	 * \brief Stops the server
 	 */
 	void stop();
+
+	/*!
+	 * \brief Reload configuration
+	 */
+	void reload();
 
 	/*!
 	 * \brief Returns logger of the service.
@@ -392,7 +425,19 @@ std::shared_ptr<Server> create_server(Args &&...args)
 template <typename Server, typename... Args>
 int run_server(int argc, char **argv, Args &&...args)
 {
-	return create_server<Server>(std::forward<Args>(args)...)->run(argc, argv);
+	auto server = create_server<Server>(std::forward<Args>(args)...);
+
+	signal_handler::add_server(server.get());
+	signal_handler::register_stop(SIGINT);
+	signal_handler::register_stop(SIGTERM);
+	signal_handler::register_stop(SIGALRM);
+	signal_handler::register_reload(SIGHUP);
+
+	int ret_code = server->run(argc, argv);
+
+	signal_handler::remove_server(server.get());
+
+	return ret_code;
 }
 
 } } // namespace ioremap::thevoid
