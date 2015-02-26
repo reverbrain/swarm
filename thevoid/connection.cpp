@@ -739,6 +739,10 @@ void connection<T>::process_data()
 			}
 		}
 
+		if (processed_size > data_from_body) {
+			processed_size = data_from_body;
+		}
+
 		m_content_length -= processed_size;
 		m_access_received += processed_size;
 		m_unprocessed_begin = begin + processed_size;
