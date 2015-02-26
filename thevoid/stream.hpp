@@ -553,6 +553,10 @@ private:
  *
  * One must call try_next_chunk() to receive first chunk.
  *
+ * One MUST NOT call reply_stream::pause_receive() from within on_chunk() or on_request()
+ * methods. Next on_chunk() method's call is already posponed until try_next_chunk() method
+ * is called.
+ *
  * \sa set_chunk_size
  */
 template <typename Server>
@@ -666,31 +670,30 @@ private:
 		while (size) {
 			// The size that we need to pass to the client
 			const auto real_chunk_size = std::min(m_unprocessed_size, m_chunk_size);
+			const auto delta = std::min(size, real_chunk_size - m_data.size());
 
-			// If client is ready to get next chunk, we will obtain as much data as we can.
-			// Otherwise keep one byte in connection in order to be able to call on_data later.
-			const auto boundary_chunk_size =
-				m_client_asked_chunk ? real_chunk_size : real_chunk_size - 1;
-
-			const auto delta = std::min(size, boundary_chunk_size - m_data.size());
-
-			// That means nothing to add into the chunk and according to loop invariant m_data is
-			// not ready to be processed.
-			if (delta == 0) {
-				break;
+			if (delta) {
+				buffered_size += delta;
+				m_data.insert(m_data.end(), begin, begin + delta);
+				begin += delta;
+				size -= delta;
 			}
-
-			buffered_size += delta;
-			m_data.insert(m_data.end(), begin, begin + delta);
-			begin += delta;
-			size -= delta;
 
 			// We will call on_chunk if both conditions are true
 			// 1. Client asked next chunk
 			// 2. The chunk is ready to be processed
 			// The second condition means either chunk is full or chunk contains last data
-			if (m_data.size() == real_chunk_size && m_client_asked_chunk) {
-				this->process_chunk_internal();
+			if (m_data.size() == real_chunk_size) {
+				if (m_client_asked_chunk) {
+					process_chunk_internal();
+				}
+				else {
+					// chunk is ready but client is not
+					if (size == 0) {
+						this->reply()->pause_receive();
+					}
+					break;
+				}
 			}
 		}
 
