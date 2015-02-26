@@ -272,7 +272,7 @@ void connection<T>::want_more_impl()
 		("state", make_state_attribute());
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
-		process_data(m_unprocessed_begin, m_unprocessed_end);
+		process_data();
 	} else if (m_content_length) {
 		// call async_read() only if there are some unreceived data
 		async_read();
@@ -454,7 +454,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		m_state |= request_processed;
 
 		if (m_unprocessed_begin != m_unprocessed_end) {
-			process_data(m_unprocessed_begin, m_unprocessed_end);
+			process_data();
 		} else {
 			async_read();
 		}
@@ -500,7 +500,7 @@ void connection<T>::process_next()
 		("size", m_unprocessed_end - m_unprocessed_begin);
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
-		process_data(m_unprocessed_begin, m_unprocessed_end);
+		process_data();
 	} else {
 		async_read();
 	}
@@ -568,7 +568,9 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		return;
 	}
 
-	process_data(m_buffer.data(), m_buffer.data() + bytes_transferred);
+	m_unprocessed_begin = m_buffer.data();
+	m_unprocessed_end = m_buffer.data() + bytes_transferred;
+	process_data();
 
 	// If an error occurs then no new asynchronous operations are started. This
 	// means that all shared_ptr references to the connection object will
@@ -577,8 +579,11 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 }
 
 template <typename T>
-void connection<T>::process_data(const char *begin, const char *end)
+void connection<T>::process_data()
 {
+	const char* begin = m_unprocessed_begin;
+	const char* end = m_unprocessed_end;
+
 	CONNECTION_DEBUG("process data")
 		("size", end - begin)
 		("state", make_state_attribute());
@@ -598,6 +603,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			("raw_data", std::string(begin, new_begin));
 
 		m_access_received += (new_begin - begin);
+		m_unprocessed_begin = new_begin;
 
 		if (!result) {
 			m_keep_alive = false;
@@ -715,7 +721,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 			m_state &= ~read_headers;
 			m_state |=  read_data;
 
-			process_data(new_begin, end);
+			process_data();
 			// async_read is called by processed_data
 			return;
 		}
@@ -735,6 +741,7 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 		m_content_length -= processed_size;
 		m_access_received += processed_size;
+		m_unprocessed_begin = begin + processed_size;
 
 		CONNECTION_DEBUG("processed body")
 			("size", processed_size)
@@ -745,15 +752,11 @@ void connection<T>::process_data(const char *begin, const char *end)
 
 		if (data_from_body != processed_size) {
 			// Handler can't process all data, wait until want_more method is called
-			m_unprocessed_begin = begin + processed_size;
-			m_unprocessed_end = end;
 			return;
 		} else if (m_content_length > 0) {
 			async_read();
 		} else {
 			m_state &= ~read_data;
-			m_unprocessed_begin = begin + processed_size;
-			m_unprocessed_end = end;
 
 			if (auto handler = try_handler()) {
 				SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
