@@ -551,6 +551,8 @@ private:
  *
  * After chunk's processing is finished call try_next_chunk.
  *
+ * One must call try_next_chunk() to receive first chunk.
+ *
  * \sa set_chunk_size
  */
 template <typename Server>
@@ -564,7 +566,7 @@ public:
 	};
 
 	buffered_request_stream() :
-		m_chunk_size(10 * 1024), m_client_asked_chunk(true),
+		m_chunk_size(10 * 1024), m_client_asked_chunk(false),
 		m_first_chunk(true), m_last_chunk(false),
 		m_unprocessed_size(0)
 	{
