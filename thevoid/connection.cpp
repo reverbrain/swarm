@@ -724,10 +724,10 @@ void connection<T>::process_data()
 			process_data();
 			// async_read is called by processed_data
 			return;
+		} else {
+			// need more data for request processing
+			async_read();
 		}
-
-		// need more data for request processing
-		async_read();
 	} else if (m_state & read_data) {
 		size_t data_from_body = std::min<size_t>(m_content_length, end - begin);
 		size_t processed_size = data_from_body;
