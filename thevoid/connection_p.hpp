@@ -104,6 +104,7 @@ public:
 	virtual void send_data(const boost::asio::const_buffer &buffer,
 		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	void want_more();
+	void pause_receive();
 	virtual void initialize(base_request_stream_data *data);
 	virtual swarm::logger create_logger();
 	virtual void close(const boost::system::error_code &err) /*override*/;
@@ -209,6 +210,8 @@ private:
 	//! Uprocessed data
 	const char *m_unprocessed_begin;
 	const char *m_unprocessed_end;
+
+	bool m_pause_receive;
 };
 
 typedef connection<boost::asio::ip::tcp::socket> tcp_connection;

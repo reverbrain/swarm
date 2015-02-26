@@ -100,7 +100,8 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_state(read_headers | waiting_for_first_data),
 	m_sending(false),
 	m_keep_alive(false),
-	m_at_read(false)
+	m_at_read(false),
+	m_pause_receive(false)
 {
 	m_unprocessed_begin = m_buffer.data();
 	m_unprocessed_end = m_buffer.data();
@@ -214,6 +215,12 @@ void connection<T>::want_more()
 }
 
 template <typename T>
+void connection<T>::pause_receive()
+{
+	m_pause_receive = true;
+}
+
+template <typename T>
 void connection<T>::initialize(base_request_stream_data *data)
 {
 	(void) data;
@@ -271,11 +278,13 @@ void connection<T>::want_more_impl()
 	CONNECTION_DEBUG("handler asks for more data from client")
 		("state", make_state_attribute());
 
-	if (m_unprocessed_begin != m_unprocessed_end) {
-		process_data();
-	} else if (m_content_length) {
-		// call async_read() only if there are some unreceived data
+	m_pause_receive = false;
+
+	if (m_content_length > 0 && m_unprocessed_begin == m_unprocessed_end) {
 		async_read();
+	}
+	else {
+		process_data();
 	}
 }
 
@@ -453,6 +462,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	if (m_state != processing_request) {
 		m_state |= request_processed;
 
+		m_pause_receive = false;
 		if (m_unprocessed_begin != m_unprocessed_end) {
 			process_data();
 		} else {
@@ -491,6 +501,7 @@ void connection<T>::process_next()
 	m_access_log_printed = false;
 	m_close_invoked = false;
 	m_content_length = 0;
+	m_pause_receive = false;
 
 	m_attributes.clear();
 	m_logger = swarm::logger(m_base_logger, m_attributes);
@@ -581,6 +592,10 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 template <typename T>
 void connection<T>::process_data()
 {
+	if (m_pause_receive) {
+		return;
+	}
+
 	const char* begin = m_unprocessed_begin;
 	const char* end = m_unprocessed_end;
 
@@ -754,6 +769,12 @@ void connection<T>::process_data()
 			("unprocesed_size", m_unprocessed_end - m_unprocessed_begin)
 			("state", make_state_attribute());
 
+		if (m_pause_receive) {
+			// Handler don't want to receive more data (and callbacks),
+			// wait until want_more method is called
+			return;
+		}
+
 		if (data_from_body != processed_size) {
 			// Handler can't process all data, wait until want_more method is called
 			return;
@@ -781,6 +802,8 @@ void connection<T>::process_data()
 template <typename T>
 void connection<T>::async_read()
 {
+	// here m_pause_receive is false
+
 	if (m_at_read)
 		return;
 

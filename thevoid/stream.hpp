@@ -130,6 +130,24 @@ public:
 	 */
 	virtual void want_more() = 0;
 	/*!
+	 * \brief Pauses processing data until want_more() method is called.
+	 *
+	 * This is method is not thread-safe and may be called from within
+	 * base_request_stream::on_headers() and base_request_stream::on_data() methods.
+	 *
+	 * If this method is called from within base_request_stream::on_headers() method
+	 * following base_request_stream::on_data() method's call is postponed until
+	 * want_more() method is called.
+	 *
+	 * Analogously, calling this method from within base_request_stream::on_data()
+	 * method will postpone following base_request_stream::on_data() or
+	 * base_request_stream::on_close() method's call.
+	 *
+	 * However, if error happens base_request_stream::on_close() with corresponding
+	 * error_code will be called.
+	 */
+	virtual void pause_receive() = 0;
+	/*!
 	 * \brief Closes socket to client.
 	 *
 	 * If \a err is set connection to client is terminated.
