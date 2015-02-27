@@ -1,0 +1,543 @@
+swarm (0.7.3.0) unstable; urgency=low
+
+  * call close() on socket along with shutdown() for graceful shutdown.
+  * remove handler from the connection once handler's on_close() method
+    is called.
+  * keep sending loop running even in case of failed writes.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Fri, 30 Jan 2015 14:00:00 +0400
+
+swarm (0.7.2.0) unstable; urgency=low
+
+  * send_reply(int code) method doesn't defer close() method invocation.
+  * buffered_request_stream's on_chunk() method is called only when
+    handler's ready to process it (either it's first chunk or
+    try_next_chunk() method is called).
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Tue, 23 Dec 2014 14:00:00 +0400
+
+swarm (0.7.1.0) unstable; urgency=low
+
+  * read no more than request's content length data from client.
+  * buffered_request_stream class reworked.
+  * reply_stream::send_error() implementation fixed according to the
+    documentation (in comment section).
+  * terminate connection on invalid URL or missing handler.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Mon, 15 Dec 2014 18:00:00 +0400
+
+swarm (0.7.0.11) unstable; urgency=low
+
+  * Fixed output of http status in access log
+    There was a following case:
+    Client sent a request. Server received only a part of request and had
+    already known that request cannot be processed (either bad request, or
+    some internal error or something else). Server sent some response for
+    Client. Client got response, interrupted sending of request and
+    shutdowned socket. Thevoid tried to recive the rest of request, got an
+    error of reading from the closed socket, decided that Client went away
+    before request had processed and printed 499 http status.
+    The behaviour for that case was changed:
+    If Client gets whole response from Server, the resposne's http status
+    will be printed in access log instead of 499.
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 20 Oct 2014 14:56:49 +0400
+
+swarm (0.7.0.10) unstable; urgency=low
+
+  * sync debian/control and spec versions
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Tue, 14 Oct 2014 21:08:09 +0400
+
+swarm (0.7.0.9) unstable; urgency=low
+
+  * Added support for automatically reopening log file after it is moved.
+    Log configuration:
+    "sink": {
+    	"type": "files",
+    	"path": "blackhole.log",
+    	"autoflush": true,
+    	"rotation": {
+    		"move": 0
+    	}
+    }
+
+ -- Artem Sokolov <derikon@yandex-team.ru>  Mon, 13 Oct 2014 18:35:57 +0400
+
+swarm (0.7.0.8) unstable; urgency=low
+
+  * thevoid: Destroy io_services before server_data
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 11 Sep 2014 16:01:14 +0400
+
+swarm (0.7.0.7) unstable; urgency=low
+
+  * thevoid: Changed log levels of some messages
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 02 Sep 2014 21:01:46 +0400
+
+swarm (0.7.0.6) unstable; urgency=low
+
+  * thevoid: Set correct backlog for sockets
+  * example: Changed default backlog and log level
+  * thevoid: Changed debug logs to more user-friendly
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 02 Sep 2014 20:19:11 +0400
+
+swarm (0.7.0.5) unstable; urgency=low
+
+  * thevoid: Print request_header with new request_id
+  * thevoid: send_error should close connection
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 22 Aug 2014 16:30:56 +0400
+
+swarm (0.7.0.4) unstable; urgency=low
+
+  * Logger: Write logs in local time
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 21 Aug 2014 20:17:00 +0400
+
+swarm (0.7.0.3) unstable; urgency=low
+
+  * thevoid: Set valid scoped attribute
+  * thevoid: Added request_stream::wrap
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 20 Aug 2014 15:19:55 +0400
+
+swarm (0.7.0.2) unstable; urgency=low
+
+  * thevoid: Don't print access log twice
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 11 Aug 2014 19:13:49 +0400
+
+swarm (0.7.0.1) unstable; urgency=low
+
+  * packages: Devel package must depend on blackhole
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 08 Aug 2014 16:29:35 +0400
+
+swarm (0.7.0.0) unstable; urgency=low
+
+  * logger: Moved to blackhole
+  * thevoid: Added request_id and trace support
+  * thevoid: Introduced thevoid::http_*
+  * both: Moved to blackhole's platform detection
+  * thevoid: Changed close's semantic
+  * urlfetcher: Make class movable, fixed destructor
+  * urlfetcher: Stop timer on negative timeout
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 08 Aug 2014 07:50:14 +0400
+
+swarm (0.6.5.1) unstable; urgency=low
+
+  * thevoid: Get local endpoint at async_accept
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 31 Jul 2014 16:47:28 +0400
+
+swarm (0.6.5.0) unstable; urgency=low
+
+  * swarm: Fixed behavior of swarm::url::path
+  * * Return path "/my/cool/path" for "http://qutim.org/my/cool/path" instead of "my/cool/path" (slash is missed)
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 11 Jul 2014 19:17:11 +0400
+
+swarm (0.6.4.0) unstable; urgency=low
+
+  * thevoid: Added more server::options
+  * * Added path's regular expression match.
+  * * Added query match.
+  * * Added hostname match.
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 10 Jul 2014 21:27:27 +0400
+
+swarm (0.6.3.9) unstable; urgency=low
+
+  * swarm: Don't check OS_ERRNO if request successed
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 01 Jul 2014 22:09:57 +0400
+
+swarm (0.6.3.8) unstable; urgency=low
+
+  * thevoid: Added additional error messages
+  * * Write error log message in case of invalid urls and if handler for url is not found
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 09 Jun 2014 20:48:37 +0400
+
+swarm (0.6.3.7) unstable; urgency=low
+
+  * swarm: boost: Cancel socket on pool_remove
+  * swarm: Added punycode support to URLs
+  * * Added normal percent encoding/decoding for path and fragment parts
+  * * Added new dependency - libidn
+  * thevoid: Fixed infinity loop
+  * * There was infinity loop in case if user writes empty buffer to the client's socket
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 05 Jun 2014 21:29:16 +0400
+
+swarm (0.6.3.6) unstable; urgency=low
+
+  * thevoid: Convert endpoint to strings at the start
+  * * This saves us from situation when socket is already closed and we
+  * * want to write about it to access log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 19 May 2014 22:20:25 +0400
+
+swarm (0.6.3.5) unstable; urgency=low
+
+  * thevoid: Added local and remote addr to access log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 15 May 2014 16:58:13 +0400
+
+swarm (0.6.3.4) unstable; urgency=low
+
+  * swarm: Fixed http_headers::add overloa
+  * thevoid: Added info-level access log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 15 May 2014 16:49:34 +0400
+
+swarm (0.6.3.4) unstable; urgency=low
+
+  * swarm: Fixed http_headers::add overloa
+  * thevoid: Added info-level access log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 15 May 2014 16:34:55 +0400
+
+swarm (0.6.3.3) unstable; urgency=low
+
+  * thevoid: Break connection to client correctly
+  * thevoid: Added more debug logs to connection
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 14 May 2014 17:34:27 +0400
+
+swarm (0.6.3.2) unstable; urgency=low
+
+  * thevoid: Fixed daemonization if pid_file not set
+  * swarm: Fix in boost_event_loop::socket_request
+  * - Curl accidently sometimes asks to listen socket both for read and write.
+  * swarm: Workaround libev bug
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 06 May 2014 17:03:17 +0400
+
+swarm (0.6.3.1) unstable; urgency=low
+
+  * swarm: Fixed behaviour of path_components
+  * thevoid: Make a LOT of logs for debug
+  * thevoid: Make server starting more controlled
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 25 Apr 2014 19:11:44 +0400
+
+swarm (0.6.3.0) unstable; urgency=low
+
+  * thevoid: added ability to cast own types to buffer
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 08 Apr 2014 19:02:13 +0400
+
+swarm (0.6.2.1) unstable; urgency=low
+
+  * url: fixed boost::optional dereference
+  * url: added missing include
+  * download: added missing include
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Fri, 04 Apr 2014 01:58:13 +0400
+
+swarm (0.6.2.0) unstable; urgency=low
+
+  * url: added path_components methods
+  * swarm/thevoid: documentation added
+  * thevoid: Added close shortcut to simple_request_stream
+  * UrlFetcher: Add runtime check for curl version
+  * example: added boost::asio::signal_set to download example
+  * example: updated sources and comments
+  * urlfetcher: print socket error with appropriate log level
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 03 Apr 2014 00:33:17 +0400
+
+swarm (0.6.1.3) unstable; urgency=low
+
+  * thevoid: Final fix for non unlinkable unix sockets
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 07 Feb 2014 13:12:07 +0400
+
+swarm (0.6.1.2) unstable; urgency=low
+
+  * Stop acceptors at end of server::run method
+  * UrlFetcher: Disable pipelining
+  * UrlFetcher: Added more debug logs to boost_event_loop
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 02 Feb 2014 18:33:29 +0400
+
+swarm (0.6.1.1) unstable; urgency=low
+
+  * Swarm: Fixed assignment operator for url_fetcher::request/response
+  * Swarm: Fixed url_query::item_value<T>
+  * UrlFetcher: Fixed errors handling for easy handler
+  * TheVoid: Fixed behaviour on 400 and 404
+  * TheVoid: Added safe_mode for catch users exceptions and for prevent core-dumps
+  * TheVoid: Added --daemonize and --pidfile options
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 06 Dec 2013 19:54:45 +0400
+
+swarm (0.6.1.0) unstable; urgency=low
+
+  * Swarm: Fixed segfaults in ev_event_loop
+  * Swarm: Added ability to reopen log file
+  * TheVoid: Added static_assert checks for rvalue
+  * * This ensures correct error messages will be printed if user will pass
+  * * not rvalue to send_reply/send_data instead of hundreds of gcc's lines
+  * TheVoid: Fixed several issues connected with signals
+  * TheVoid: Added support for SIGHUP
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 03 Dec 2013 17:12:02 +0400
+
+swarm (0.6.0.1) unstable; urgency=low
+
+  * Logger: Add log level to file interface output
+  * TheVoid: Added header check option
+  * Example: Added HTTP server example
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 22 Nov 2013 14:09:19 +0400
+
+swarm (0.6.0.0) unstable; urgency=low
+
+  * All: Lots of API changes
+  * Swarm: UrlFetcher and xml-support separated to libraries
+  * Swarm: Added boost::asio-based event loop
+  * Swarm: Streamed interface for reply handling
+  * TheVoid: Fixed LWS-headers support
+  * TheVoid: Config-based logger initialization
+  * TheVoid: Daemonization support
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 19 Nov 2013 21:45:39 +0400
+
+swarm (0.5.5.1) unstable; urgency=low
+
+  * Added error message on acceptor fail
+  * Added call on_close at end of stream
+  * Added server::get_threads_count() method
+  * Use only CRLF as end of the line, don't stop on single LF
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 16 Oct 2013 17:12:18 +0400
+
+swarm (0.5.5.0) unstable; urgency=low
+
+  * Removed default html data for error replies
+  * Added a lot more http codes
+  * Changed way of using io_service
+  * Reimplemented http parsing engine
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Sun, 13 Oct 2013 19:35:08 +0400
+
+swarm (0.5.4.9) unstable; urgency=low
+
+  * Fixed segfault in network_reply::set_header
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 07 Oct 2013 15:11:38 +0400
+
+swarm (0.5.4.8) unstable; urgency=low
+
+  * Fixed connection counter in monitoring
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 03 Oct 2013 22:45:39 +0400
+
+swarm (0.5.4.7) unstable; urgency=low
+
+  * If you want to copy data into rapidjson object you have to create rapidjson::Value first
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Mon, 26 Aug 2013 23:17:41 +0400
+
+swarm (0.5.4.6) unstable; urgency=low
+
+  * Bugfix: SIGSEGV in on_socket_event
+  * Assign IO to curl-multi only after io->set() has been called
+  * Added comment about how IO can be destroyed while in curl_multi_socket_action()
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 22 Aug 2013 02:11:15 +0400
+
+swarm (0.5.4.5) unstable; urgency=low
+
+  * Move json serializer into separate class
+  * Added index/data convert functions for generic serializer
+  * Depend on 2.24.13.33+ elliptics
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 18 Aug 2013 05:30:52 +0400
+
+swarm (0.5.4.4) unstable; urgency=low
+
+  * Use body pointer from 'info' object, which is being held for the whole duration of request
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 15 Aug 2013 22:22:42 +0400
+
+swarm (0.5.4.3) unstable; urgency=low
+
+  * Added socket fd to socket io
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 08 Aug 2013 20:49:36 +0400
+
+swarm (0.5.4.2) unstable; urgency=low
+
+  * Removed server::add_logger overload
+  * Added elliptics::server::get_node method
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Thu, 08 Aug 2013 18:39:55 +0400
+
+swarm (0.5.4.1) unstable; urgency=low
+
+  * Added more debug info to on_socket_event logs
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 05 Aug 2013 17:51:50 +0400
+
+swarm (0.5.4.0) unstable; urgency=low
+
+  * Added logger calls to most of methods
+  * Added request_stream::log method	    
+  * * This method is shortcut for get_server()->get_logger().log
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Mon, 05 Aug 2013 15:57:41 +0400
+
+swarm (0.5.3.6) unstable; urgency=low
+
+  * Fixed swarm/logger.h includes
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 02 Aug 2013 14:57:07 +0400
+
+swarm (0.5.3.5) unstable; urgency=low
+
+  * Fixed segfault in case of / request
+  * Added IPv6 support by removing dns one
+  * * Don't resolve address from the name by magic and DNS
+  * Fixed a bug that occurs when either argument of query list does not have a value or query list is empty
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 31 Jul 2013 17:51:17 +0400
+
+swarm (0.5.3.4) unstable; urgency=low
+
+  * Factor out generic json time writer
+  * Made all callbacks virtual
+  * Added version/soversion properties to libelliptics-thevoid library
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 28 Jul 2013 23:42:11 +0400
+
+swarm (0.5.3.3) unstable; urgency=low
+
+  * Completed elliptics server split: added asio, jsonvalue, commaon and io headers
+  * Added -W -Wall compile flags. Fixed (or worked around) compile warnings.
+  * Added ugly pragma hack to disable compilation warnings within libev
+  * Added ugly pragma hack to disable compilation warnings within rapidjson
+  * Split elliptics example server to common library and example main() function
+  * Install elliptics-thevoid library and includes in libthevoid package
+  * Fixed network_query_list::try_item
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 28 Jul 2013 02:04:25 +0400
+
+swarm (0.5.3.2) unstable; urgency=low
+
+  * Split elliptics server to IO and index parts. Move to separate directory.
+  * Install elliptics header-only index implementation into include/thevoid/elliptics
+  * Added 'extended' elliptics find-indexes view - return not only IDs, but also their data.
+  * Return file-info json in example /upload response
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sat, 27 Jul 2013 21:50:20 +0400
+
+swarm (0.5.3.1) unstable; urgency=low
+
+  * Fixed exceptions at server exit
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 24 Jul 2013 22:48:35 +0400
+
+swarm (0.5.3.0) unstable; urgency=low
+
+  * Added try_* API
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 21:38:08 +0400
+
+swarm (0.5.2.3) unstable; urgency=low
+
+  * Moved send_headers implementation to boost-thread
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 20:06:27 +0400
+
+swarm (0.5.2.2) unstable; urgency=low
+
+  * Added libswarm-dbg package
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 18:32:31 +0400
+
+swarm (0.5.2.1) unstable; urgency=low
+
+  * Fixed network_request::set_header implementation
+  * Added "active_connections" field to thevoid statistics
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 18 Jul 2013 17:02:20 +0400
+
+swarm (0.5.2.0) unstable; urgency=low
+
+  * Fixed swarm freezing on high rps or low-latency
+  * Added non-virtual reply methods to request_stream
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Wed, 17 Jul 2013 21:32:44 +0400
+
+swarm (0.5.1.2) unstable; urgency=low
+
+  * Fixed getting path component from url
+  * Fixed prefix matching in thevoid
+  * Moved to boost::thread
+  * networkrequest::set_header should override all values
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Tue, 16 Jul 2013 18:04:11 +0400
+
+swarm (0.5.1.1) unstable; urgency=low
+
+  * Fixed handling of exact-match handlers
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 28 Jun 2013 21:06:33 +0400
+
+swarm (0.5.1.0) unstable; urgency=low
+
+  * Added server::on_prefix method
+  * Behaviour of server::on was returned to perfect-match
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 28 Jun 2013 20:35:02 +0400
+
+swarm (0.5.0.0) unstable; urgency=low
+
+  * Added TheVoid - asynchronous HTTP backend
+  * Added network_query_list for parsing URL query list
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Thu, 27 Jun 2013 17:04:26 +0400
+
+swarm (0.4.0.0) unstable; urgency=low
+
+  * Changed requests/replies API
+  * Added If-Modified-Since and Last-Modified headers support
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Sun, 09 Jun 2013 12:23:49 +0400
+
+swarm (0.3.0.1) unstable; urgency=low
+
+  * Fixed compilation on Lucid
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Fri, 24 May 2013 20:54:23 +0400
+
+swarm (0.3.0.0) unstable; urgency=low
+
+  * Added headers support
+  * Added timeouts support
+  * Added POST support
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 24 May 2013 18:47:12 +0400
+
+swarm (0.2.0.0) unstable; urgency=low
+
+  * Added option to write headers or not
+  * Added header saving support
+  * Allow external handlers to throw exceptions - they will not be silently discarded, but propagated to caller as usual
+  * Automatic version detection. Include dir cleanup
+  * Added proper library/header detection
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sat, 06 Apr 2013 00:00:30 +0400
+
+swarm (0.1.0.0) unstable; urgency=low
+
+  * Initial release
+
+ -- Ruslan Nigmatullin <euroelessar@yandex.ru>  Fri, 22 Mar 2013 20:45:02 +0400

@@ -1,0 +1,61 @@
+Source: swarm
+Priority: extra
+Maintainer: Ruslan Nigmatullin <euroelessar@yandex.ru>
+Build-Depends:
+    cdbs,
+    debhelper (>= 7),
+    cmake,
+    liburiparser-dev,
+    libboost-dev,
+    libboost-system-dev,
+    libboost-filesystem-dev,
+    libboost-thread-dev,
+    libidn11-dev,
+    blackhole-dev (>= 0.2.2-1),
+Standards-Version: 3.9.3
+Section: libs
+Homepage: https://github.com/reverbrain/swarm
+Vcs-Git: git://github.com/reverbrain/swarm.git
+Vcs-Browser: https://github.com/reverbrain/swarm
+
+Package: libswarm3
+Section: libs
+Architecture: any
+Depends:
+    ${shlibs:Depends},
+    ${misc:Depends},
+Description: Swarm is aiming at your web
+
+Package: libswarm3-dev
+Section: libdevel
+Architecture: any
+Depends:
+    ${misc:Depends},
+    libboost-dev,
+    blackhole-dev,
+    libswarm3 (= ${binary:Version}),
+Provides: libswarm-dev-virtual
+Conflicts: libswarm-dev-virtual
+Replaces: libswarm-dev (<< 3)
+Breaks: libswarm-dev (<< 3)
+Description: Swarm is aiming at your web (devel)
+ Development files
+
+Package: libswarm-dev
+Section: oldlibs
+Priority: extra
+Architecture: all
+Depends:
+    ${misc:Depends},
+    libswarm3-dev (= ${binary:Version}),
+Description: Transitional dummy package
+
+Package: libswarm3-dbg
+Architecture: any
+Section: debug
+Depends:
+    ${shlibs:Depends},
+    ${misc:Depends},
+    libswarm3 (= ${binary:Version}),
+Description: Swarm is aiming at your web (debug)
+ Debug files and symbols.
