@@ -1,28 +1,48 @@
-aux_source_directory(. THEVOID_SRC_LIST)
-add_library(thevoid SHARED ${THEVOID_SRC_LIST})
+PROJECT (thevoid)
 
-message("THEVOID_SRC_LIST: ${THEVOID_SRC_LIST}")
-message("Boost_LIBRARIES: ${Boost_LIBRARIES}")
+CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -W -Wall -Wextra")
 
-target_link_libraries(thevoid ${Boost_LIBRARIES} pthread swarm)
-set_target_properties(thevoid PROPERTIES
-    VERSION ${DEBFULLVERSION}
-    SOVERSION ${SWARM_VERSION_ABI}
-    )
+FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
+STRING (REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
+STRING (REGEX MATCH "([0-9]+)" THEVOID_VERSION_ABI "${DEBFULLVERSION}")
 
-install(FILES
-	server.hpp
-	stream.hpp
-	streamfactory.hpp
-	http_request.hpp
-	http_response.hpp
-    DESTINATION include/thevoid/
-    )
+SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-install(TARGETS thevoid
-    LIBRARY DESTINATION lib${LIB_SUFFIX}
-    ARCHIVE DESTINATION lib${LIB_SUFFIX}
-    BUNDLE DESTINATION library
-    )
+FIND_PACKAGE (Boost COMPONENTS system filesystem thread program_options regex REQUIRED)
+FIND_PACKAGE (Blackhole REQUIRED)
+FIND_PACKAGE (Swarm REQUIRED)
+
+INCLUDE_DIRECTORIES (
+	${Boost_INCLUDE_DIRS}
+	${Blackhole_INCLUDE_DIRS}
+	${Swarm_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+FILE (GLOB_RECURSE THEVOID_SRC_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/*.cpp")
+ADD_LIBRARY (thevoid SHARED ${THEVOID_SRC_LIST})
+
+TARGET_LINK_LIBRARIES (thevoid
+	${Boost_LIBRARIES}
+	${Swarm_LIBRARIES}
+	pthread
+)
+
+SET_TARGET_PROPERTIES (thevoid
+	PROPERTIES
+	VERSION ${DEBFULLVERSION}
+	SOVERSION ${THEVOID_VERSION_ABI}
+)
+
+INSTALL (
+	DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/thevoid
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+)
+
+INSTALL (
+	TARGETS thevoid
+	LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}
+)
