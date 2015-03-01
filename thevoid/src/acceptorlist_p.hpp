@@ -17,7 +17,7 @@
 #ifndef IOREMAP_THEVOID_ACCEPTORLIST_P_HPP
 #define IOREMAP_THEVOID_ACCEPTORLIST_P_HPP
 
-#include "server.hpp"
+#include <thevoid/server.hpp>
 #include <boost/thread.hpp>
 
 namespace ioremap {

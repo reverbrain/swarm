@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "server.hpp"
+#include <thevoid/server.hpp>
 #include "stream_p.hpp"
 #include <boost/regex.hpp>
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "streamfactory.hpp"
+#include <thevoid/streamfactory.hpp>
 
 namespace ioremap {
 namespace thevoid {

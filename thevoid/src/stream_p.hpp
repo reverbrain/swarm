@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "stream.hpp"
+#include <thevoid/stream.hpp>
 
 namespace ioremap {
 namespace thevoid {

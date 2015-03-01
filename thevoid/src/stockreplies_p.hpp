@@ -18,7 +18,7 @@
 #define IOREMAP_THEVOID_STOCKREPLIES_P_HPP
 
 #include <boost/asio/buffer.hpp>
-#include "http_response.hpp"
+#include <thevoid/http_response.hpp>
 
 namespace ioremap {
 namespace thevoid {

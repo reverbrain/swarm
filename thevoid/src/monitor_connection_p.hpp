@@ -19,7 +19,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
-#include "server.hpp"
+#include <thevoid/server.hpp>
 
 namespace ioremap {
 namespace thevoid {

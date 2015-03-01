@@ -22,9 +22,9 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include "http_request.hpp"
+#include <thevoid/http_request.hpp>
 #include "request_parser_p.hpp"
-#include "stream.hpp"
+#include <thevoid/stream.hpp>
 #include <queue>
 #include <mutex>
 

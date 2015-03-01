@@ -17,7 +17,7 @@
 #ifndef IOREMAP_THEVOID_STREAMFACTORY_HPP
 #define IOREMAP_THEVOID_STREAMFACTORY_HPP
 
-#include "stream.hpp"
+#include <thevoid/stream.hpp>
 
 namespace ioremap {
 namespace thevoid {

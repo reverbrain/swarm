@@ -17,8 +17,8 @@
 #include "monitor_connection_p.hpp"
 #include "server_p.hpp"
 
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
+#include <thevoid/rapidjson/stringbuffer.h>
+#include <thevoid/rapidjson/prettywriter.h>
 
 #include <boost/bind.hpp>
 

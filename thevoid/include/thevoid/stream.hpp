@@ -17,8 +17,8 @@
 #ifndef IOREMAP_THEVOID_STREAM_HPP
 #define IOREMAP_THEVOID_STREAM_HPP
 
-#include "http_request.hpp"
-#include "http_response.hpp"
+#include <thevoid/http_request.hpp>
+#include <thevoid/http_response.hpp>
 #include <swarm/logger.hpp>
 #include <boost/asio.hpp>
 #include <cstdarg>

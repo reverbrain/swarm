@@ -17,7 +17,7 @@
 #ifndef IOREMAP_THEVOID_SERVER_P_HPP
 #define IOREMAP_THEVOID_SERVER_P_HPP
 
-#include "server.hpp"
+#include <thevoid/server.hpp>
 #include "acceptorlist_p.hpp"
 #include "connection_p.hpp"
 #include "monitor_connection_p.hpp"

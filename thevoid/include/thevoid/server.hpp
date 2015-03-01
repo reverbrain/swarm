@@ -17,7 +17,7 @@
 #ifndef IOREMAP_THEVOID_SERVER_HPP
 #define IOREMAP_THEVOID_SERVER_HPP
 
-#include "streamfactory.hpp"
+#include <thevoid/streamfactory.hpp>
 
 #include <swarm/logger.hpp>
 

@@ -19,7 +19,7 @@
 
 #include <boost/logic/tribool.hpp>
 #include <boost/tuple/tuple.hpp>
-#include "http_request.hpp"
+#include <thevoid/http_request.hpp>
 
 namespace ioremap {
 namespace thevoid {
@@ -33,7 +33,7 @@ public:
 
 	//! Reset to initial parser state.
 	void reset();
-    
+
     //! Parse some data. The tribool return value is true when a complete request
 	//! has been parsed, false if the data is invalid, indeterminate when more
 	//! data is required. The InputIterator return value indicates how much of the
