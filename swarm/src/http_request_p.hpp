@@ -17,7 +17,7 @@
 #ifndef IOREMAP_SWARM_HTTP_REQUEST_P_HPP
 #define IOREMAP_SWARM_HTTP_REQUEST_P_HPP
 
-#include "http_request.hpp"
+#include <swarm/http_request.hpp>
 
 namespace ioremap {
 namespace swarm {

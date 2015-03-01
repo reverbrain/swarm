@@ -17,8 +17,8 @@
 #ifndef IOREMAP_SWARM_HTTP_RESPONSE_HPP
 #define IOREMAP_SWARM_HTTP_RESPONSE_HPP
 
-#include "url.hpp"
-#include "http_headers.hpp"
+#include <swarm/url.hpp>
+#include <swarm/http_headers.hpp>
 
 namespace ioremap {
 namespace swarm {

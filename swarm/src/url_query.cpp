@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "url_query.hpp"
+#include <swarm/url_query.hpp>
 
 #include <uriparser/Uri.h>
 

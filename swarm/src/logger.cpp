@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "logger.hpp"
+#include <swarm/logger.hpp>
 
 // For BigBang
 #include <blackhole/repository.hpp>

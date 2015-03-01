@@ -17,7 +17,7 @@
 #ifndef IOREMAP_SWARM_HTTP_RESPONSE_P_HPP
 #define IOREMAP_SWARM_HTTP_RESPONSE_P_HPP
 
-#include "http_response.hpp"
+#include <swarm/http_response.hpp>
 
 namespace ioremap {
 namespace swarm {

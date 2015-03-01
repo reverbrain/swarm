@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "url_query.hpp"
+#include <swarm/url_query.hpp>
 
 namespace ioremap {
 namespace swarm {
