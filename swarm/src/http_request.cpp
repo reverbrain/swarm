@@ -16,14 +16,12 @@
 
 #include "http_request_p.hpp"
 
+#include <algorithm>
+
 namespace ioremap {
 namespace swarm {
 
 http_request::http_request() : m_data(new http_request_data)
-{
-}
-
-http_request::http_request(http_request_data &data) : m_data(&data)
 {
 }
 
@@ -33,8 +31,7 @@ http_request::http_request(const boost::none_t &)
 
 http_request::http_request(http_request &&other)
 {
-	using std::swap;
-	swap(m_data, other.m_data);
+	std::swap(m_data, other.m_data);
 }
 
 http_request::http_request(const http_request &other) : m_data(new http_request_data(*other.m_data))
@@ -47,17 +44,15 @@ http_request::~http_request()
 
 http_request &http_request::operator =(http_request &&other)
 {
-	using std::swap;
-	swap(m_data, other.m_data);
+	std::swap(m_data, other.m_data);
 
 	return *this;
 }
 
 http_request &http_request::operator =(const http_request &other)
 {
-	using std::swap;
 	http_request tmp(other);
-	swap(m_data, tmp.m_data);
+	std::swap(m_data, tmp.m_data);
 
 	return *this;
 }

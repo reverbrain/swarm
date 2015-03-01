@@ -41,7 +41,6 @@ class http_request
 public:
 	http_request();
 	http_request(const boost::none_t &);
-	http_request(http_request_data &data);
 	http_request(http_request &&other);
 	http_request(const http_request &other);
 	~http_request();
@@ -61,7 +60,7 @@ public:
 	void set_method(const std::string &method);
 	std::string method() const;
 
-protected:
+private:
 	std::unique_ptr<http_request_data> m_data;
 };
 

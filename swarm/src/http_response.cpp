@@ -16,14 +16,12 @@
 
 #include "http_response_p.hpp"
 
+#include <algorithm>
+
 namespace ioremap {
 namespace swarm {
 
 http_response::http_response() : m_data(new http_response_data)
-{
-}
-
-http_response::http_response(http_response_data &data) : m_data(&data)
 {
 }
 
@@ -33,8 +31,7 @@ http_response::http_response(const boost::none_t &)
 
 http_response::http_response(http_response &&other)
 {
-	using std::swap;
-	swap(m_data, other.m_data);
+	std::swap(m_data, other.m_data);
 }
 
 http_response::http_response(const http_response &other) : m_data(new http_response_data(*other.m_data))
@@ -47,16 +44,14 @@ http_response::~http_response()
 
 http_response &http_response::operator =(http_response &&other)
 {
-	using std::swap;
-	swap(m_data, other.m_data);
+	std::swap(m_data, other.m_data);
 	return *this;
 }
 
 http_response &http_response::operator =(const http_response &other)
 {
-	using std::swap;
 	http_response tmp(other);
-	swap(m_data, tmp.m_data);
+	std::swap(m_data, tmp.m_data);
 	return *this;
 }
 

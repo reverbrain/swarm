@@ -104,7 +104,6 @@ public:
 	};
 
 	http_response();
-	http_response(http_response_data &data);
 	http_response(const boost::none_t &);
 	http_response(http_response &&other);
 	http_response(const http_response &other);
@@ -127,7 +126,7 @@ public:
 	void set_headers(const http_headers &headers);
 	void set_headers(http_headers &&headers);
 
-protected:
+private:
 	std::unique_ptr<http_response_data> m_data;
 };
 
