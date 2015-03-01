@@ -3,8 +3,12 @@
 
 #include <swarm/http_request.hpp>
 
+#include <memory>
+
 namespace ioremap {
 namespace thevoid {
+
+class http_request_data;
 
 class http_request : public swarm::http_request
 {
@@ -36,6 +40,9 @@ public:
 
 	// Checks by Connection header and HTTP version if connection is Keep-Alive
 	bool is_keep_alive() const;
+
+private:
+	std::unique_ptr<http_request_data> m_data;
 };
 
 } // namespace thevoid

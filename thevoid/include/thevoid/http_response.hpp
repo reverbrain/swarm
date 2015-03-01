@@ -3,8 +3,12 @@
 
 #include <swarm/http_response.hpp>
 
+#include <memory>
+
 namespace ioremap {
 namespace thevoid {
+
+class http_response_data;
 
 class http_response : public swarm::http_response
 {
@@ -17,6 +21,9 @@ public:
 
 	http_response &operator =(http_response &&other);
 	http_response &operator =(const http_response &other);
+
+private:
+	std::unique_ptr<http_response_data> m_data;
 };
 
 } // namespace thevoid

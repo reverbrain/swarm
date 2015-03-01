@@ -1,17 +1,15 @@
 #include "http_response.hpp"
-#include "../swarm/http_response_p.hpp"
+
+#include <algorithm>
 
 namespace ioremap {
 namespace thevoid {
 
-class http_response_data : public swarm::http_response_data
+class http_response_data
 {
-public:
 };
 
-#define M_DATA() static_cast<http_response_data *>(m_data.get())
-
-http_response::http_response() : swarm::http_response(*new http_response_data)
+http_response::http_response() : m_data(new http_response_data)
 {
 }
 
@@ -22,10 +20,12 @@ http_response::http_response(const boost::none_t &none) : swarm::http_response(n
 http_response::http_response(http_response &&other) :
 	swarm::http_response(std::move(other))
 {
+	std::swap(m_data, other.m_data);
 }
 
 http_response::http_response(const http_response &other) :
-	swarm::http_response(*new http_response_data(*static_cast<http_response_data *>(other.m_data.get())))
+	swarm::http_response(other),
+	m_data(new http_response_data(*other.m_data))
 {
 }
 
@@ -35,17 +35,16 @@ http_response::~http_response()
 
 http_response &http_response::operator =(http_response &&other)
 {
-	using std::swap;
-	http_response tmp(other);
-	swap(m_data, tmp.m_data);
+	std::swap(m_data, other.m_data);
+	swarm::http_response::operator=(std::move(other));
 	return *this;
 }
 
 http_response &http_response::operator =(const http_response &other)
 {
-	using std::swap;
 	http_response tmp(other);
-	swap(m_data, tmp.m_data);
+	std::swap(m_data, tmp.m_data);
+	swarm::http_response::operator=(tmp);
 	return *this;
 }
 

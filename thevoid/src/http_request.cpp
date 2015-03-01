@@ -1,10 +1,11 @@
 #include "http_request.hpp"
-#include "../swarm/http_request_p.hpp"
+
+#include <algorithm>
 
 namespace ioremap {
 namespace thevoid {
 
-class http_request_data : public swarm::http_request_data
+class http_request_data
 {
 public:
 	http_request_data() :
@@ -23,9 +24,7 @@ public:
 	std::string local_endpoint;
 };
 
-#define M_DATA() (static_cast<http_request_data *>(m_data.get()))
-
-http_request::http_request() : swarm::http_request(*new http_request_data)
+http_request::http_request() : m_data(new http_request_data)
 {
 }
 
@@ -36,10 +35,12 @@ http_request::http_request(const boost::none_t &none) : swarm::http_request(none
 http_request::http_request(http_request &&other) :
 	swarm::http_request(std::move(other))
 {
+	std::swap(m_data, other.m_data);
 }
 
 http_request::http_request(const http_request &other) :
-	swarm::http_request(*new http_request_data(*static_cast<http_request_data *>(other.m_data.get())))
+	swarm::http_request(other),
+	m_data(new http_request_data(*other.m_data))
 {
 }
 
@@ -49,74 +50,73 @@ http_request::~http_request()
 
 http_request &http_request::operator =(http_request &&other)
 {
-	using std::swap;
-	http_request tmp(other);
-	swap(m_data, tmp.m_data);
+	std::swap(m_data, other.m_data);
+	swarm::http_request::operator=(std::move(other));
 	return *this;
 }
 
 http_request &http_request::operator =(const http_request &other)
 {
-	using std::swap;
 	http_request tmp(other);
-	swap(m_data, tmp.m_data);
+	std::swap(m_data, tmp.m_data);
+	swarm::http_request::operator=(tmp);
 	return *this;
 }
 
 uint64_t http_request::request_id() const
 {
-	return M_DATA()->request_id;
+	return m_data->request_id;
 }
 
 void http_request::set_request_id(uint64_t request_id)
 {
-	M_DATA()->request_id = request_id;
+	m_data->request_id = request_id;
 }
 
 bool http_request::trace_bit() const
 {
-	return M_DATA()->trace_bit;
+	return m_data->trace_bit;
 }
 
 void http_request::set_trace_bit(bool trace_bit)
 {
-	M_DATA()->trace_bit = trace_bit;
+	m_data->trace_bit = trace_bit;
 }
 
 const std::string &http_request::remote_endpoint() const
 {
-	return M_DATA()->remote_endpoint;
+	return m_data->remote_endpoint;
 }
 
 void http_request::set_remote_endpoint(const std::string &remote_endpoint)
 {
-	M_DATA()->remote_endpoint = remote_endpoint;
+	m_data->remote_endpoint = remote_endpoint;
 }
 
 const std::string &http_request::local_endpoint() const
 {
-	return M_DATA()->local_endpoint;
+	return m_data->local_endpoint;
 }
 
 void http_request::set_local_endpoint(const std::string &local_endpoint)
 {
-	M_DATA()->local_endpoint = local_endpoint;
+	m_data->local_endpoint = local_endpoint;
 }
 
 void http_request::set_http_version(int major_version, int minor_version)
 {
-	M_DATA()->major_version = major_version;
-	M_DATA()->minor_version = minor_version;
+	m_data->major_version = major_version;
+	m_data->minor_version = minor_version;
 }
 
 int http_request::http_major_version() const
 {
-	return M_DATA()->major_version;
+	return m_data->major_version;
 }
 
 int http_request::http_minor_version() const
 {
-	return M_DATA()->minor_version;
+	return m_data->minor_version;
 }
 
 bool http_request::is_keep_alive() const
