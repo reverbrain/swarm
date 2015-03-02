@@ -52,10 +52,11 @@ namespace thevoid {
 
 namespace signal_handler {
 
+namespace {
+
 std::mutex lock;
 std::set<base_server*> all_servers;
 
-static
 void stop(int signal_value)
 {
 	std::lock_guard<std::mutex> locker(lock);
@@ -66,7 +67,6 @@ void stop(int signal_value)
 	}
 }
 
-static
 void reload(int signal_value)
 {
 	std::lock_guard<std::mutex> locker(lock);
@@ -81,11 +81,12 @@ void reload(int signal_value)
 	}
 }
 
-static
 bool register_handler(void (*handler)(int), int signal_value)
 {
 	return ::signal(signal_value, handler) != SIG_ERR;
 }
+
+} // unnamed namespace
 
 bool register_stop(int signal_value)
 {
