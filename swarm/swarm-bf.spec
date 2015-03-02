@@ -9,7 +9,7 @@ Release:	1%{?dist}
 License:	GPLv2+
 Group:		System Environment/Libraries
 URL:		https://github.com/reverbrain/swarm
-Source:		https://github.com/reverbrain/swarm/archive/%{version}.tar.gz
+Source:		https://github.com/reverbrain/swarm/archive/swarm-%{version}.tar.gz
 BuildRoot:	%{_tmppath}/%{name}-%{version}-root
 
 %if %{defined rhel} && 0%{?rhel} < 6
