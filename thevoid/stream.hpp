@@ -268,12 +268,6 @@ protected:
 		return m_reply;
 	}
 
-	__attribute__((deprecated))
-	const std::shared_ptr<reply_stream> &get_reply()
-	{
-		return reply();
-	}
-
 private:
 	blackhole::log::attributes_t *logger_attributes();
 

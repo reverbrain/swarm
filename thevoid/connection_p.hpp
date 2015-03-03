@@ -123,7 +123,7 @@ private:
 
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
-	void process_data(const char *begin, const char *end);
+	void process_data();
 
 	void async_read();
 
