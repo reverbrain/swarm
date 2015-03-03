@@ -130,6 +130,24 @@ public:
 	 */
 	virtual void want_more() = 0;
 	/*!
+	 * \brief Pauses processing data until want_more() method is called.
+	 *
+	 * This is method is not thread-safe and may be called from within
+	 * base_request_stream::on_headers() and base_request_stream::on_data() methods.
+	 *
+	 * If this method is called from within base_request_stream::on_headers() method
+	 * following base_request_stream::on_data() method's call is postponed until
+	 * want_more() method is called.
+	 *
+	 * Analogously, calling this method from within base_request_stream::on_data()
+	 * method will postpone following base_request_stream::on_data() or
+	 * base_request_stream::on_close() method's call.
+	 *
+	 * However, if error happens base_request_stream::on_close() with corresponding
+	 * error_code will be called.
+	 */
+	virtual void pause_receive() = 0;
+	/*!
 	 * \brief Closes socket to client.
 	 *
 	 * If \a err is set connection to client is terminated.
@@ -533,6 +551,12 @@ private:
  *
  * After chunk's processing is finished call try_next_chunk.
  *
+ * One must call try_next_chunk() to receive first chunk.
+ *
+ * One MUST NOT call reply_stream::pause_receive() from within on_chunk() or on_request()
+ * methods. Next on_chunk() method's call is already posponed until try_next_chunk() method
+ * is called.
+ *
  * \sa set_chunk_size
  */
 template <typename Server>
@@ -546,7 +570,7 @@ public:
 	};
 
 	buffered_request_stream() :
-		m_chunk_size(10 * 1024), m_client_asked_chunk(true),
+		m_chunk_size(10 * 1024), m_client_asked_chunk(false),
 		m_first_chunk(true), m_last_chunk(false),
 		m_unprocessed_size(0)
 	{
@@ -646,31 +670,30 @@ private:
 		while (size) {
 			// The size that we need to pass to the client
 			const auto real_chunk_size = std::min(m_unprocessed_size, m_chunk_size);
+			const auto delta = std::min(size, real_chunk_size - m_data.size());
 
-			// If client is ready to get next chunk, we will obtain as much data as we can.
-			// Otherwise keep one byte in connection in order to be able to call on_data later.
-			const auto boundary_chunk_size =
-				m_client_asked_chunk ? real_chunk_size : real_chunk_size - 1;
-
-			const auto delta = std::min(size, boundary_chunk_size - m_data.size());
-
-			// That means nothing to add into the chunk and according to loop invariant m_data is
-			// not ready to be processed.
-			if (delta == 0) {
-				break;
+			if (delta) {
+				buffered_size += delta;
+				m_data.insert(m_data.end(), begin, begin + delta);
+				begin += delta;
+				size -= delta;
 			}
-
-			buffered_size += delta;
-			m_data.insert(m_data.end(), begin, begin + delta);
-			begin += delta;
-			size -= delta;
 
 			// We will call on_chunk if both conditions are true
 			// 1. Client asked next chunk
 			// 2. The chunk is ready to be processed
 			// The second condition means either chunk is full or chunk contains last data
-			if (m_data.size() == real_chunk_size && m_client_asked_chunk) {
-				this->process_chunk_internal();
+			if (m_data.size() == real_chunk_size) {
+				if (m_client_asked_chunk) {
+					process_chunk_internal();
+				}
+				else {
+					// chunk is ready but client is not
+					if (size == 0) {
+						this->reply()->pause_receive();
+					}
+					break;
+				}
 			}
 		}
 
