@@ -1,52 +1,50 @@
-set(SWARM_SRC_LIST
-    http_headers.hpp
-    http_headers.cpp
-    http_request.hpp
-    http_request.cpp
-    http_response.hpp
-    http_response.cpp
-    logger.cpp
-    logger.hpp
-    url_query.cpp
-    url_query.hpp
-    url.cpp
-    url.hpp
-    )
+PROJECT (swarm)
 
-set(SWARM_HDR_LIST
-	http_headers.hpp
-	http_request.hpp
-	http_response.hpp
-	url.hpp
-	url_query.hpp
-	logger.hpp
-    )
+CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 
-find_package(PkgConfig REQUIRED)
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -W -Wall -Wextra")
 
-pkg_search_module(LIBIDN REQUIRED libidn)
+FILE (READ "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog" DEBCHANGELOG)
+STRING (REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)" DEBFULLVERSION "${DEBCHANGELOG}")
+STRING (REGEX MATCH "([0-9]+)" SWARM_VERSION_ABI "${DEBFULLVERSION}")
 
-include_directories(${LIBIDN_INCLUDE_DIRS})
+SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-add_library(swarm SHARED ${SWARM_SRC_LIST})
-target_link_libraries(swarm uriparser ${Boost_LIBRARIES} ${LIBIDN_LIBRARIES})
-set_target_properties(swarm PROPERTIES
-    VERSION ${DEBFULLVERSION}
-    SOVERSION ${SWARM_VERSION_ABI}
-    )
+FIND_PACKAGE (Uriparser REQUIRED)
+FIND_PACKAGE (Boost COMPONENTS system filesystem thread REQUIRED)
+FIND_PACKAGE (LibIDN REQUIRED)
+FIND_PACKAGE (Blackhole REQUIRED)
 
-install(FILES
-    ${SWARM_HDR_LIST}
-    DESTINATION include/swarm/
-    )
+INCLUDE_DIRECTORIES (
+	${Uriparser_INCLUDE_DIRS}
+	${LibIDN_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
+	${Blackhole_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
-install(TARGETS swarm
-    LIBRARY DESTINATION lib${LIB_SUFFIX}
-    ARCHIVE DESTINATION lib${LIB_SUFFIX}
-    BUNDLE DESTINATION library
-    )
+FILE (GLOB_RECURSE SWARM_SRC_LIST RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/*.cpp")
+ADD_LIBRARY (swarm SHARED ${SWARM_SRC_LIST})
 
-add_subdirectory(xml)
-if(BUILD_URLFETCHER)
-    add_subdirectory(urlfetcher)
-endif()
+TARGET_LINK_LIBRARIES (swarm
+	${Boost_LIBRARIES}
+	${Uriparser_LIBRARIES}
+	${LibIDN_LIBRARIES}
+)
+
+SET_TARGET_PROPERTIES (swarm
+	PROPERTIES
+	VERSION ${DEBFULLVERSION}
+	SOVERSION ${SWARM_VERSION_ABI}
+)
+
+INSTALL (
+	DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/swarm
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/include/
+)
+
+INSTALL (
+	TARGETS swarm
+	LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}
+)

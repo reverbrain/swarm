@@ -1,0 +1,65 @@
+Source: thevoid
+Priority: extra
+Maintainer: Ruslan Nigmatullin <euroelessar@yandex.ru>
+Build-Depends:
+    cdbs,
+    debhelper (>= 7),
+    cmake,
+    libboost-dev,
+    libboost-system-dev,
+    libboost-filesystem-dev,
+    libboost-thread-dev,
+    libboost-program-options-dev,
+    libboost-regex-dev,
+    blackhole-dev (>= 0.2.2-1),
+    libswarm3-dev,
+Standards-Version: 3.9.3
+Section: libs
+Homepage: https://github.com/reverbrain/swarm
+Vcs-Git: git://github.com/reverbrain/swarm.git
+Vcs-Browser: https://github.com/reverbrain/swarm
+
+Package: libthevoid3
+Section: libs
+Architecture: any
+Depends:
+    ${shlibs:Depends},
+    ${misc:Depends},
+Description: TheVoid
+
+Package: libthevoid3-dev
+Section: libdevel
+Architecture: any
+Depends:
+    ${misc:Depends},
+    libswarm3-dev,
+    libboost-dev,
+    blackhole-dev,
+    libthevoid3 (= ${binary:Version}),
+Provides: libthevoid-dev-virtual
+Conflicts: libthevoid-dev-virtual
+Replaces: libthevoid-dev (<< 3)
+Breaks: libthevoid-dev (<< 3)
+Description: TheVoid (devel)
+ Development files
+
+Package: libthevoid-dev
+Section: oldlibs
+Priority: extra
+Architecture: all
+Depends:
+    ${misc:Depends},
+    libthevoid3-dev (= ${binary:Version}),
+Description: Transitional dummy package
+
+Package: libthevoid3-dbg
+Architecture: any
+Section: debug
+Depends:
+    ${shlibs:Depends},
+    ${misc:Depends},
+    libthevoid3 (= ${binary:Version}),
+Suggests:
+    libswarm3-dbg,
+Description: TheVoid (debug)
+ Debug files and symbols.
