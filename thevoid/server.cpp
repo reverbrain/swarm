@@ -351,7 +351,7 @@ void base_server::daemonize()
 			throw daemon_exception("another process is active");
 		}
 		if (!m_data->pid->open()) {
-			throw daemon_exception("can not open pid file");
+			throw daemon_exception("can not open " + m_data->pid_file_path);
 		}
 	}
 
