@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.7.2.0
+Version:	0.8.0.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,13 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed Apr 01 2015 Danil Osherov <shindo@yandex-team.ru> - 0.8.0.0
+- base_request_stream::get_reply() deprecated method removed.
+- added ability to stop receiving data from client.
+- buffered_request_stream: first chunk of data is passed to handler
+- * after try_next_chunk() call.
+- buffered_request_stream: reworked with reply_stream::pause_receive().
+
 * Tue Feb 03 2015 Danil Osherov <shindo@yandex-team.ru> - 0.7.3.0
 - call close() on socket along with shutdown() for graceful shutdown.
 - remove handler from the connection once handler's on_close() method is called.
