@@ -707,6 +707,11 @@ private:
 	{
 		if (err) {
 			on_error(err);
+			return;
+		}
+
+		if (m_unprocessed_size) {
+			process_chunk_internal();
 		}
 	}
 
