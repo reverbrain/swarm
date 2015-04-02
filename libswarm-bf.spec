@@ -1,6 +1,6 @@
 Summary:	Swarm
 Name:		libswarm
-Version:	0.8.0.0
+Version:	0.8.1.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -101,6 +101,23 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Wed Apr 02 2015 Artem Sokolov <derikon@yandex-team.ru> - 0.8.1.0
+- Class buffered_request_stream was fixed.
+- * The problem.
+- * If client use buffered_request_stream in asynchronous way, that means
+- * try_next_chunk method is called from somewhere except on_chunk method,
+- * the last chunk will no be processed. The reason is:
+- * buffered_request_stream accumulates data in background and calls
+- * on_chunk only if client asks next chunk and either buffer is full or the
+- * last data was obtained, otherwise -- means client does not ask next
+- * chunk -- buffered_request_stream calls pause method; let data has
+- * already been obtained and client asks next chunk sometime later, in this
+- * case on_close method will be called, that calls on_error if error_code is
+- * set.
+- * The solution.
+- * If error_code is not set and buffered_request_stream has unprocessed
+- * data, on_close method will call on_chunk.
+
 * Wed Apr 01 2015 Danil Osherov <shindo@yandex-team.ru> - 0.8.0.0
 - base_request_stream::get_reply() deprecated method removed.
 - added ability to stop receiving data from client.
