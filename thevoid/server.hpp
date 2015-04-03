@@ -28,6 +28,8 @@
 #include <string>
 #include <vector>
 
+#include <signal.h>
+
 #if !defined(__clang__) && defined(HAVE_GCC46)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
@@ -50,6 +52,14 @@ class server_data;
 template <typename T> class connection;
 class monitor_connection;
 class server_options_private;
+
+/*!
+ * \brief Registers stop/reload action on signal.
+ *
+ * Returns result of signal registration (was it successful or not).
+ */
+bool register_stop_signal(int signal_value);
+bool register_reload_signal(int signal_value);
 
 /*!
  * \brief The daemon_exception is thrown in case if daemonization fails.
@@ -303,6 +313,7 @@ private:
 	template <typename T> friend class connection;
 	friend class monitor_connection;
 	friend class server_data;
+	friend class signal_handler;
 
 	/*!
 	 * \internal
@@ -387,17 +398,17 @@ std::shared_ptr<Server> create_server(Args &&...args)
 
 /*!
  * \brief Run server \a Server with \a args.
- * 
- *  It's equivalent to:
- *  \code{.cpp}
- *  auto server = create_server<Server>(args);
- *  return server->run(argc, argv);
- *  \encode
  */
 template <typename Server, typename... Args>
 int run_server(int argc, char **argv, Args &&...args)
 {
-	return create_server<Server>(std::forward<Args>(args)...)->run(argc, argv);
+	register_stop_signal(SIGINT);
+	register_stop_signal(SIGTERM);
+	register_stop_signal(SIGALRM);
+	register_reload_signal(SIGHUP);
+
+	auto server = create_server<Server>(std::forward<Args>(args)...);
+	return server->run(argc, argv);
 }
 
 } } // namespace ioremap::thevoid
