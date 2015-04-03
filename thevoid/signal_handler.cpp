@@ -3,7 +3,7 @@
 #include <mutex>
 #include <set>
 #include <thread>
-#include <atomic>
+#include <blackhole/utils/atomic.hpp>
 
 #include <signal.h>
 #include <sys/prctl.h>
