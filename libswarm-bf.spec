@@ -1,3 +1,6 @@
+# library soname
+%global __soname 3
+
 Summary:	Swarm
 Name:		libswarm
 Version:	0.8.1.0
@@ -5,7 +8,7 @@ Release:	1%{?dist}
 
 License:	GPLv2+
 Group:		System Environment/Libraries
-URL:		http://www.ioremap.net/projects/elliptics
+URL:		https://github.com/reverbrain/swarm
 Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -15,48 +18,56 @@ BuildRequires:	gcc44 gcc44-c++
 %else
 %define boost_ver %{nil}
 %endif
-BuildRequires:  libxml2-devel libev-devel
-BuildRequires:	boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex, boost%{boost_ver}-filesystem
-BuildRequires:  curl-devel
-BuildRequires:	cmake uriparser-devel libidn-devel
-BuildRequires:  libblackhole-devel
-
-Obsoletes: srw
-
-%description
-Elliptics network is a fault tolerant distributed hash table
-object storage.
+BuildRequires: libxml2-devel libev-devel
+BuildRequires: boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex, boost%{boost_ver}-filesystem
+BuildRequires: curl-devel
+BuildRequires: cmake
+BuildRequires: uriparser-devel libidn-devel
+BuildRequires: libblackhole-devel
 
 
-%package devel
-Summary: Development files for %{name}
+%package -n libswarm%{__soname}
+Summary: Swarm - Core library
 Group: Development/Libraries
-Requires: %{name} = %{version}-%{release}
+
+%description -n libswarm%{__soname}
+Swarm is high-perfomance library for web crawling.
+
+
+%package -n libswarm%{__soname}-devel
+Summary: Swarm - Development files
+Group: Development/Libraries
+Requires: libswarm%{__soname} = %{version}-%{release}
+Requires: boost%{boost_ver}-devel
 Requires: libblackhole-devel
+Provides: libswarm-devel = %{version}-%{release}
+Obsoletes: libswarm-devel < 3
+
+%description -n libswarm%{__soname}-devel
+Swarm is high-perfomance library for web crawling.
 
 
-%description devel
-This package contains libraries, header files and developer documentation
-needed for developing software which uses the cairo graphics library.
-
-%package -n libthevoid
-Summary:	libthevoid
+%package -n libthevoid%{__soname}
+Summary:	TheVoid - Core library
 Group:		Development/Libraries
-Requires:	libswarm = %{version}-%{release}
+Requires:	libswarm%{__soname} = %{version}-%{release}
+
+%description -n libthevoid%{__soname}
+TheVoid is asynchronious event-driven C++ library for building high-perfomance web applications.
 
 
-%description -n libthevoid
-libthevoid
+%package -n libthevoid%{__soname}-devel
+Summary: TheVoid - Development files
+Group: Development/Libraries
+Requires: libthevoid%{__soname} = %{version}-%{release}
+Requires: libswarm%{__soname}-devel = %{version}-%{release}
+Requires: boost%{boost_ver}-devel
+Requires: libblackhole-devel
+Provides: libthevoid-devel = %{version}-%{release}
+Obsoletes: libthevoid-devel < 3
 
-
-%package -n libthevoid-devel
-Summary:	TheVoid devel
-Group:		Development/Libraries
-Requires:	%{name} = %{version}-%{release}
-Requires:	libthevoid = %{version}-%{release}, libswarm-devel = %{version}-%{release}
-
-%description -n libthevoid-devel
-libthevoid devel
+%description -n libthevoid%{__soname}-devel
+TheVoid is asynchronious event-driven C++ library for building high-perfomance web applications.
 
 
 %prep
@@ -71,33 +82,33 @@ make %{?_smp_mflags}
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
 
-%post -p /sbin/ldconfig
-%postun -p /sbin/ldconfig
+%post -n libswarm%{__soname} -p /sbin/ldconfig
+%postun -n libswarm%{__soname} -p /sbin/ldconfig
 
-%post -n libthevoid -p /sbin/ldconfig
-%postun -n libthevoid -p /sbin/ldconfig
+%post -n libthevoid%{__soname} -p /sbin/ldconfig
+%postun -n libthevoid%{__soname} -p /sbin/ldconfig
 
 %clean
 rm -rf %{buildroot}
 
-%files
+%files -n libswarm%{__soname}
 %defattr(-,root,root,-)
-%{_libdir}/*swarm*.so*
+%{_libdir}/libswarm.so.*
 
-%files devel
+%files -n libswarm%{__soname}-devel
 %defattr(-,root,root,-)
 %{_includedir}/swarm/*
-%{_libdir}/*swarm*.so
+%{_libdir}/libswarm.so
 
 
-%files -n libthevoid
+%files -n libthevoid%{__soname}
 %defattr(-,root,root,-)
-%{_libdir}/*thevoid*.so*
+%{_libdir}/libthevoid.so.*
 
-%files -n libthevoid-devel
+%files -n libthevoid%{__soname}-devel
 %defattr(-,root,root,-)
 %{_includedir}/thevoid/*
-%{_libdir}/*thevoid*.so
+%{_libdir}/libthevoid.so
 
 
 %changelog
