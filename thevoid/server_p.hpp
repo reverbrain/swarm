@@ -21,7 +21,6 @@
 #include "acceptorlist_p.hpp"
 #include "connection_p.hpp"
 #include "monitor_connection_p.hpp"
-#include <signal.h>
 
 #include <mutex>
 #include <set>
@@ -31,40 +30,6 @@
 
 namespace ioremap {
 namespace thevoid {
-
-//! This handler is created to resolve creation of several servers in one process,
-//! all of them must be stopped on SIGINT/SIGTERM signal
-class signal_handler
-{
-public:
-	signal_handler()
-	{
-		register_handler(stop_handler, SIGINT, "SIGINT");
-		register_handler(stop_handler, SIGTERM, "SIGTERM");
-		register_handler(stop_handler, SIGALRM, "SIGALRM");
-		register_handler(reload_handler, SIGHUP, "SIGHUP");
-		register_handler(ignore_handler, SIGUSR1, "SIGUSR1");
-		register_handler(ignore_handler, SIGUSR2, "SIGUSR2");
-	}
-
-	~signal_handler()
-	{
-	}
-
-	void register_handler(void (*handler)(int), int signal_value, const std::string &signal_name)
-	{
-		if (SIG_ERR == ::signal(signal_value, handler)) {
-			throw std::runtime_error("Cannot set up " + signal_name + " handler");
-		}
-	}
-
-	static void stop_handler(int);
-	static void reload_handler(int);
-	static void ignore_handler(int);
-
-	std::mutex lock;
-	std::set<server_data*> all_servers;
-};
 
 class pid_file
 {
@@ -121,8 +86,6 @@ public:
 	std::unique_ptr<acceptors_list<unix_connection>> local_acceptors;
 	std::unique_ptr<acceptors_list<tcp_connection>> tcp_acceptors;
 	std::unique_ptr<acceptors_list<monitor_connection>> monitor_acceptors;
-	//! The signal_set is used to register for process termination notifications.
-	std::shared_ptr<signal_handler> signal_set;
 	//! User handlers for urls
 	std::vector<std::pair<base_server::options, factory_ptr>> handlers;
 	//! User id change to during deamonization

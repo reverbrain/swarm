@@ -108,5 +108,11 @@ public:
 
 int main(int argc, char **argv)
 {
-	return ioremap::thevoid::run_server<http_server>(argc, argv);
+	// comment out the following piece of code to disable thevoid's signal handling
+	thevoid::register_stop_signal(SIGINT);
+	thevoid::register_stop_signal(SIGTERM);
+	thevoid::register_reload_signal(SIGHUP);
+
+	auto server = thevoid::create_server<http_server>();
+	return server->run(argc, argv);
 }
