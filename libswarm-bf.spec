@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	0.8.1.0
+Version:	3.0.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -112,6 +112,16 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Apr 08 2015 Danil Osherov <shindo@yandex-team.ru> - 3.0.0
+- signal handling reworked.
+- * One can register handlers for specific signal with register_signal_handler
+- * function.
+- * Each signal may be registered only once.
+- * When added signal is catched its associated handler will be invoked for each
+- * server within separate signal monitoring thread ("void_signal").
+- * One must not register their own signal handlers (with signal(), sigaction(),
+- * etc.) if they use provided signal handling mechanics.
+
 * Wed Apr 02 2015 Artem Sokolov <derikon@yandex-team.ru> - 0.8.1.0
 - Class buffered_request_stream was fixed.
 - * The problem.
