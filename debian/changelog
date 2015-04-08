@@ -1,3 +1,16 @@
+swarm (3.0.0) unstable; urgency=low
+
+  * thevoid: signal handling reworked.
+    One can register handlers for specific signal with register_signal_handler
+    function.
+    Each signal may be registered only once.
+    When added signal is catched its associated handler will be invoked for each
+    server within separate signal monitoring thread ("void_signal").
+    One must not register their own signal handlers (with signal(), sigaction(),
+    etc.) if they use provided signal handling mechanics.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Mon, 08 Apr 2015 19:00:00 +0400
+
 swarm (0.8.1.0) unstable; urgency=low
 
   * Class buffered_request_stream was fixed.

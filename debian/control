@@ -10,47 +10,51 @@ Homepage: https://github.com/reverbrain/swarm
 Vcs-Git: git://github.com/reverbrain/swarm.git
 Vcs-Browser: https://github.com/reverbrain/swarm
 
-Package: libswarm2
+Package: libswarm3
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Swarm is aiming at your web
 
-Package: libswarm2-urlfetcher
+Package: libswarm-urlfetcher3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm3 (= ${binary:Version})
 Description: Swarm is aiming at your web. Url fetch tools
 
-Package: libswarm2-xml
+Package: libswarm-xml3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Swarm is aiming at your web. HTTP-parsing tools
 
-Package: libswarm-dev
+Package: libswarm3-dev
 Section: libdevel
 Architecture: any
-Depends: libswarm2 (= ${binary:Version}), libswarm2-urlfetcher (= ${binary:Version}), libswarm2-xml (= ${binary:Version}), libev-dev, libboost-system-dev, blackhole-dev
+Depends: libswarm3 (= ${binary:Version}), libswarm-urlfetcher3 (= ${binary:Version}), libswarm-xml3 (= ${binary:Version}), libev-dev, libboost-system-dev, blackhole-dev
+Provides: libswarm-dev-virtual
+Conflicts: libswarm-dev-virtual
 Description: Swarm is aiming at your web (devel)
  Development files
 
-Package: libswarm-dbg
+Package: libswarm3-dbg
 Architecture: any
 Section: debug
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm3 (= ${binary:Version}), libthevoid3 (= ${binary:Version}), libswarm-urlfetcher3 (= ${binary:Version}), libswarm-xml3 (= ${binary:Version})
 Description: Swarm is aiming at your web (debug)
  Debug files and symbols.
 
-Package: libthevoid2
+Package: libthevoid3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm2 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm3 (= ${binary:Version})
 Description: TheVoid
 
-Package: libthevoid-dev
+Package: libthevoid3-dev
 Section: libdevel
 Architecture: any
-Depends: libthevoid2 (= ${binary:Version}), libswarm-dev (= ${binary:Version}), libboost-system-dev, libboost-thread-dev, libboost-regex-dev
+Depends: libthevoid3 (= ${binary:Version}), libswarm3-dev (= ${binary:Version}), libboost-system-dev, libboost-thread-dev, libboost-regex-dev
+Provides: libthevoid-dev-virtual
+Conflicts: libthevoid-dev-virtual
 Description: TheVoid (devel)
  Development files
