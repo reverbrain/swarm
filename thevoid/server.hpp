@@ -130,6 +130,11 @@ public:
 	void stop();
 
 	/*!
+	 * \brief Reloads server's configuration.
+	 */
+	void reload();
+
+	/*!
 	 * \brief Returns logger of the service.
 	 */
 	const swarm::logger &logger() const;

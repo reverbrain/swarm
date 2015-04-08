@@ -629,6 +629,11 @@ void base_server::stop()
 	m_data->handle_stop();
 }
 
+void base_server::reload()
+{
+	m_data->handle_reload();
+}
+
 std::shared_ptr<base_stream_factory> base_server::factory(const http_request &request)
 {
 	for (auto it = m_data->handlers.begin(); it != m_data->handlers.end(); ++it) {
