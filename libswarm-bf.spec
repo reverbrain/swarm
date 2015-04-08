@@ -25,6 +25,8 @@ BuildRequires: cmake
 BuildRequires: uriparser-devel libidn-devel
 BuildRequires: libblackhole-devel
 
+%description
+Swarm is high-performance library for web crawling.
 
 %package -n libswarm%{__soname}
 Summary: Swarm - Core library
