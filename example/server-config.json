@@ -16,7 +16,8 @@
                 "sink": {
                     "type": "files",
                     "path": "/dev/stdout",
-                    "autoflush": true
+                    "autoflush": true,
+                    "rotation": { "move": 0 }
                 }
             }
         ]
