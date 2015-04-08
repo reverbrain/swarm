@@ -25,8 +25,11 @@
 #include <boost/noncopyable.hpp>
 #include <boost/variant.hpp>
 
+#include "signal.h"
+
 #include <string>
 #include <vector>
+#include <functional>
 
 #if !defined(__clang__) && defined(HAVE_GCC46)
 #pragma GCC diagnostic push
@@ -50,6 +53,31 @@ class server_data;
 template <typename T> class connection;
 class monitor_connection;
 class server_options_private;
+
+class base_server;
+
+typedef std::function<void (int signal_number, base_server* server)> signal_handler_type;
+
+/*!
+ * \brief Registers signal \a signal_number with its associated \a handler.
+ *
+ * Each signal may be registered only once.
+ *
+ * When added signal is catched its associated handler will be invoked for each
+ * server within its separate thread (server's monitoring thread).
+ *
+ * For each server, all registered signal handlers will be invoked from within single thread.
+ * But the same handler may be invoked concurrently for distinct servers.
+ *
+ * One must not register their own signal handlers (with signal(), sigaction(), etc.)
+ * for added signals.
+ *
+ * Returns 0 if signal was registered successfully, and -1 otherwise.
+ *
+ * This function is thread-safe and may be called at any time and from any thread.
+ */
+int register_signal_handler(int signal_number, signal_handler_type handler);
+
 
 /*!
  * \brief The daemon_exception is thrown in case if daemonization fails.
@@ -385,6 +413,37 @@ std::shared_ptr<Server> create_server(Args &&...args)
 	return std::make_shared<Server>(std::forward<Args>(args)...);
 }
 
+
+/*!
+ * Example of signal handlers.
+ *
+ * These handlers are used within run_server() function.
+ */
+inline
+void handle_stop_signal(int signal_value, base_server* server)
+{
+	BH_LOG(server->logger(), SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
+	server->stop();
+}
+
+inline
+void handle_reload_signal(int signal_value, base_server* server)
+{
+	BH_LOG(server->logger(), SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
+	try {
+		server->reload();
+	} catch (std::exception &e) {
+		std::fprintf(stderr, "Failed to reload configuration: %s", e.what());
+	}
+}
+
+inline
+void handle_ignore_signal(int signal_value, base_server* server)
+{
+	BH_LOG(server->logger(), SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
+}
+
+
 /*!
  * \brief Run server \a Server with \a args.
  * 
@@ -397,7 +456,15 @@ std::shared_ptr<Server> create_server(Args &&...args)
 template <typename Server, typename... Args>
 int run_server(int argc, char **argv, Args &&...args)
 {
-	return create_server<Server>(std::forward<Args>(args)...)->run(argc, argv);
+	register_signal_handler(SIGINT, handle_stop_signal);
+	register_signal_handler(SIGTERM, handle_stop_signal);
+	register_signal_handler(SIGALRM, handle_stop_signal);
+	register_signal_handler(SIGHUP, handle_reload_signal);
+	register_signal_handler(SIGUSR1, handle_ignore_signal);
+	register_signal_handler(SIGUSR2, handle_ignore_signal);
+
+	auto server = create_server<Server>(std::forward<Args>(args)...);
+	return server->run(argc, argv);
 }
 
 } } // namespace ioremap::thevoid

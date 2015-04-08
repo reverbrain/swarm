@@ -26,8 +26,6 @@
 #include <functional>
 #include <iostream>
 
-#include <signal.h>
-
 #include <swarm/url.hpp>
 #include <swarm/logger.hpp>
 #include <thevoid/rapidjson/filestream.h>
@@ -52,8 +50,6 @@ namespace thevoid {
 
 class server_data;
 
-static std::weak_ptr<signal_handler> global_signal_set;
-
 server_data::server_data(base_server *server) :
 	logger(base_logger, blackhole::log::attributes_t()),
 	connections_counter(0),
@@ -68,26 +64,15 @@ server_data::server_data(base_server *server) :
 	local_acceptors(new acceptors_list<unix_connection>(*this)),
 	tcp_acceptors(new acceptors_list<tcp_connection>(*this)),
 	monitor_acceptors(new acceptors_list<monitor_connection>(*this)),
-	signal_set(global_signal_set.lock()),
 	daemonize(false),
 	safe_mode(false),
 	options_parsed(false)
 {
 	swarm::utils::logger::init_attributes(base_logger);
-
-	if (!signal_set) {
-		signal_set = std::make_shared<signal_handler>();
-		global_signal_set = signal_set;
-	}
-
-	std::lock_guard<std::mutex> locker(signal_set->lock);
-	signal_set->all_servers.insert(this);
 }
 
 server_data::~server_data()
 {
-	std::lock_guard<std::mutex> locker(signal_set->lock);
-	signal_set->all_servers.erase(this);
 }
 
 void server_data::handle_stop()
@@ -108,45 +93,6 @@ boost::asio::io_service &server_data::get_worker_service()
 {
 	const uint id = (threads_round_robin++ % threads_count);
 	return *worker_io_services[id];
-}
-
-void signal_handler::stop_handler(int signal_value)
-{
-	if (auto signal_set = global_signal_set.lock()) {
-		std::lock_guard<std::mutex> locker(signal_set->lock);
-
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], stop server", signal_value);
-			(*it)->handle_stop();
-		}
-	}
-}
-
-void signal_handler::reload_handler(int signal_value)
-{
-	if (auto signal_set = global_signal_set.lock()) {
-		std::lock_guard<std::mutex> locker(signal_set->lock);
-
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], reload configuration", signal_value);
-			try {
-				(*it)->handle_reload();
-			} catch (std::exception &e) {
-				std::fprintf(stderr, "Failed to reload configuration: %s", e.what());
-			}
-		}
-	}
-}
-
-void signal_handler::ignore_handler(int signal_value)
-{
-	if (auto signal_set = global_signal_set.lock()) {
-		std::lock_guard<std::mutex> locker(signal_set->lock);
-
-		for (auto it = signal_set->all_servers.begin(); it != signal_set->all_servers.end(); ++it) {
-			BH_LOG((*it)->logger, SWARM_LOG_INFO, "Handled signal [%d], ignored", signal_value);
-		}
-	}
 }
 
 pid_file::pid_file(const std::string &path) : m_path(path), m_file(NULL)
@@ -583,11 +529,6 @@ int base_server::run()
 		return -9;
 	}
 
-	sigset_t previous_sigset;
-	sigset_t sigset;
-	sigfillset(&sigset);
-	pthread_sigmask(SIG_BLOCK, &sigset, &previous_sigset);
-
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->monitor_io_service));
 	m_data->worker_works.emplace_back(new boost::asio::io_service::work(*m_data->io_service));
 
@@ -608,13 +549,19 @@ int base_server::run()
 	runner.service = m_data->io_service.get();
 	threads.emplace_back(new boost::thread(runner));
 
-	pthread_sigmask(SIG_SETMASK, &previous_sigset, NULL);
+	// create signal_service instance to register the server
+	// within global signal handling mechanics
+	auto sigservice = std::make_shared<signal_service>(m_data->monitor_io_service.get(), this);
 
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)
 		threads[i]->join();
 	for (std::size_t i = 0; i < m_data->worker_threads.size(); ++i)
 		m_data->worker_threads[i]->join();
+
+	// on destruction the server will be deregistered from
+	// global signal handling mechanics
+	sigservice.reset();
 
 	m_data->local_acceptors.reset();
 	m_data->tcp_acceptors.reset();
