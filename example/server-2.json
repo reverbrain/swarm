@@ -1,0 +1,34 @@
+{
+    "endpoints": [
+        "0.0.0.0:2222"
+    ],
+    "backlog": 512,
+    "threads": 2,
+    "buffer_size": 65536,
+	"logger": {
+        "level": "debug",
+        "frontends": [
+            {
+                "formatter": {
+                    "type": "string",
+                    "pattern": "[server 2] %(timestamp)s %(request_id)s/%(lwp)s/%(pid)s %(severity)s: %(message)s, %(...L)s"
+                },
+                "sink": {
+                    "type": "files",
+                    "path": "/dev/stdout",
+                    "autoflush": true,
+                    "rotation": { "move": 0 }
+                }
+            }
+        ]
+    },
+    "daemon": {
+        "fork": false,
+        "uid": 1000
+    },
+    "monitor-port": 20000,
+    "request_header": "X-Request",
+    "trace_header": "X-Trace",
+    "application": {
+    }
+}
