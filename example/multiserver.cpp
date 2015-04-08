@@ -59,13 +59,6 @@ void run_server(char* config) {
 	}
 }
 
-const char msg[] = "SIGALRM signal handled manually\n";
-
-void sigalrm_signal_handler(int /* signal_number */) {
-	// write message to stderr
-	::write(STDERR_FILENO, msg, sizeof(msg) - 1);
-}
-
 int main(int argc, char **argv)
 {
 	if (argc == 1) {
@@ -73,30 +66,22 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	std::vector<std::thread> servers;
-	for (int i = 1; i < argc; ++i) {
-		servers.push_back(std::thread(run_server, argv[i]));
-	}
-
-	// register custom signal handlers (even after creating servers)
-	// one can comment out the following piece of code to disable thevoid's signal handling
 	ioremap::thevoid::register_signal_handler(SIGINT, ioremap::thevoid::handle_stop_signal);
 	ioremap::thevoid::register_signal_handler(SIGTERM, ioremap::thevoid::handle_stop_signal);
 	ioremap::thevoid::register_signal_handler(SIGHUP, ioremap::thevoid::handle_reload_signal);
 	ioremap::thevoid::register_signal_handler(SIGUSR1, ioremap::thevoid::handle_ignore_signal);
 	ioremap::thevoid::register_signal_handler(SIGUSR2, ioremap::thevoid::handle_ignore_signal);
 
-	// one can register their own signal handlers
-	{
-		struct sigaction sa;
-		std::memset(&sa, 0, sizeof(sa));
-		sa.sa_handler = sigalrm_signal_handler;
-		sigfillset(&sa.sa_mask);
+	ioremap::thevoid::run_signal_thread();
 
-		::sigaction(SIGALRM, &sa, 0);
+	std::vector<std::thread> servers;
+	for (int i = 1; i < argc; ++i) {
+		servers.push_back(std::thread(run_server, argv[i]));
 	}
 
 	for (size_t i = 0; i < servers.size(); ++i) {
 		servers[i].join();
 	}
+
+	ioremap::thevoid::stop_signal_thread();
 }

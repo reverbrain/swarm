@@ -64,20 +64,25 @@ typedef std::function<void (int signal_number, base_server* server)> signal_hand
  * Each signal may be registered only once.
  *
  * When added signal is catched its associated handler will be invoked for each
- * server within its separate thread (server's monitoring thread).
- *
- * For each server, all registered signal handlers will be invoked from within single thread.
- * But the same handler may be invoked concurrently for distinct servers.
+ * server within separate thread (signals monitoring thread).
  *
  * One must not register their own signal handlers (with signal(), sigaction(), etc.)
- * for added signals.
+ * if they use this signal handling mechanics.
+ *
+ * One must register all their signal handlers before creating child thread from
+ * the main thread.
+ * After signal handlers' registration one must call run_signal_thread() exactly once.
+ * To stop separate signal monitoring thread one must call stop_signal_thread().
  *
  * Returns 0 if signal was registered successfully, and -1 otherwise.
- *
- * This function is thread-safe and may be called at any time and from any thread.
  */
 int register_signal_handler(int signal_number, signal_handler_type handler);
 
+/*!
+ * \brief Starts/stops separate signal monitoring thread.
+ */
+void run_signal_thread();
+void stop_signal_thread();
 
 /*!
  * \brief The daemon_exception is thrown in case if daemonization fails.
@@ -463,8 +468,14 @@ int run_server(int argc, char **argv, Args &&...args)
 	register_signal_handler(SIGUSR1, handle_ignore_signal);
 	register_signal_handler(SIGUSR2, handle_ignore_signal);
 
+	run_signal_thread();
+
 	auto server = create_server<Server>(std::forward<Args>(args)...);
-	return server->run(argc, argv);
+	int err = server->run(argc, argv);
+
+	stop_signal_thread();
+
+	return err;
 }
 
 } } // namespace ioremap::thevoid

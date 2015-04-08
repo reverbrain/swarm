@@ -42,6 +42,8 @@
 #include <blackhole/frontend/files.hpp>
 #include <blackhole/sink/socket.hpp>
 
+#include "signal_service_p.hpp"
+
 #define UNIX_PREFIX "unix:"
 #define UNIX_PREFIX_LEN (sizeof(UNIX_PREFIX) / sizeof(char) - 1)
 
@@ -155,10 +157,15 @@ bool pid_file::remove()
 
 base_server::base_server() : m_data(new server_data(this))
 {
+	signal_service_state* state = get_signal_service_state();
+	state->add_server(this);
 }
 
 base_server::~base_server()
 {
+	signal_service_state* state = get_signal_service_state();
+	state->remove_server(this);
+
 	m_data->handle_stop();
 
 	m_data->worker_io_services.clear();
@@ -549,19 +556,11 @@ int base_server::run()
 	runner.service = m_data->io_service.get();
 	threads.emplace_back(new boost::thread(runner));
 
-	// create signal_service instance to register the server
-	// within global signal handling mechanics
-	auto sigservice = std::make_shared<signal_service>(m_data->monitor_io_service.get(), this);
-
 	// Wait for all threads in the pool to exit.
 	for (std::size_t i = 0; i < threads.size(); ++i)
 		threads[i]->join();
 	for (std::size_t i = 0; i < m_data->worker_threads.size(); ++i)
 		m_data->worker_threads[i]->join();
-
-	// on destruction the server will be deregistered from
-	// global signal handling mechanics
-	sigservice.reset();
 
 	m_data->local_acceptors.reset();
 	m_data->tcp_acceptors.reset();

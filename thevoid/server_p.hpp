@@ -21,7 +21,6 @@
 #include "acceptorlist_p.hpp"
 #include "connection_p.hpp"
 #include "monitor_connection_p.hpp"
-#include "signal_service_p.hpp"
 
 #include <mutex>
 #include <set>

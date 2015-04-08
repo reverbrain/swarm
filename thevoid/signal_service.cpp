@@ -4,35 +4,43 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include <sys/signalfd.h>
+#include <sys/prctl.h>
+
 #include <memory>
 #include <cstring>
 
 namespace ioremap { namespace thevoid {
 
 signal_service_state::signal_service_state()
-	: read_descriptor(-1)
-	, write_descriptor(-1)
+	: service(1)
+	, signal_descriptor(-1)
 {
-	std::memset(registered, 0, sizeof(registered));
 }
 
 signal_service_state::~signal_service_state() {
 	int saved_errno = errno;
 
-	if (read_descriptor != -1) {
-		::close(read_descriptor);
-		read_descriptor = -1;
-	}
-
-	if (write_descriptor != -1) {
-		::close(write_descriptor);
-		write_descriptor = -1;
+	if (signal_descriptor != -1) {
+		::close(signal_descriptor);
+		signal_descriptor = -1;
 	}
 
 	errno = saved_errno;
 }
 
-static
+void signal_service_state::add_server(base_server* server) {
+	std::lock_guard<std::mutex> locker(lock);
+
+	servers.insert(server);
+}
+
+void signal_service_state::remove_server(base_server* server) {
+	std::lock_guard<std::mutex> locker(lock);
+
+	servers.erase(server);
+}
+
 signal_service_state* get_signal_service_state() {
 	static signal_service_state state;
 	return &state;
@@ -42,9 +50,9 @@ signal_service_state* get_signal_service_state() {
 static
 void handle_signal_read(
 		std::shared_ptr<boost::asio::posix::stream_descriptor> descriptor,
-		std::shared_ptr<int> signal_buffer,
+		std::shared_ptr<signalfd_siginfo> siginfo_buffer,
 		const boost::system::error_code& error,
-		std::size_t /* bytes_transferred */
+		std::size_t bytes_transferred
 	)
 {
 	// this callback will be called with "operation_aborted" error when
@@ -53,19 +61,20 @@ void handle_signal_read(
 		signal_service_state* state = get_signal_service_state();
 		std::lock_guard<std::mutex> lock(state->lock);
 
-		// notify all signal services
-		for (auto sig_service = state->services.begin(); sig_service != state->services.end(); ++sig_service) {
-			auto* io_service = (*sig_service)->service;
-			auto* server = (*sig_service)->server;
-			int signal_number = *signal_buffer;
-			auto handler = state->handlers[signal_number];
+		if (bytes_transferred != sizeof(struct signalfd_siginfo)) {
+			return;
+		}
 
-			io_service->post(std::bind(handler, signal_number, server));
+		int signal_number = siginfo_buffer->ssi_signo;
+		auto handler = state->handlers[signal_number];
+
+		for (auto server = state->servers.begin(); server != state->servers.end(); ++server) {
+			handler(signal_number, *server);
 		}
 
 		// continue read from the descriptor
-		auto buffer = boost::asio::buffer(signal_buffer.get(), sizeof(int));
-		auto callback = boost::bind(handle_signal_read, descriptor, signal_buffer,
+		auto buffer = boost::asio::buffer(siginfo_buffer.get(), sizeof(struct signalfd_siginfo));
+		auto callback = boost::bind(handle_signal_read, descriptor, siginfo_buffer,
 				boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred);
 
 		boost::asio::async_read(*descriptor, buffer, callback);
@@ -73,63 +82,18 @@ void handle_signal_read(
 }
 
 static
-void read_signal_descriptor(int read_descriptor, signal_service* service) {
-	auto descriptor_ptr = std::make_shared<boost::asio::posix::stream_descriptor>(*service->service, read_descriptor);
-	auto signal_buffer = std::make_shared<int>(0);
-	auto buffer = boost::asio::buffer(signal_buffer.get(), sizeof(int));
-	auto callback = boost::bind(handle_signal_read, descriptor_ptr, signal_buffer,
+void read_signal_descriptor(int signal_descriptor, boost::asio::io_service& service) {
+	if (signal_descriptor == -1) {
+		return;
+	}
+
+	auto descriptor_ptr = std::make_shared<boost::asio::posix::stream_descriptor>(service, signal_descriptor);
+	auto siginfo_buffer = std::make_shared<struct signalfd_siginfo>();
+	auto buffer = boost::asio::buffer(siginfo_buffer.get(), sizeof(struct signalfd_siginfo));
+	auto callback = boost::bind(handle_signal_read, descriptor_ptr, siginfo_buffer,
 			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred);
 
 	boost::asio::async_read(*descriptor_ptr, buffer, callback);
-}
-
-signal_service::signal_service(boost::asio::io_service* service, base_server* server)
-	: service(service)
-	, server(server)
-{
-	signal_service_state* state = get_signal_service_state();
-	std::lock_guard<std::mutex> lock(state->lock);
-
-	if (state->services.count(this) == 0) {
-		state->services.insert(this);
-		if (state->read_descriptor != -1) {
-			read_signal_descriptor(state->read_descriptor, this);
-		}
-	}
-}
-
-signal_service::~signal_service() {
-	signal_service_state* state = get_signal_service_state();
-	std::lock_guard<std::mutex> lock(state->lock);
-
-	state->services.erase(this);
-}
-
-static
-int open_pipe(int &read_descriptor, int &write_descriptor) {
-	int pipefd[2];
-	if (::pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) == 0) {
-		read_descriptor = pipefd[0];
-		write_descriptor = pipefd[1];
-		return 0;
-	}
-	else {
-		read_descriptor = -1;
-		write_descriptor = -1;
-		return -1;
-	}
-}
-
-static
-void handle_signal(int signal_number) {
-	int saved_errno = errno;
-
-	signal_service_state* state = get_signal_service_state();
-	if (state->write_descriptor != -1) {
-		::write(state->write_descriptor, &signal_number, sizeof(signal_number));
-	}
-
-	errno = saved_errno;
 }
 
 int register_signal_handler(int signal_number, signal_handler_type handler) {
@@ -141,36 +105,51 @@ int register_signal_handler(int signal_number, signal_handler_type handler) {
 		return -1;
 	}
 
-	if (state->registered[signal_number]) {
-		// it's invalid to register signal twice
+	if (sigismember(&state->sigset, signal_number) == 1) {
 		return -1;
 	}
 
-	if (state->write_descriptor == -1) {
-		// pipe is not open yet
-		if (open_pipe(state->read_descriptor, state->write_descriptor) != 0) {
+	sigaddset(&state->sigset, signal_number);
+
+	if (state->signal_descriptor == -1) {
+		sigset_t set;
+		sigfillset(&set);
+		if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) {
 			return -1;
 		}
-
-		// if there're watching services -- request them to read the pipe
-		for (auto sig_service = state->services.begin(); sig_service != state->services.end(); ++sig_service) {
-			read_signal_descriptor(state->read_descriptor, *sig_service);
-		}
 	}
 
-	struct sigaction sa;
-	std::memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = handle_signal;
-	sigfillset(&sa.sa_mask);
+	state->signal_descriptor = signalfd(state->signal_descriptor, &state->sigset, SFD_NONBLOCK | SFD_CLOEXEC);
 
-	if (::sigaction(signal_number, &sa, 0) == -1) {
-		return -1;
-	}
-
-	state->registered[signal_number] = true;
 	state->handlers[signal_number] = handler;
 
 	return 0;
+}
+
+static
+void run_io_service(boost::asio::io_service& service) {
+	prctl(PR_SET_NAME, "void_signal");
+
+	boost::system::error_code ec;
+	service.run(ec);
+}
+
+void run_signal_thread() {
+	signal_service_state* state = get_signal_service_state();
+	std::lock_guard<std::mutex> lock(state->lock);
+
+	read_signal_descriptor(state->signal_descriptor, state->service);
+	state->thread = std::thread(run_io_service, std::ref(state->service));
+}
+
+void stop_signal_thread() {
+	signal_service_state* state = get_signal_service_state();
+
+	state->service.stop();
+
+	if (state->thread.joinable()) {
+		state->thread.join();
+	}
 }
 
 }} // namespace ioremap::thevoid

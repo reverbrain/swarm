@@ -5,28 +5,13 @@
 
 #include <mutex>
 #include <set>
+#include <thread>
 
 #include <boost/asio.hpp>
 
 #include <thevoid/server.hpp>
 
 namespace ioremap { namespace thevoid {
-
-/*!
- * \brief The signal_service class represents single server's registration.
- *
- * Signal handlers will be invoked for the server within passed io_service.
- *
- * On construction signal_service instance will be registered within global
- * signal handling mechanics and will be deregistered on destruction.
- */
-struct signal_service {
-	signal_service(boost::asio::io_service* service, base_server* server);
-	~signal_service();
-
-	boost::asio::io_service* service;
-	base_server* server;
-};
 
 /*!
  * \brief The signal_service_state class represents global signal handling state.
@@ -48,22 +33,30 @@ struct signal_service_state {
 	signal_service_state();
 	~signal_service_state();
 
+	void add_server(base_server* server);
+	void remove_server(base_server* server);
+
 	// global mutex
 	std::mutex lock;
 
-	// read/write ends of pipe
-	int read_descriptor;
-	int write_descriptor;
+	// separate thread for monitoring signal fd
+	std::thread thread;
+	boost::asio::io_service service;
 
-	// registered signal services
-	std::set<signal_service*> services;
+	// handled signals
+	sigset_t sigset;
 
-	// flags that indicate registered signals
-	bool registered[NSIG];
+	// signal fd
+	int signal_descriptor;
+
+	// registered servers
+	std::set<base_server*> servers;
 
 	// signal handlers
 	signal_handler_type handlers[NSIG];
 };
+
+signal_service_state* get_signal_service_state();
 
 }} // namespace ioremap::thevoid
 
