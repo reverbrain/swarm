@@ -458,6 +458,14 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		return;
 	}
 
+	if (!m_keep_alive) {
+		print_access_log();
+		boost::system::error_code ignored_ec;
+		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+		m_socket.close(ignored_ec);
+		return;
+	}
+
 	// Is request data is not fully received yet - receive it
 	if (m_state != processing_request) {
 		m_state |= request_processed;
@@ -468,14 +476,6 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		} else {
 			async_read();
 		}
-		return;
-	}
-
-	if (!m_keep_alive) {
-		print_access_log();
-		boost::system::error_code ignored_ec;
-		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
-		m_socket.close(ignored_ec);
 		return;
 	}
 
