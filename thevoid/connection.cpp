@@ -470,12 +470,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	if (m_state != processing_request) {
 		m_state |= request_processed;
 
-		m_pause_receive = false;
-		if (m_unprocessed_begin != m_unprocessed_end) {
-			process_data();
-		} else {
-			async_read();
-		}
+		want_more_impl();
 		return;
 	}
 
