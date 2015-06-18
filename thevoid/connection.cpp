@@ -278,6 +278,13 @@ void connection<T>::want_more_impl()
 	CONNECTION_DEBUG("handler asks for more data from client")
 		("state", make_state_attribute());
 
+	// when connection is in processing_request state it means
+	// that all data is received and all handler's callbacks are called,
+	// thus, handler got everything.
+	if (m_state == processing_request) {
+		return;
+	}
+
 	m_pause_receive = false;
 
 	if (m_content_length > 0 && m_unprocessed_begin == m_unprocessed_end) {
@@ -616,9 +623,6 @@ void connection<T>::process_data()
 		m_unprocessed_begin = new_begin;
 
 		if (!result) {
-			m_keep_alive = false;
-			m_unprocessed_begin = m_unprocessed_end = 0;
-			m_state = processing_request;
 			send_error(http_response::bad_request);
 			return;
 		} else if (result) {
@@ -695,9 +699,6 @@ void connection<T>::process_data()
 					("url", m_access_url);
 
 				// terminate connection on invalid url
-				m_keep_alive = false;
-				m_unprocessed_begin = m_unprocessed_end = 0;
-				m_state = processing_request;
 				send_error(http_response::bad_request);
 				return;
 			} else {
@@ -720,9 +721,6 @@ void connection<T>::process_data()
 						("url", m_access_url);
 
 					// terminate connection if appropriate handler is not found
-					m_keep_alive = false;
-					m_unprocessed_begin = m_unprocessed_end = 0;
-					m_state = processing_request;
 					send_error(http_response::not_found);
 					return;
 				}
@@ -823,9 +821,25 @@ void connection<T>::send_error(http_response::status_type type)
 		("status", type)
 		("state", make_state_attribute());
 
+	// mark close_invoked to do not call any handler's methods
+	m_close_invoked = true;
+
+	m_socket.get_io_service().dispatch(std::bind(&connection::send_error_impl, this->shared_from_this(), type));
+}
+
+template <typename T>
+void connection<T>::send_error_impl(http_response::status_type type)
+{
+	// unsetting keep-alive will force to terminate the connection
+	m_keep_alive = false;
+
+	// with processing_request state want_more() and process_data()
+	// calls will be ignored
+	m_state = processing_request;
+
 	send_headers(stock_replies::stock_reply(type),
 		boost::asio::const_buffer(),
-		std::bind(&connection::close, this->shared_from_this(), std::placeholders::_1));
+		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
 }
 
 template class connection<boost::asio::local::stream_protocol::socket>;
