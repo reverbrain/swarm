@@ -22,7 +22,8 @@
 # define BOOST_BIND_NO_PLACEHOLDERS_SET_BY_SWARM
 #endif
 
-#include <blackhole/log.hpp>
+#include <blackhole/logger.hpp>
+#include <blackhole/macro.hpp>
 #include <blackhole/logger/wrapper.hpp>
 #include <blackhole/formatter/map/value.hpp>
 #include <blackhole/defaults/severity.hpp>
@@ -48,9 +49,8 @@ typedef blackhole::wrapper_t<logger_base> logger;
 namespace utils {
 namespace logger {
 
-blackhole::log::attributes_t default_attributes();
-void init_attributes(logger_base &log);
-void add_file_frontend(logger_base &log, const std::string &file, log_level level);
+blackhole::attribute::set_t default_attributes();
+void add_file_frontend(logger_base &log, const std::string &file);
 std::string format();
 std::string generate_level(log_level level);
 log_level parse_level(const std::string &name);

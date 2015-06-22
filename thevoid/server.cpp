@@ -36,6 +36,7 @@
 # include <sys/prctl.h>
 #endif
 
+#include <blackhole/macro.hpp>
 #include <blackhole/repository.hpp>
 #include <blackhole/repository/config/parser/rapidjson.hpp>
 #include <blackhole/frontend/syslog.hpp>
@@ -53,7 +54,8 @@ namespace thevoid {
 class server_data;
 
 server_data::server_data(base_server *server) :
-	logger(base_logger, blackhole::log::attributes_t()),
+	base_logger(swarm::log_level::info),
+	logger(base_logger, swarm::utils::logger::default_attributes()),
 	connections_counter(0),
 	active_connections_counter(0),
 	server(server),
@@ -70,7 +72,6 @@ server_data::server_data(base_server *server) :
 	safe_mode(false),
 	options_parsed(false)
 {
-	swarm::utils::logger::init_attributes(base_logger);
 }
 
 server_data::~server_data()
@@ -225,26 +226,26 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 	// Available logging sinks.
 	typedef boost::mpl::vector<
-	    blackhole::sink::files_t<
+		blackhole::sink::files_t<
 			sink::files::boost_backend_t,
 			sink::rotator_t<
 				sink::files::boost_backend_t,
 				sink::rotation::watcher::move_t
 			>
 		>,
-	    blackhole::sink::syslog_t<swarm::log_level>,
-	    blackhole::sink::socket_t<boost::asio::ip::tcp>,
-	    blackhole::sink::socket_t<boost::asio::ip::udp>
+		blackhole::sink::syslog_t<swarm::log_level>,
+		blackhole::sink::socket_t<boost::asio::ip::tcp>,
+		blackhole::sink::socket_t<boost::asio::ip::udp>
 	> sinks_t;
 
 	// Available logging formatters.
 	typedef boost::mpl::vector<
-	    blackhole::formatter::string_t
+	 	blackhole::formatter::string_t
 //	    blackhole::formatter::json_t
 	> formatters_t;
 
 	auto &repository = blackhole::repository_t::instance();
-	repository.configure<sinks_t, formatters_t>();
+	repository.registrate<sinks_t, formatters_t>();
 
 	const dynamic_t &dynamic = repository::config::transformer_t<
 		rapidjson::Value
@@ -259,9 +260,9 @@ bool base_server::initialize_logger(const rapidjson::Value &config)
 
 	repository.add_config(log_config);
 
-	m_data->base_logger = repository.root<swarm::log_level>();
-	swarm::utils::logger::init_attributes(m_data->base_logger);
-	m_data->base_logger.verbosity(swarm::utils::logger::parse_level(level.GetString()));
+	m_data->base_logger = repository.create<
+        	blackhole::verbose_logger_t<swarm::log_level>
+	>("root", swarm::utils::logger::parse_level(level.GetString()));
 
 	return true;
 }
@@ -325,7 +326,7 @@ void base_server::listen(const std::string &host)
 		m_data->local_acceptors->add_acceptor(file);
 	} else {
 		m_data->tcp_acceptors->add_acceptor(host);
-    }
+	}
 }
 
 static int read_config(rapidjson::Document &doc, const char *config_path)
