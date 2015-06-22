@@ -74,3 +74,4 @@ if(DOXYGEN_FOUND)
 #        )
 endif()
 
+ADD_SUBDIRECTORY (tests)
