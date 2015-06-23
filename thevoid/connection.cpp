@@ -174,8 +174,14 @@ void connection<T>::send_headers(http_response &&rep,
 {
 	m_access_status = rep.code();
 
-	if (m_keep_alive) {
-		rep.headers().set_keep_alive();
+	if (!m_keep_alive) {
+		// if connection cannot be reused, send "Connection: Close"
+		rep.headers().set_keep_alive(false);
+	}
+	else if (auto keep_alive = rep.headers().is_keep_alive()) {
+		// connection is reusable, but handler set Connection header explicitly
+		// let's just use it
+		m_keep_alive = *keep_alive;
 	}
 
 	CONNECTION_DEBUG("handler sends headers to client")
