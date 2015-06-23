@@ -272,6 +272,14 @@ public:
 	boost::optional<std::string> connection() const;
 
 	/*!
+	 * \brief Sets the value of the Connection header.
+	 * The value is set to "Keep-Alive" if true is specified, or to "Close" otherwise.
+	 *
+	 * \sa set_connection
+	 * \sa is_keep_alive
+	 */
+	void set_keep_alive(bool keep_alive);
+	/*!
 	 * \brief Sets the value of Connection header to "Keep-Alive".
 	 *
 	 * \sa set_connection

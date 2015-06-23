@@ -29,10 +29,9 @@ namespace swarm {
 #define IF_MODIFIED_SINCE_HEADER "If-Modified-Since"
 #define CONNECTION_HEADER "Connection"
 #define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
+#define CONNECTION_HEADER_CLOSE "Close"
 #define CONTENT_LENGTH_HEADER "Content-Length"
 #define CONTENT_TYPE_HEADER "Content-Type"
-#define CONNECTION_HEADER "Connection"
-#define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
 
 static bool are_case_insensitive_equal(const std::string &first, const char *second, const size_t second_size)
 {
@@ -522,6 +521,16 @@ boost::optional<std::string> http_headers::connection() const
 void http_headers::set_keep_alive()
 {
 	set_connection(CONNECTION_HEADER_KEEP_ALIVE);
+}
+
+void http_headers::set_keep_alive(bool keep_alive)
+{
+	if (keep_alive) {
+		set_connection(CONNECTION_HEADER_KEEP_ALIVE);
+	}
+	else {
+		set_connection(CONNECTION_HEADER_CLOSE);
+	}
 }
 
 boost::optional<bool> http_headers::is_keep_alive() const
