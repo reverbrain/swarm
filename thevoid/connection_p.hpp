@@ -105,6 +105,7 @@ public:
 		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	void want_more();
 	void pause_receive();
+	void send_error(http_response::status_type type);
 	virtual void initialize(base_request_stream_data *data);
 	virtual swarm::logger create_logger();
 	virtual void close(const boost::system::error_code &err) /*override*/;
@@ -128,7 +129,7 @@ private:
 
 	void async_read();
 
-	void send_error(http_response::status_type type);
+	void send_error_impl(http_response::status_type type);
 
 	template <size_t N>
 	inline void add_state_attribute(std::ostringstream &out, bool &first, state st, const char (&name) [N])
