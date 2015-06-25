@@ -39,6 +39,9 @@ typedef std::pair<std::string, std::string> headers_entry;
 class http_headers
 {
 public:
+	static const std::string CONNECTION_KEEP_ALIVE;
+	static const std::string CONNECTION_CLOSE;
+
 	/*!
 	 * \brief Constructs empty headers list.
 	 */
