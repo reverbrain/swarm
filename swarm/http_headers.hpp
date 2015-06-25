@@ -288,6 +288,7 @@ public:
 	 * \sa set_connection
 	 * \sa is_keep_alive
 	 */
+	__attribute__((deprecated("Use set_keep_alive(true) instead")))
 	void set_keep_alive();
 	/*!
 	 * \brief Returnes true if the value of Connection header is "Keep-Alive".
