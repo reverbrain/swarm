@@ -17,18 +17,21 @@
 #ifndef IOREMAP_THEVOID_CONNECTION_P_HPP
 #define IOREMAP_THEVOID_CONNECTION_P_HPP
 
+#include <queue>
+#include <mutex>
+
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include "http_request.hpp"
-#include "request_parser_p.hpp"
-#include "stream.hpp"
-#include <queue>
-#include <mutex>
 
 #include <blackhole/utils/atomic.hpp>
+
+#include "stream.hpp"
+#include "http_request.hpp"
+
+#include "request_parser_p.hpp"
 
 namespace ioremap {
 namespace thevoid {
