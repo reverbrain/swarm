@@ -19,6 +19,7 @@
 
 #include <queue>
 #include <mutex>
+#include <chrono>
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
@@ -32,6 +33,17 @@
 #include "http_request.hpp"
 
 #include "request_parser_p.hpp"
+
+// GCC prior to 4.7 uses an obsolete name for steady_clock
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 7
+namespace std {
+namespace chrono {
+
+typedef monotonic_clock steady_clock;
+
+} // namespace chrono
+} // namespace std
+#endif
 
 namespace ioremap {
 namespace thevoid {
@@ -216,6 +228,12 @@ private:
 	const char *m_unprocessed_end;
 
 	bool m_pause_receive;
+
+	std::chrono::steady_clock::time_point m_receive_start;
+	std::chrono::microseconds m_receive_time;
+
+	std::chrono::steady_clock::time_point m_send_start;
+	std::chrono::microseconds m_send_time;
 };
 
 typedef connection<boost::asio::ip::tcp::socket> tcp_connection;
