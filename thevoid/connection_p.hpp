@@ -19,6 +19,7 @@
 
 #include <queue>
 #include <mutex>
+#include <ctime>
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
@@ -119,7 +120,8 @@ private:
 
 	void want_more_impl();
 	void send_impl(buffer_info &&info);
-	void write_finished(const boost::system::error_code &err, size_t bytes_written);
+	void write_finished(const boost::system::error_code &err, size_t bytes_written,
+			struct timespec start_time);
 	void send_nolock();
 
 	void close_impl(const boost::system::error_code &err);
@@ -127,7 +129,8 @@ private:
 	void print_access_log();
 
 	//! Handle completion of a read operation.
-	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
+	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+			struct timespec start_time);
 	void process_data();
 
 	void async_read();
@@ -216,6 +219,9 @@ private:
 	const char *m_unprocessed_end;
 
 	bool m_pause_receive;
+
+	struct timespec m_receive_time;
+	struct timespec m_send_time;
 };
 
 typedef connection<boost::asio::ip::tcp::socket> tcp_connection;
