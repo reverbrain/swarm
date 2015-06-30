@@ -131,7 +131,8 @@ private:
 
 	void want_more_impl();
 	void send_impl(buffer_info &&info);
-	void write_finished(const boost::system::error_code &err, size_t bytes_written);
+	void write_finished(const boost::system::error_code &err, size_t bytes_written,
+			std::chrono::steady_clock::time_point start_time);
 	void send_nolock();
 
 	void close_impl(const boost::system::error_code &err);
@@ -139,7 +140,8 @@ private:
 	void print_access_log();
 
 	//! Handle completion of a read operation.
-	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
+	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+			std::chrono::steady_clock::time_point start_time);
 	void process_data();
 
 	void async_read();
@@ -229,10 +231,7 @@ private:
 
 	bool m_pause_receive;
 
-	std::chrono::steady_clock::time_point m_receive_start;
 	std::chrono::microseconds m_receive_time;
-
-	std::chrono::steady_clock::time_point m_send_start;
 	std::chrono::microseconds m_send_time;
 };
 

@@ -309,9 +309,10 @@ void connection<T>::send_impl(buffer_info &&info)
 }
 
 template <typename T>
-void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written)
+void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written,
+		std::chrono::steady_clock::time_point start_time)
 {
-	auto write_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_send_start);
+	auto write_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
 	m_send_time += write_time;
 	m_access_sent += bytes_written;
 
@@ -434,11 +435,11 @@ void connection<T>::send_nolock()
 {
 	buffers_array data(m_outgoing.begin(), m_outgoing.end());
 
-	m_send_start = std::chrono::steady_clock::now();
+	auto send_start = std::chrono::steady_clock::now();
 
 	m_socket.async_write_some(data, detail::attributes_bind(m_logger, m_attributes, std::bind(
 		&connection::write_finished, this->shared_from_this(),
-		std::placeholders::_1, std::placeholders::_2)));
+		std::placeholders::_1, std::placeholders::_2, send_start)));
 }
 
 template <typename T>
@@ -557,9 +558,10 @@ void connection<T>::print_access_log()
 }
 
 template <typename T>
-void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred)
+void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+		std::chrono::steady_clock::time_point start_time)
 {
-	auto read_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_receive_start);
+	auto read_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
 	m_receive_time += read_time;
 
 	m_at_read = false;
@@ -822,13 +824,14 @@ void connection<T>::async_read()
 	CONNECTION_DEBUG("request read from client")
 		("state", make_state_attribute());
 
-	m_receive_start = std::chrono::steady_clock::now();
+	auto receive_start = std::chrono::steady_clock::now();
 
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 		detail::attributes_bind(m_logger, m_attributes,
 			std::bind(&connection::handle_read, this->shared_from_this(),
 				std::placeholders::_1,
-				std::placeholders::_2)));
+				std::placeholders::_2,
+				receive_start)));
 }
 
 template <typename T>
