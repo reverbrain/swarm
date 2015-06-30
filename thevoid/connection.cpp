@@ -309,13 +309,17 @@ void connection<T>::send_impl(buffer_info &&info)
 }
 
 template <typename T>
-void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written)
+void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written,
+		std::chrono::steady_clock::time_point start_time)
 {
+	auto write_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
+	m_send_time += write_time;
 	m_access_sent += bytes_written;
 
 	CONNECTION_LOG(err ? SWARM_LOG_ERROR : SWARM_LOG_DEBUG, "write to client finished")
 		("error", err.message())
-		("size", bytes_written);
+		("size", bytes_written)
+		("time", write_time.count());
 
 	if (err) {
 		decltype(m_outgoing) outgoing;
@@ -431,9 +435,11 @@ void connection<T>::send_nolock()
 {
 	buffers_array data(m_outgoing.begin(), m_outgoing.end());
 
+	auto send_start = std::chrono::steady_clock::now();
+
 	m_socket.async_write_some(data, detail::attributes_bind(m_logger, m_attributes, std::bind(
 		&connection::write_finished, this->shared_from_this(),
-		std::placeholders::_1, std::placeholders::_2)));
+		std::placeholders::_1, std::placeholders::_2, send_start)));
 }
 
 template <typename T>
@@ -505,6 +511,9 @@ void connection<T>::process_next()
 	m_content_length = 0;
 	m_pause_receive = false;
 
+	m_receive_time = std::chrono::microseconds();
+	m_send_time = std::chrono::microseconds();
+
 	m_attributes.clear();
 	m_logger = swarm::logger(m_base_logger, m_attributes);
 	m_request = http_request();
@@ -534,7 +543,8 @@ void connection<T>::print_access_log()
 
 	unsigned long long delta = 1000000ull * (end.tv_sec - m_access_start.tv_sec) + end.tv_usec - m_access_start.tv_usec;
 
-	CONNECTION_LOG(SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us",
+	CONNECTION_LOG(SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us, "
+			"receive_time: %lld us, send_time: %lld us",
 		m_access_method.empty() ? "-" : m_access_method.c_str(),
 		m_access_url.empty() ? "-" : m_access_url.c_str(),
 		m_access_local.c_str(),
@@ -542,12 +552,18 @@ void connection<T>::print_access_log()
 		m_access_status,
 		m_access_received,
 		m_access_sent,
-		delta);
+		delta,
+		m_receive_time.count(),
+		m_send_time.count());
 }
 
 template <typename T>
-void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred)
+void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+		std::chrono::steady_clock::time_point start_time)
 {
+	auto read_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time);
+	m_receive_time += read_time;
+
 	m_at_read = false;
 
 	// This message is not error in case of disconnect between requests
@@ -559,7 +575,8 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		("error", err.message())
 		("real_error", error)
 		("state", make_state_attribute())
-		("size", bytes_transferred);
+		("size", bytes_transferred)
+		("time", read_time.count());
 
 	if (err) {
 		if (m_access_status == 0 || !m_request_processing_was_finished) {
@@ -807,11 +824,14 @@ void connection<T>::async_read()
 	CONNECTION_DEBUG("request read from client")
 		("state", make_state_attribute());
 
+	auto receive_start = std::chrono::steady_clock::now();
+
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 		detail::attributes_bind(m_logger, m_attributes,
 			std::bind(&connection::handle_read, this->shared_from_this(),
 				std::placeholders::_1,
-				std::placeholders::_2)));
+				std::placeholders::_2,
+				receive_start)));
 }
 
 template <typename T>

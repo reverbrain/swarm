@@ -17,18 +17,33 @@
 #ifndef IOREMAP_THEVOID_CONNECTION_P_HPP
 #define IOREMAP_THEVOID_CONNECTION_P_HPP
 
+#include <queue>
+#include <mutex>
+#include <chrono>
+
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include "http_request.hpp"
-#include "request_parser_p.hpp"
-#include "stream.hpp"
-#include <queue>
-#include <mutex>
 
 #include <blackhole/utils/atomic.hpp>
+
+#include "stream.hpp"
+#include "http_request.hpp"
+
+#include "request_parser_p.hpp"
+
+// GCC prior to 4.7 uses an obsolete name for steady_clock
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 7
+namespace std {
+namespace chrono {
+
+typedef monotonic_clock steady_clock;
+
+} // namespace chrono
+} // namespace std
+#endif
 
 namespace ioremap {
 namespace thevoid {
@@ -116,7 +131,8 @@ private:
 
 	void want_more_impl();
 	void send_impl(buffer_info &&info);
-	void write_finished(const boost::system::error_code &err, size_t bytes_written);
+	void write_finished(const boost::system::error_code &err, size_t bytes_written,
+			std::chrono::steady_clock::time_point start_time);
 	void send_nolock();
 
 	void close_impl(const boost::system::error_code &err);
@@ -124,7 +140,8 @@ private:
 	void print_access_log();
 
 	//! Handle completion of a read operation.
-	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred);
+	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+			std::chrono::steady_clock::time_point start_time);
 	void process_data();
 
 	void async_read();
@@ -213,6 +230,9 @@ private:
 	const char *m_unprocessed_end;
 
 	bool m_pause_receive;
+
+	std::chrono::microseconds m_receive_time;
+	std::chrono::microseconds m_send_time;
 };
 
 typedef connection<boost::asio::ip::tcp::socket> tcp_connection;
