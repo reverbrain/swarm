@@ -129,8 +129,6 @@ private:
 
 	void async_read();
 
-	void send_error_impl(http_response::status_type type);
-
 	template <size_t N>
 	inline void add_state_attribute(std::ostringstream &out, bool &first, state st, const char (&name) [N])
 	{

@@ -28,11 +28,11 @@ namespace swarm {
 #define LAST_MODIFIED_HEADER "Last-Modified"
 #define IF_MODIFIED_SINCE_HEADER "If-Modified-Since"
 #define CONNECTION_HEADER "Connection"
-#define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
 #define CONTENT_LENGTH_HEADER "Content-Length"
 #define CONTENT_TYPE_HEADER "Content-Type"
-#define CONNECTION_HEADER "Connection"
-#define CONNECTION_HEADER_KEEP_ALIVE "Keep-Alive"
+
+const std::string http_headers::CONNECTION_KEEP_ALIVE = "Keep-Alive";
+const std::string http_headers::CONNECTION_CLOSE = "Close";
 
 static bool are_case_insensitive_equal(const std::string &first, const char *second, const size_t second_size)
 {
@@ -521,13 +521,23 @@ boost::optional<std::string> http_headers::connection() const
 
 void http_headers::set_keep_alive()
 {
-	set_connection(CONNECTION_HEADER_KEEP_ALIVE);
+	set_connection(CONNECTION_KEEP_ALIVE);
+}
+
+void http_headers::set_keep_alive(bool keep_alive)
+{
+	if (keep_alive) {
+		set_connection(CONNECTION_KEEP_ALIVE);
+	}
+	else {
+		set_connection(CONNECTION_CLOSE);
+	}
 }
 
 boost::optional<bool> http_headers::is_keep_alive() const
 {
 	if (auto tmp = connection()) {
-		return are_case_insensitive_equal(*tmp, CONNECTION_HEADER_KEEP_ALIVE, sizeof(CONNECTION_HEADER_KEEP_ALIVE) - 1);
+		return are_case_insensitive_equal(*tmp, CONNECTION_KEEP_ALIVE.c_str(), CONNECTION_KEEP_ALIVE.size());
 	}
 
 	return boost::none;

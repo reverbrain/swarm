@@ -39,6 +39,9 @@ typedef std::pair<std::string, std::string> headers_entry;
 class http_headers
 {
 public:
+	static const std::string CONNECTION_KEEP_ALIVE;
+	static const std::string CONNECTION_CLOSE;
+
 	/*!
 	 * \brief Constructs empty headers list.
 	 */
@@ -272,11 +275,20 @@ public:
 	boost::optional<std::string> connection() const;
 
 	/*!
+	 * \brief Sets the value of the Connection header.
+	 * The value is set to "Keep-Alive" if true is specified, or to "Close" otherwise.
+	 *
+	 * \sa set_connection
+	 * \sa is_keep_alive
+	 */
+	void set_keep_alive(bool keep_alive);
+	/*!
 	 * \brief Sets the value of Connection header to "Keep-Alive".
 	 *
 	 * \sa set_connection
 	 * \sa is_keep_alive
 	 */
+	__attribute__((deprecated("Use set_keep_alive(true) instead")))
 	void set_keep_alive();
 	/*!
 	 * \brief Returnes true if the value of Connection header is "Keep-Alive".

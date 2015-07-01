@@ -174,8 +174,14 @@ void connection<T>::send_headers(http_response &&rep,
 {
 	m_access_status = rep.code();
 
-	if (m_keep_alive) {
-		rep.headers().set_keep_alive();
+	if (!m_keep_alive) {
+		// if connection cannot be reused, send "Connection: Close"
+		rep.headers().set_keep_alive(false);
+	}
+	else if (auto keep_alive = rep.headers().is_keep_alive()) {
+		// connection is reusable, but handler set Connection header explicitly
+		// let's just use it
+		m_keep_alive = *keep_alive;
 	}
 
 	CONNECTION_DEBUG("handler sends headers to client")
@@ -821,25 +827,11 @@ void connection<T>::send_error(http_response::status_type type)
 		("status", type)
 		("state", make_state_attribute());
 
-	// mark close_invoked to do not call any handler's methods
-	m_close_invoked = true;
+	auto response = stock_replies::stock_reply(type);
+	response.headers().set_keep_alive(false);
 
-	m_socket.get_io_service().dispatch(std::bind(&connection::send_error_impl, this->shared_from_this(), type));
-}
-
-template <typename T>
-void connection<T>::send_error_impl(http_response::status_type type)
-{
-	// unsetting keep-alive will force to terminate the connection
-	m_keep_alive = false;
-
-	// with processing_request state want_more() and process_data()
-	// calls will be ignored
-	m_state = processing_request;
-
-	send_headers(stock_replies::stock_reply(type),
-		boost::asio::const_buffer(),
-		std::bind(&connection::close_impl, this->shared_from_this(), std::placeholders::_1));
+	send_headers(std::move(response), boost::asio::const_buffer(), result_function());
+	close(boost::system::error_code());
 }
 
 template class connection<boost::asio::local::stream_protocol::socket>;
