@@ -220,8 +220,16 @@ private:
 
 	bool m_pause_receive;
 
+	//! Total time of receiving data from the client.
+	//! This value is presented within access_log_entry as 'receive_time'.
 	struct timespec m_receive_time;
+
+	//! Total time of sending data to the client.
+	//! This value is presented within access_log_entry as 'send_time'.
 	struct timespec m_send_time;
+
+	//! Time from the start until the first chunk of data is received.
+	//! This value is presented within access_log_entry as 'starttransfer_time'.
 	struct timespec m_starttransfer_time;
 };
 
