@@ -40,10 +40,8 @@ struct timespec& operator+= (struct timespec& lhs, const struct timespec& rhs) {
 	return lhs;
 }
 
-struct timespec operator+ (const struct timespec& lhs, const struct timespec& rhs) {
-	struct timespec res(lhs);
-	res += rhs;
-	return res;
+struct timespec operator+ (struct timespec lhs, const struct timespec& rhs) {
+	return lhs += rhs;
 }
 
 struct timespec& operator-= (struct timespec& lhs, const struct timespec& rhs) {
@@ -62,10 +60,8 @@ struct timespec& operator-= (struct timespec& lhs, const struct timespec& rhs) {
 	return lhs;
 }
 
-struct timespec operator- (const struct timespec& lhs, const struct timespec& rhs) {
-	struct timespec res(lhs);
-	res -= rhs;
-	return res;
+struct timespec operator- (struct timespec lhs, const struct timespec& rhs) {
+	return lhs -= rhs;
 }
 
 long int timespec_to_usec(const struct timespec& t) {
