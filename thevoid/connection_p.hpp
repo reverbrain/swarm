@@ -222,6 +222,7 @@ private:
 
 	struct timespec m_receive_time;
 	struct timespec m_send_time;
+	struct timespec m_starttransfer_time;
 };
 
 typedef connection<boost::asio::ip::tcp::socket> tcp_connection;

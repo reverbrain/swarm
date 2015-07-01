@@ -167,7 +167,8 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_at_read(false),
 	m_pause_receive(false),
 	m_receive_time{0, 0},
-	m_send_time{0, 0}
+	m_send_time{0, 0},
+	m_starttransfer_time{0, 0}
 {
 	m_unprocessed_begin = m_buffer.data();
 	m_unprocessed_end = m_buffer.data();
@@ -579,6 +580,7 @@ void connection<T>::process_next()
 
 	m_receive_time = {0, 0};
 	m_send_time = {0, 0};
+	m_starttransfer_time = {0, 0};
 
 	m_attributes.clear();
 	m_logger = swarm::logger(m_base_logger, m_attributes);
@@ -610,7 +612,7 @@ void connection<T>::print_access_log()
 	unsigned long long delta = 1000000ull * (end.tv_sec - m_access_start.tv_sec) + end.tv_usec - m_access_start.tv_usec;
 
 	CONNECTION_LOG(SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us, "
-			"receive_time: %ld us, send_time: %ld us",
+			"receive_time: %ld us, send_time: %ld us, starttransfer_time: %ld us",
 		m_access_method.empty() ? "-" : m_access_method.c_str(),
 		m_access_url.empty() ? "-" : m_access_url.c_str(),
 		m_access_local.c_str(),
@@ -620,7 +622,8 @@ void connection<T>::print_access_log()
 		m_access_sent,
 		delta,
 		timespec_to_usec(m_receive_time),
-		timespec_to_usec(m_send_time));
+		timespec_to_usec(m_send_time),
+		timespec_to_usec(m_starttransfer_time));
 }
 
 template <typename T>
@@ -628,7 +631,13 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		struct timespec start_time)
 {
 	auto read_time = gettime_now() - start_time;
-	m_receive_time += read_time;
+
+	if (m_state & waiting_for_first_data) {
+		m_starttransfer_time = read_time;
+	}
+	else {
+		m_receive_time += read_time;
+	}
 
 	m_at_read = false;
 
