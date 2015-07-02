@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.0.0
+Version:	3.1.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -118,6 +118,17 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Thu Jul 02 2015 Danil Osherov <shindo@yandex-team.ru> - 3.1.0
+- swarm/http_headers: set_keep_alive(bool) method added.
+- * The method should be used instead of set_keep_alive().
+- swarm/http_headers: set_keep_alive() method marked as deprecated.
+- swarm/http_headers: added static members CONNECTION_KEEP_ALIVE and CONNECTION_CLOSE.
+- thevoid: reply_stream::send_error() sends reply with "Connection: Close".
+- * This way connection is terminated forcibly.
+- thevoid/connection: receive remaining request data only if Keep-Alive is set.
+- thevoid/connection: added timings of receiving and sending data.
+- * 'receive_time', 'send_time', 'starttransfer_time' added to the log to access_log_entry.
+
 * Mon Apr 08 2015 Danil Osherov <shindo@yandex-team.ru> - 3.0.0
 - signal handling reworked.
 - * One can register handlers for specific signal with register_signal_handler
