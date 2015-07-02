@@ -23,6 +23,66 @@
 #include "stream_p.hpp"
 #include "stockreplies_p.hpp"
 
+namespace {
+
+const long int USECS_IN_SEC = 1000 * 1000;
+const long int NSECS_IN_SEC = USECS_IN_SEC * 1000;
+
+struct timespec& operator+= (struct timespec& lhs, const struct timespec& rhs) {
+	lhs.tv_sec += rhs.tv_sec;
+	lhs.tv_nsec += rhs.tv_nsec;
+
+	if (lhs.tv_nsec >= NSECS_IN_SEC) {
+		lhs.tv_sec += 1;
+		lhs.tv_nsec -= NSECS_IN_SEC;
+	}
+
+	return lhs;
+}
+
+struct timespec operator+ (struct timespec lhs, const struct timespec& rhs) {
+	return lhs += rhs;
+}
+
+struct timespec& operator-= (struct timespec& lhs, const struct timespec& rhs) {
+	lhs.tv_sec -= rhs.tv_sec;
+	lhs.tv_nsec -= rhs.tv_nsec;
+
+	if (lhs.tv_nsec < 0) {
+		lhs.tv_sec -= 1;
+		lhs.tv_nsec += NSECS_IN_SEC;
+	}
+
+	if (lhs.tv_sec < 0) {
+		lhs = {0, 0};
+	}
+
+	return lhs;
+}
+
+struct timespec operator- (struct timespec lhs, const struct timespec& rhs) {
+	return lhs -= rhs;
+}
+
+long int timespec_to_usec(const struct timespec& t) {
+	return t.tv_sec * USECS_IN_SEC + t.tv_nsec / 1000;
+}
+
+struct timespec gettime_now() {
+	struct timespec now;
+
+#ifdef CLOCK_MONOTONIC_RAW
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &now) == 0) {
+		return now;
+	}
+#endif
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now;
+}
+
+} // unnamed namespace
+
 namespace ioremap {
 namespace thevoid {
 
@@ -101,7 +161,10 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_sending(false),
 	m_keep_alive(false),
 	m_at_read(false),
-	m_pause_receive(false)
+	m_pause_receive(false),
+	m_receive_time{0, 0},
+	m_send_time{0, 0},
+	m_starttransfer_time{0, 0}
 {
 	m_unprocessed_begin = m_buffer.data();
 	m_unprocessed_end = m_buffer.data();
@@ -315,13 +378,17 @@ void connection<T>::send_impl(buffer_info &&info)
 }
 
 template <typename T>
-void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written)
+void connection<T>::write_finished(const boost::system::error_code &err, size_t bytes_written,
+		struct timespec start_time)
 {
+	auto write_time = gettime_now() - start_time;
+	m_send_time += write_time;
 	m_access_sent += bytes_written;
 
 	CONNECTION_LOG(err ? SWARM_LOG_ERROR : SWARM_LOG_DEBUG, "write to client finished")
 		("error", err.message())
-		("size", bytes_written);
+		("size", bytes_written)
+		("time", timespec_to_usec(write_time));
 
 	if (err) {
 		decltype(m_outgoing) outgoing;
@@ -437,9 +504,11 @@ void connection<T>::send_nolock()
 {
 	buffers_array data(m_outgoing.begin(), m_outgoing.end());
 
+	auto send_start = gettime_now();
+
 	m_socket.async_write_some(data, detail::attributes_bind(m_logger, m_attributes, std::bind(
 		&connection::write_finished, this->shared_from_this(),
-		std::placeholders::_1, std::placeholders::_2)));
+		std::placeholders::_1, std::placeholders::_2, send_start)));
 }
 
 template <typename T>
@@ -511,6 +580,10 @@ void connection<T>::process_next()
 	m_content_length = 0;
 	m_pause_receive = false;
 
+	m_receive_time = {0, 0};
+	m_send_time = {0, 0};
+	m_starttransfer_time = {0, 0};
+
 	m_attributes.clear();
 	m_logger = swarm::logger(m_base_logger, m_attributes);
 	m_request = http_request();
@@ -540,7 +613,8 @@ void connection<T>::print_access_log()
 
 	unsigned long long delta = 1000000ull * (end.tv_sec - m_access_start.tv_sec) + end.tv_usec - m_access_start.tv_usec;
 
-	CONNECTION_LOG(SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us",
+	CONNECTION_LOG(SWARM_LOG_INFO, "access_log_entry: method: %s, url: %s, local: %s, remote: %s, status: %d, received: %llu, sent: %llu, time: %llu us, "
+			"receive_time: %ld us, send_time: %ld us, starttransfer_time: %ld us",
 		m_access_method.empty() ? "-" : m_access_method.c_str(),
 		m_access_url.empty() ? "-" : m_access_url.c_str(),
 		m_access_local.c_str(),
@@ -548,12 +622,25 @@ void connection<T>::print_access_log()
 		m_access_status,
 		m_access_received,
 		m_access_sent,
-		delta);
+		delta,
+		timespec_to_usec(m_receive_time),
+		timespec_to_usec(m_send_time),
+		timespec_to_usec(m_starttransfer_time));
 }
 
 template <typename T>
-void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred)
+void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+		struct timespec start_time)
 {
+	auto read_time = gettime_now() - start_time;
+
+	if (m_state & waiting_for_first_data) {
+		m_starttransfer_time = read_time;
+	}
+	else {
+		m_receive_time += read_time;
+	}
+
 	m_at_read = false;
 
 	// This message is not error in case of disconnect between requests
@@ -565,7 +652,8 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		("error", err.message())
 		("real_error", error)
 		("state", make_state_attribute())
-		("size", bytes_transferred);
+		("size", bytes_transferred)
+		("time", timespec_to_usec(read_time));
 
 	if (err) {
 		if (m_access_status == 0 || !m_request_processing_was_finished) {
@@ -813,11 +901,14 @@ void connection<T>::async_read()
 	CONNECTION_DEBUG("request read from client")
 		("state", make_state_attribute());
 
+	auto receive_start = gettime_now();
+
 	m_socket.async_read_some(boost::asio::buffer(m_buffer),
 		detail::attributes_bind(m_logger, m_attributes,
 			std::bind(&connection::handle_read, this->shared_from_this(),
 				std::placeholders::_1,
-				std::placeholders::_2)));
+				std::placeholders::_2,
+				receive_start)));
 }
 
 template <typename T>

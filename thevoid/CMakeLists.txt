@@ -6,7 +6,7 @@ message("Boost_LIBRARIES: ${Boost_LIBRARIES}")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-target_link_libraries(thevoid ${Boost_LIBRARIES} pthread swarm)
+target_link_libraries(thevoid rt ${Boost_LIBRARIES} pthread swarm)
 set_target_properties(thevoid PROPERTIES
     VERSION ${DEBFULLVERSION}
     SOVERSION ${SWARM_VERSION_ABI}
