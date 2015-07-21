@@ -30,37 +30,32 @@ namespace swarm {
 namespace utils {
 namespace logger {
 
-blackhole::log::attributes_t default_attributes()
+blackhole::attribute::set_t default_attributes()
 {
 	return blackhole::log::attributes_t {
 		keyword::request_id() = 0
 	};
 }
 
-void init_attributes(logger_base &log)
+void add_file_frontend(logger_base &log, const std::string &file)
 {
-	blackhole::log::attributes_t attributes = default_attributes();
+	typedef blackhole::formatter::string_t formatter_type;
+	typedef blackhole::sink::files_t<> sink_type;
+	typedef blackhole::frontend_t<formatter_type, sink_type> frontend_type;
 
-	for (auto it = attributes.begin(); it != attributes.end(); ++it) {
-		log.add_attribute(*it);
-	}
-}
-
-void add_file_frontend(logger_base &log, const std::string &file, log_level level)
-{
-	log.verbosity(level);
-
-	auto formatter = blackhole::utils::make_unique<blackhole::formatter::string_t>(format());
+	std::unique_ptr<formatter_type> formatter(new formatter_type(format()));
 	formatter->set_mapper(mapping());
-	auto sink = blackhole::utils::make_unique<blackhole::sink::files_t<>>(blackhole::sink::files_t<>::config_type(file));
-	auto frontend = blackhole::utils::make_unique<blackhole::frontend_t<blackhole::formatter::string_t, blackhole::sink::files_t<>>>(std::move(formatter), std::move(sink));
+
+	std::unique_ptr<sink_type> sink(new sink_type(sink_type::config_type(file)));
+
+	std::unique_ptr<frontend_type>frontend(new frontend_type(std::move(formatter), std::move(sink)));
 
 	log.add_frontend(std::move(frontend));
 }
 
 std::string format()
 {
-	return "%(timestamp)s %(request_id)s/%(lwp)s/%(pid)s %(severity)s: %(message)s, attrs: [%(...L)s]";
+	return "%(timestamp)s %(request_id)s/%(tid)s/%(pid)s %(severity)s: %(message)s, attrs: [%(...L)s]";
 }
 
 static const char *severity_names[] = {
@@ -101,19 +96,19 @@ static void format_request_id(blackhole::aux::attachable_ostringstream &out, uin
 }
 
 struct localtime_formatter_action {
-    blackhole::aux::datetime::generator_t generator;
+	blackhole::aux::datetime::generator_t generator;
 
-    localtime_formatter_action(const std::string &format) :
-	generator(blackhole::aux::datetime::generator_factory_t::make(format))
-    {
-    }
+	localtime_formatter_action(const std::string &format) :
+		generator(blackhole::aux::datetime::generator_factory_t::make(format))
+	{
+	}
 
-    void operator() (blackhole::aux::attachable_ostringstream &stream, const timeval &value) const
-    {
-	std::tm tm;
-	localtime_r(&value.tv_sec, &tm);
-	generator(stream, tm, value.tv_usec);
-    }
+	void operator() (blackhole::aux::attachable_ostringstream &stream, const timeval &value) const
+	{
+		std::tm tm;
+		localtime_r(&value.tv_sec, &tm);
+		generator(stream, tm, value.tv_usec);
+	}
 };
 
 blackhole::mapping::value_t mapping()
@@ -127,9 +122,8 @@ blackhole::mapping::value_t mapping()
 
 logger_base create(const std::string &file, log_level level)
 {
-	logger_base logger;
-	init_attributes(logger);
-	add_file_frontend(logger, file, level);
+	logger_base logger(level);
+	add_file_frontend(logger, file);
 	return logger;
 }
 

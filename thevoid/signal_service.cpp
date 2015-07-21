@@ -1,5 +1,7 @@
 #include "signal_service_p.hpp"
 
+#include <boost/bind.hpp>
+
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>

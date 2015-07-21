@@ -24,7 +24,8 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
+#include <blackhole/macro.hpp>
 
 #include <queue>
 #include <list>
@@ -56,7 +57,7 @@ public:
 	typedef std::unique_ptr<network_connection_info> ptr;
 
 	network_connection_info(const swarm::logger &log, const std::string &url) :
-		easy(NULL), logger(log, blackhole::log::attributes_t({ keyword::url() = url })),
+		easy(NULL), logger(log, blackhole::attribute::set_t({ keyword::url() = url })),
 		redirect_count(0), on_headers_called(false)
 	{
 		BH_LOG(logger, SWARM_LOG_DEBUG, "Created network_connection_info: %p", this);
@@ -100,7 +101,7 @@ class network_manager_private : public event_listener
 {
 public:
 	network_manager_private(event_loop &loop, const swarm::logger &logger) :
-		loop(loop), logger(logger, blackhole::log::attributes_t()), still_running(0), prev_running(0),
+		loop(loop), logger(logger, blackhole::attribute::set_t()), still_running(0), prev_running(0),
 		active_connections(0), active_connections_limit(std::numeric_limits<long>::max())
 	{
 		loop.set_listener(this);
@@ -451,7 +452,7 @@ public:
 	static size_t write_callback(char *data, size_t size, size_t nmemb, network_connection_info *info)
 	{
 		info->ensure_headers_sent();
-		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %llu, nmemb: %llu", size, nmemb);
+		BH_LOG(info->logger, SWARM_LOG_DEBUG, "write_callback, size: %lu, nmemb: %lu", size, nmemb);
 		const size_t real_size = size * nmemb;
 		info->stream->on_data(boost::asio::buffer(data, real_size));
 		return real_size;
@@ -461,9 +462,9 @@ public:
 	static inline void trim_line(Iter &begin, Iter &end)
 	{
 		while (begin < end && isspace(*begin))
-		    ++begin;
+			++begin;
 		while (begin < end && isspace(*(end - 1)))
-		    --end;
+			--end;
 	}
 
 	static std::string trimmed(const char *begin, const char *end)

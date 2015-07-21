@@ -16,6 +16,7 @@
 
 #include "connection_p.hpp"
 #include <vector>
+#include <blackhole/macro.hpp>
 #include <boost/bind.hpp>
 #include <iostream>
 
@@ -136,12 +137,12 @@ do { \
 	} \
 } while (0)
 
-static blackhole::log::attributes_t make_attributes(void *connection)
+static blackhole::attribute::set_t make_attributes(void *connection)
 {
 	char buffer[128];
 	snprintf(buffer, sizeof(buffer), "%p", connection);
 
-	blackhole::log::attributes_t attributes = {
+	blackhole::attribute::set_t attributes = {
 		blackhole::attribute::make(std::string("connection"), std::string(buffer))
 	};
 	return std::move(attributes);
@@ -151,7 +152,7 @@ template <typename T>
 connection<T>::connection(base_server *server, boost::asio::io_service &service, size_t buffer_size) :
 	m_server(server),
 	m_base_logger(m_server->logger(), make_attributes(this)),
-	m_logger(m_base_logger, blackhole::log::attributes_t()),
+	m_logger(m_base_logger, blackhole::attribute::set_t()),
 	m_socket(service),
 	m_buffer(buffer_size),
 	m_content_length(0),
@@ -298,7 +299,7 @@ void connection<T>::initialize(base_request_stream_data *data)
 template <typename T>
 swarm::logger connection<T>::create_logger()
 {
-	return swarm::logger(m_logger, blackhole::log::attributes_t());
+	return swarm::logger(m_logger, blackhole::attribute::set_t());
 }
 
 template <typename T>

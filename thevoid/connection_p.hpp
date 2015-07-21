@@ -27,7 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
-#include <blackhole/utils/atomic.hpp>
+#include <blackhole/detail/config/atomic.hpp>
 
 #include "stream.hpp"
 #include "http_request.hpp"
@@ -164,7 +164,7 @@ private:
 
 	//! Server reference for handler logic
 	base_server *m_server;
-	blackhole::log::attributes_t m_attributes;
+	blackhole::attribute::set_t m_attributes;
 	swarm::logger m_base_logger;
 	swarm::logger m_logger;
 

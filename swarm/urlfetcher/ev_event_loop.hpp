@@ -18,7 +18,7 @@
 #define IOREMAP_SWARM_EV_EVENT_LOOP_H
 
 #include "event_loop.hpp"
-#include <blackhole/platform/compiler.hpp>
+#include <blackhole/detail/config/platform/compiler.hpp>
 
 #include <mutex>
 #include <list>

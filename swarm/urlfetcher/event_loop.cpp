@@ -27,9 +27,9 @@ event_listener::~event_listener()
 {
 }
 
-static blackhole::log::attributes_t create_attributes()
+static blackhole::attribute::set_t create_attributes()
 {
-	blackhole::log::attributes_t attributes = {
+	blackhole::attribute::set_t attributes = {
 		keyword::source() = "event_loop"
 	};
 
