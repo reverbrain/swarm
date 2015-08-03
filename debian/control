@@ -1,9 +1,21 @@
 Source: swarm
 Priority: extra
 Maintainer: Ruslan Nigmatullin <euroelessar@yandex.ru>
-Build-Depends: cdbs, debhelper (>= 7), cmake, liburiparser-dev, libcurl4-openssl-dev, libxml2-dev,
-  libev-dev, libboost-system-dev, libboost-regex-dev, libboost-thread-dev,
-  libboost-program-options-dev, libboost-filesystem-dev, libidn11-dev, blackhole-dev (>= 0.2.2-1)
+Build-Depends:
+	cdbs,
+	debhelper (>= 7),
+	cmake,
+	liburiparser-dev,
+	libcurl4-openssl-dev,
+	libxml2-dev,
+	libev-dev,
+	libboost-system-dev,
+	libboost-regex-dev,
+	libboost-thread-dev,
+	libboost-program-options-dev,
+	libboost-filesystem-dev,
+	libidn11-dev,
+	blackhole-dev (>= 0.2.2-1),
 Standards-Version: 3.9.3
 Section: libs
 Homepage: https://github.com/reverbrain/swarm
@@ -13,25 +25,38 @@ Vcs-Browser: https://github.com/reverbrain/swarm
 Package: libswarm3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends:
+	${shlibs:Depends},
+	${misc:Depends},
 Description: Swarm is aiming at your web
 
 Package: libswarm-urlfetcher3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm3 (= ${binary:Version})
+Depends:
+	${shlibs:Depends},
+	${misc:Depends},
+	libswarm3 (= ${binary:Version}),
 Description: Swarm is aiming at your web. Url fetch tools
 
 Package: libswarm-xml3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends:
+	${shlibs:Depends},
+	${misc:Depends},
 Description: Swarm is aiming at your web. HTTP-parsing tools
 
 Package: libswarm3-dev
 Section: libdevel
 Architecture: any
-Depends: libswarm3 (= ${binary:Version}), libswarm-urlfetcher3 (= ${binary:Version}), libswarm-xml3 (= ${binary:Version}), libev-dev, libboost-system-dev, blackhole-dev
+Depends:
+	libswarm3 (= ${binary:Version}),
+	libswarm-urlfetcher3 (= ${binary:Version}),
+	libswarm-xml3 (= ${binary:Version}),
+	libev-dev,
+	libboost-system-dev,
+	blackhole-dev,
 Provides: libswarm-dev-virtual
 Conflicts: libswarm-dev-virtual
 Description: Swarm is aiming at your web (devel)
@@ -40,20 +65,34 @@ Description: Swarm is aiming at your web (devel)
 Package: libswarm3-dbg
 Architecture: any
 Section: debug
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm3 (= ${binary:Version}), libthevoid3 (= ${binary:Version}), libswarm-urlfetcher3 (= ${binary:Version}), libswarm-xml3 (= ${binary:Version})
+Depends:
+	${shlibs:Depends},
+	${misc:Depends},
+	libswarm3 (= ${binary:Version}),
+	libthevoid3 (= ${binary:Version}),
+	libswarm-urlfetcher3 (= ${binary:Version}),
+	libswarm-xml3 (= ${binary:Version}),
 Description: Swarm is aiming at your web (debug)
  Debug files and symbols.
 
 Package: libthevoid3
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libswarm3 (= ${binary:Version})
+Depends:
+	${shlibs:Depends},
+	${misc:Depends},
+	libswarm3 (= ${binary:Version}),
 Description: TheVoid
 
 Package: libthevoid3-dev
 Section: libdevel
 Architecture: any
-Depends: libthevoid3 (= ${binary:Version}), libswarm3-dev (= ${binary:Version}), libboost-system-dev, libboost-thread-dev, libboost-regex-dev
+Depends:
+	libthevoid3 (= ${binary:Version}),
+	libswarm3-dev (= ${binary:Version}),
+	libboost-system-dev,
+	libboost-thread-dev,
+	libboost-regex-dev,
 Provides: libthevoid-dev-virtual
 Conflicts: libthevoid-dev-virtual
 Description: TheVoid (devel)
