@@ -3,18 +3,18 @@ import requests
 
 
 @pytest.mark.server_options(
-    port=1111, backlog=256,
-    threads=16, buffer_size=1024,
-    log_level='debug', monitor_port=20000)
+    backlog=256,
+    threads=16,
+    buffer_size=1024,
+    log_level='debug',
+)
 def test_server_options(server):
     opts = server.opts
 
-    assert opts['port'] == 1111
     assert opts['backlog'] == 256
     assert opts['threads'] == 16
     assert opts['buffer_size'] == 1024
     assert opts['log_level'] == 'debug'
-    assert opts['monitor_port'] == 20000
 
 
 @pytest.mark.server_options(
