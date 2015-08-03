@@ -80,8 +80,7 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 
 		complete_socket_creation(endpoint);
 	} catch (boost::system::system_error &error) {
-		std::cerr << "Can not bind socket \"" << address << "\": " << error.what() << std::endl;
-		std::cerr.flush();
+		BH_LOG(data.logger, SWARM_LOG_ERROR, "Can not bind socket '%s': %s", address, error.what());
 
 		acceptors.pop_back();
 		if (local_endpoints.size() > acceptors.size())
