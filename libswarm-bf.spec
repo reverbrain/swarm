@@ -32,6 +32,7 @@ BuildRequires: cmake
 BuildRequires: uriparser-devel
 BuildRequires: libidn-devel
 BuildRequires: libblackhole-devel
+BuildRequires: python-virtualenv
 
 %description
 Swarm is high-performance library for web crawling.
@@ -87,6 +88,9 @@ TheVoid is asynchronious event-driven C++ library for building high-perfomance w
 %{cmake} -DPERF=off .
 
 make %{?_smp_mflags}
+
+%check
+make check
 
 %install
 rm -rf %{buildroot}

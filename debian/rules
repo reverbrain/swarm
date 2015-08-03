@@ -4,3 +4,5 @@ DEB_DBG_PACKAGES := libswarm3-dbg
 
 include /usr/share/cdbs/1/class/cmake.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
+
+DEB_MAKE_CHECK_TARGET = check
