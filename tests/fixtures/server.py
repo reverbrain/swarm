@@ -1,11 +1,10 @@
 import pytest
 import json
-import random
 import jinja2
 import tempfile
 import subprocess
 import os
-import socket
+import re
 
 
 class Server(object):
@@ -67,28 +66,15 @@ class Server(object):
 }'''
 
     def __init__(self, **kwargs):
-        def random_port():
-            def available(port):
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(0.1)
-                result = sock.connect_ex(('localhost', port))
-                return result != 0
-
-            while True:
-                port = random.choice(range(1024, 65536))
-                if available(port):
-                    return port
-
         self.opts = {}
-        self.opts['port'] = kwargs.get('port', random_port())
+        self.opts['port'] = kwargs.get('port', 0)
         self.opts['backlog'] = kwargs.get('backlog', 128)
         self.opts['threads'] = kwargs.get('threads', 2)
         self.opts['buffer_size'] = kwargs.get('buffer_size', 65536)
         self.opts['log_level'] = kwargs.get('log_level', 'info')
-        self.opts['monitor_port'] = kwargs.get('monitor_port', random_port())
+        self.opts['monitor_port'] = kwargs.get('monitor_port', 0)
         self.opts['handlers'] = kwargs.get('handlers', [])
         self.config_file = None
-        self.base_url = 'http://localhost:{port}/'.format(port=self.opts['port'])
 
     def __del__(self):
         self.terminate()
@@ -109,6 +95,26 @@ class Server(object):
         self.config_file.write(template.render(**self.opts))
         self.config_file.close()
 
+    def _wait_for_bind_port(self, address='0.0.0.0'):
+        success_log_line = 'Started to listen address: {address}'.format(
+            address=address,
+        )
+
+        while self.process.poll() is None:
+            log_line = self.process.stdout.readline()
+            if not log_line:
+                continue
+            if success_log_line in log_line:
+                regex = re.compile(
+                    '{start}:(\d+),'.format(
+                        start=success_log_line,
+                    )
+                )
+                match = regex.search(log_line)
+                return int(match.group(1))
+
+        raise RuntimeError('no bind log line found')
+
     def start(self):
         '''Starts server's process.
 
@@ -118,13 +124,17 @@ class Server(object):
         self.process = subprocess.Popen(['./test_server', '-c', self.config_file.name],
                                         bufsize=1, stdout=subprocess.PIPE)
 
-        start_line = 'Started to listen address: 0.0.0.0:{},'.format(self.opts['port'])
-        while self.process.poll() is None:
-            line = self.process.stdout.readline()
-            if not line:
-                continue
-            if start_line in line:
-                break
+        # wait for endpoint bind log
+        endpoint_port = self._wait_for_bind_port()
+        self.opts['port'] = endpoint_port
+
+        self.base_url = 'http://localhost:{port}/'.format(
+            port=self.opts['port'],
+        )
+
+        # wait for monitor bind log
+        monitor_port = self._wait_for_bind_port()
+        self.opts['monitor_port'] = monitor_port
 
         if self.process.returncode:
             pytest.fail('server failed to start, rc: {}'.format(self.process.returncode))
