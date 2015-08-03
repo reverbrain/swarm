@@ -73,7 +73,8 @@ void acceptors_list<Connection>::add_acceptor(const std::string &address)
 		acceptor->bind(endpoint);
 		acceptor->listen(data.backlog_size);
 
-		BH_LOG(data.logger, SWARM_LOG_INFO, "Started to listen address: %s, backlog: %d", address, data.backlog_size);
+		BH_LOG(data.logger, SWARM_LOG_INFO, "Started to listen address: %s, backlog: %d",
+				boost::lexical_cast<std::string>(acceptor->local_endpoint()), data.backlog_size);
 
 		local_endpoints.emplace_back(boost::lexical_cast<std::string>(endpoint));
 		protocols.push_back(endpoint.protocol());
