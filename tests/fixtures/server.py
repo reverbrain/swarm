@@ -106,7 +106,7 @@ class Server(object):
             timeout=timeout,
         )
 
-    def _wait_for_bind_port(self, io_loop, timeout=1):
+    def _wait_for_bind_port(self, io_loop, timeout):
         start_listen_log_line = 'Started to listen address: 0.0.0.0:'
 
         self._read_stdout_until(
@@ -125,7 +125,7 @@ class Server(object):
         # remove last character as it's not a digit: '^\d+\D'
         return int(port[:-1])
 
-    def start(self, io_loop):
+    def start(self, io_loop, timeout):
         '''Starts server's process.
 
         To determine when the server is actually started, the following log line is looked for:
@@ -137,7 +137,10 @@ class Server(object):
         )
 
         # wait for endpoint bind log
-        endpoint_port = self._wait_for_bind_port(io_loop)
+        endpoint_port = self._wait_for_bind_port(
+            io_loop=io_loop,
+            timeout=timeout,
+        )
         self.opts['port'] = endpoint_port
 
         self.base_url = 'http://localhost:{port}/'.format(
@@ -145,7 +148,10 @@ class Server(object):
         )
 
         # wait for monitor bind log
-        monitor_port = self._wait_for_bind_port(io_loop)
+        monitor_port = self._wait_for_bind_port(
+            io_loop=io_loop,
+            timeout=timeout,
+        )
         self.opts['monitor_port'] = monitor_port
 
         if self.process.returncode:
@@ -180,6 +186,17 @@ def server(request, io_loop):
     opts = opts.kwargs if opts else {}
     s = Server(**opts)
     s.configure()
-    s.start(io_loop)
+
+    def _timeout(item):
+        default_timeout = item.config.getoption('async_test_timeout')
+        async_test = item.get_marker('async_test')
+        if async_test:
+            return async_test.kwargs.get('timeout', default_timeout)
+        return default_timeout
+
+    s.start(
+        io_loop=io_loop,
+        timeout=_timeout(request.node),
+    )
     yield s
     s.terminate()
