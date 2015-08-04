@@ -92,3 +92,14 @@ def test_handler_headers_user_agent_pytest(server, user_agent):
 def test_handler_not_found(server):
     response = requests.get(server.request_url('/no-such-handler'))
     assert response.status_code == requests.codes.not_found
+
+
+@pytest.mark.server_options(
+    log_level='error',
+)
+@pytest.mark.async_test(timeout=0.5)
+@pytest.mark.xfail
+def test_invalid_server_log_level(server):
+    # on 'error' log level necessary log lines ('Start to listen address')
+    # will not be printed and server's start will fail
+    pass
