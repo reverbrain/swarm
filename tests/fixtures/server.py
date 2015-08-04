@@ -2,9 +2,8 @@ import pytest
 import json
 import jinja2
 import tempfile
-import subprocess
 import os
-import re
+import tornado.process
 
 
 class Server(object):
@@ -95,37 +94,50 @@ class Server(object):
         self.config_file.write(template.render(**self.opts))
         self.config_file.close()
 
-    def _wait_for_bind_port(self, address='0.0.0.0'):
-        success_log_line = 'Started to listen address: {address}'.format(
-            address=address,
+    def _read_stdout_until(self, delimiter, io_loop, timeout):
+        return io_loop.run_sync(
+            func=lambda: self.process.stdout.read_until(delimiter),
+            timeout=timeout,
         )
 
-        while self.process.poll() is None:
-            log_line = self.process.stdout.readline()
-            if not log_line:
-                continue
-            if success_log_line in log_line:
-                regex = re.compile(
-                    '{start}:(\d+),'.format(
-                        start=success_log_line,
-                    )
-                )
-                match = regex.search(log_line)
-                return int(match.group(1))
+    def _read_stdout_until_regex(self, regex, io_loop, timeout):
+        return io_loop.run_sync(
+            func=lambda: self.process.stdout.read_until_regex(regex),
+            timeout=timeout,
+        )
 
-        raise RuntimeError('no bind log line found')
+    def _wait_for_bind_port(self, io_loop, timeout=1):
+        start_listen_log_line = 'Started to listen address: 0.0.0.0:'
 
-    def start(self):
+        self._read_stdout_until(
+            delimiter=start_listen_log_line,
+            io_loop=io_loop,
+            timeout=timeout,
+        )
+
+        port_regex = '^\d+\D'
+        port = self._read_stdout_until_regex(
+            regex=port_regex,
+            io_loop=io_loop,
+            timeout=timeout,
+        )
+
+        # remove last character as it's not a digit: '^\d+\D'
+        return int(port[:-1])
+
+    def start(self, io_loop):
         '''Starts server's process.
 
         To determine when the server is actually started, the following log line is looked for:
             'Started to listen adress: 0.0.0.0:{port},'
         '''
-        self.process = subprocess.Popen(['./test_server', '-c', self.config_file.name],
-                                        bufsize=1, stdout=subprocess.PIPE)
+        self.process = tornado.process.Subprocess(
+            ['./test_server', '-c', self.config_file.name],
+            stdout=tornado.process.Subprocess.STREAM,
+        )
 
         # wait for endpoint bind log
-        endpoint_port = self._wait_for_bind_port()
+        endpoint_port = self._wait_for_bind_port(io_loop)
         self.opts['port'] = endpoint_port
 
         self.base_url = 'http://localhost:{port}/'.format(
@@ -133,7 +145,7 @@ class Server(object):
         )
 
         # wait for monitor bind log
-        monitor_port = self._wait_for_bind_port()
+        monitor_port = self._wait_for_bind_port(io_loop)
         self.opts['monitor_port'] = monitor_port
 
         if self.process.returncode:
@@ -142,9 +154,11 @@ class Server(object):
     def terminate(self):
         '''Stops server's process and deletes config file.
         '''
-        if self.process.poll() is None:
-            self.process.terminate()
-            self.process.wait()
+        self.process.terminate()
+        yield self.process.wait_for_exit(
+            raise_error=True,
+        )
+
         if self.config_file:
             os.remove(self.config_file.name)
             self.config_file = None
@@ -157,7 +171,7 @@ class Server(object):
 
 
 @pytest.yield_fixture
-def server(request):
+def server(request, io_loop):
     '''Create an instance of the `Server`.
 
     Server's options may be passed to the constructor with `pytest.mark.server_options`.
@@ -166,6 +180,6 @@ def server(request):
     opts = opts.kwargs if opts else {}
     s = Server(**opts)
     s.configure()
-    s.start()
+    s.start(io_loop)
     yield s
     s.terminate()
