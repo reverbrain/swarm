@@ -100,6 +100,9 @@ public:
 	//! Request ID/Trace bit
 	std::string request_header;
 	std::string trace_header;
+
+	//! Request headers to log
+	std::vector<std::string> log_request_headers;
 };
 
 }}
