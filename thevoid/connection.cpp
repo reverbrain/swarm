@@ -678,8 +678,11 @@ void connection<T>::process_next()
 	m_logger = swarm::logger(m_base_logger, m_attributes);
 	m_request = http_request();
 
-	CONNECTION_DEBUG("process next request")
-		("size", m_unprocessed_end - m_unprocessed_begin);
+	CONNECTION_INFO("process next request")
+		("size", m_unprocessed_end - m_unprocessed_begin)
+		("local", m_access_local)
+		("remote", m_access_remote)
+		;
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data();
