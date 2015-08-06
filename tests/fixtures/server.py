@@ -75,9 +75,6 @@ class Server(object):
         self.opts['handlers'] = kwargs.get('handlers', [])
         self.config_file = None
 
-    def __del__(self):
-        self.terminate()
-
     def configure(self):
         '''Configures server with initialized options.
 
@@ -160,10 +157,9 @@ class Server(object):
     def terminate(self):
         '''Stops server's process and deletes config file.
         '''
-        self.process.terminate()
-        yield self.process.wait_for_exit(
-            raise_error=True,
-        )
+        if hasattr(self, 'process'):
+            self.process.proc.terminate()
+            self.process.proc.wait()
 
         if self.config_file:
             os.remove(self.config_file.name)
@@ -176,7 +172,7 @@ class Server(object):
         return urljoin(self.base_url, url)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def server(request, io_loop):
     '''Create an instance of the `Server`.
 
@@ -185,6 +181,12 @@ def server(request, io_loop):
     opts = request.node.get_marker('server_options')
     opts = opts.kwargs if opts else {}
     s = Server(**opts)
+
+    def terminate_server():
+        s.terminate()
+
+    request.addfinalizer(terminate_server)
+
     s.configure()
 
     def _timeout(item):
@@ -198,5 +200,5 @@ def server(request, io_loop):
         io_loop=io_loop,
         timeout=_timeout(request.node),
     )
-    yield s
-    s.terminate()
+
+    return s
