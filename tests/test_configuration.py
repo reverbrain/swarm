@@ -3,18 +3,18 @@ import requests
 
 
 @pytest.mark.server_options(
-    port=1111, backlog=256,
-    threads=16, buffer_size=1024,
-    log_level='debug', monitor_port=20000)
+    backlog=256,
+    threads=16,
+    buffer_size=1024,
+    log_level='debug',
+)
 def test_server_options(server):
     opts = server.opts
 
-    assert opts['port'] == 1111
     assert opts['backlog'] == 256
     assert opts['threads'] == 16
     assert opts['buffer_size'] == 1024
     assert opts['log_level'] == 'debug'
-    assert opts['monitor_port'] == 20000
 
 
 @pytest.mark.server_options(
@@ -92,3 +92,14 @@ def test_handler_headers_user_agent_pytest(server, user_agent):
 def test_handler_not_found(server):
     response = requests.get(server.request_url('/no-such-handler'))
     assert response.status_code == requests.codes.not_found
+
+
+@pytest.mark.server_options(
+    log_level='error',
+)
+@pytest.mark.async_test(timeout=0.5)
+@pytest.mark.xfail
+def test_invalid_server_log_level(server):
+    # on 'error' log level necessary log lines ('Start to listen address')
+    # will not be printed and server's start will fail
+    pass

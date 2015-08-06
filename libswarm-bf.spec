@@ -13,17 +13,26 @@ Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 %if %{defined rhel} && 0%{?rhel} < 6
-BuildRequires:	gcc44 gcc44-c++
+BuildRequires: gcc44
+BuildRequires: gcc44-c++
 %define boost_ver 141
 %else
 %define boost_ver %{nil}
 %endif
-BuildRequires: libxml2-devel libev-devel
-BuildRequires: boost%{boost_ver}-devel, boost%{boost_ver}-iostreams, boost%{boost_ver}-system, boost%{boost_ver}-thread, boost%{boost_ver}-regex, boost%{boost_ver}-filesystem
+BuildRequires: libxml2-devel
+BuildRequires: libev-devel
+BuildRequires: boost%{boost_ver}-devel
+BuildRequires: boost%{boost_ver}-iostreams
+BuildRequires: boost%{boost_ver}-system
+BuildRequires: boost%{boost_ver}-thread
+BuildRequires: boost%{boost_ver}-regex
+BuildRequires: boost%{boost_ver}-filesystem
 BuildRequires: curl-devel
 BuildRequires: cmake
-BuildRequires: uriparser-devel libidn-devel
+BuildRequires: uriparser-devel
+BuildRequires: libidn-devel
 BuildRequires: libblackhole-devel
+BuildRequires: python-virtualenv
 
 %description
 Swarm is high-performance library for web crawling.
@@ -79,6 +88,9 @@ TheVoid is asynchronious event-driven C++ library for building high-perfomance w
 %{cmake} -DPERF=off .
 
 make %{?_smp_mflags}
+
+%check
+make check
 
 %install
 rm -rf %{buildroot}

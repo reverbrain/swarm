@@ -1,11 +1,9 @@
 import pytest
 import json
-import random
 import jinja2
 import tempfile
-import subprocess
 import os
-import socket
+import tornado.process
 
 
 class Server(object):
@@ -67,31 +65,15 @@ class Server(object):
 }'''
 
     def __init__(self, **kwargs):
-        def random_port():
-            def available(port):
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(0.1)
-                result = sock.connect_ex(('localhost', port))
-                return result != 0
-
-            while True:
-                port = random.choice(range(1024, 65536))
-                if available(port):
-                    return port
-
         self.opts = {}
-        self.opts['port'] = kwargs.get('port', random_port())
+        self.opts['port'] = kwargs.get('port', 0)
         self.opts['backlog'] = kwargs.get('backlog', 128)
         self.opts['threads'] = kwargs.get('threads', 2)
         self.opts['buffer_size'] = kwargs.get('buffer_size', 65536)
         self.opts['log_level'] = kwargs.get('log_level', 'info')
-        self.opts['monitor_port'] = kwargs.get('monitor_port', random_port())
+        self.opts['monitor_port'] = kwargs.get('monitor_port', 0)
         self.opts['handlers'] = kwargs.get('handlers', [])
         self.config_file = None
-        self.base_url = 'http://localhost:{port}/'.format(port=self.opts['port'])
-
-    def __del__(self):
-        self.terminate()
 
     def configure(self):
         '''Configures server with initialized options.
@@ -109,22 +91,65 @@ class Server(object):
         self.config_file.write(template.render(**self.opts))
         self.config_file.close()
 
-    def start(self):
+    def _read_stdout_until(self, delimiter, io_loop, timeout):
+        return io_loop.run_sync(
+            func=lambda: self.process.stdout.read_until(delimiter),
+            timeout=timeout,
+        )
+
+    def _read_stdout_until_regex(self, regex, io_loop, timeout):
+        return io_loop.run_sync(
+            func=lambda: self.process.stdout.read_until_regex(regex),
+            timeout=timeout,
+        )
+
+    def _wait_for_bind_port(self, io_loop, timeout):
+        start_listen_log_line = 'Started to listen address: 0.0.0.0:'
+
+        self._read_stdout_until(
+            delimiter=start_listen_log_line,
+            io_loop=io_loop,
+            timeout=timeout,
+        )
+
+        port_regex = '^\d+\D'
+        port = self._read_stdout_until_regex(
+            regex=port_regex,
+            io_loop=io_loop,
+            timeout=timeout,
+        )
+
+        # remove last character as it's not a digit: '^\d+\D'
+        return int(port[:-1])
+
+    def start(self, io_loop, timeout):
         '''Starts server's process.
 
         To determine when the server is actually started, the following log line is looked for:
             'Started to listen adress: 0.0.0.0:{port},'
         '''
-        self.process = subprocess.Popen(['./test_server', '-c', self.config_file.name],
-                                        bufsize=1, stdout=subprocess.PIPE)
+        self.process = tornado.process.Subprocess(
+            ['./test_server', '-c', self.config_file.name],
+            stdout=tornado.process.Subprocess.STREAM,
+        )
 
-        start_line = 'Started to listen address: 0.0.0.0:{},'.format(self.opts['port'])
-        while self.process.poll() is None:
-            line = self.process.stdout.readline()
-            if not line:
-                continue
-            if start_line in line:
-                break
+        # wait for endpoint bind log
+        endpoint_port = self._wait_for_bind_port(
+            io_loop=io_loop,
+            timeout=timeout,
+        )
+        self.opts['port'] = endpoint_port
+
+        self.base_url = 'http://localhost:{port}/'.format(
+            port=self.opts['port'],
+        )
+
+        # wait for monitor bind log
+        monitor_port = self._wait_for_bind_port(
+            io_loop=io_loop,
+            timeout=timeout,
+        )
+        self.opts['monitor_port'] = monitor_port
 
         if self.process.returncode:
             pytest.fail('server failed to start, rc: {}'.format(self.process.returncode))
@@ -132,9 +157,10 @@ class Server(object):
     def terminate(self):
         '''Stops server's process and deletes config file.
         '''
-        if self.process.poll() is None:
-            self.process.terminate()
-            self.process.wait()
+        if hasattr(self, 'process'):
+            self.process.proc.terminate()
+            self.process.proc.wait()
+
         if self.config_file:
             os.remove(self.config_file.name)
             self.config_file = None
@@ -146,8 +172,8 @@ class Server(object):
         return urljoin(self.base_url, url)
 
 
-@pytest.yield_fixture
-def server(request):
+@pytest.fixture
+def server(request, io_loop):
     '''Create an instance of the `Server`.
 
     Server's options may be passed to the constructor with `pytest.mark.server_options`.
@@ -155,7 +181,24 @@ def server(request):
     opts = request.node.get_marker('server_options')
     opts = opts.kwargs if opts else {}
     s = Server(**opts)
+
+    def terminate_server():
+        s.terminate()
+
+    request.addfinalizer(terminate_server)
+
     s.configure()
-    s.start()
-    yield s
-    s.terminate()
+
+    def _timeout(item):
+        default_timeout = item.config.getoption('async_test_timeout')
+        async_test = item.get_marker('async_test')
+        if async_test:
+            return async_test.kwargs.get('timeout', default_timeout)
+        return default_timeout
+
+    s.start(
+        io_loop=io_loop,
+        timeout=_timeout(request.node),
+    )
+
+    return s

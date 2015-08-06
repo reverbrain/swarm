@@ -44,9 +44,6 @@ def test_connection_close_before_request_finished(server, io_stream, http_connec
     io_stream.close()
 
     # wait for 'access_log_entry' and check its status
-    for log_line in iter(server.process.stdout.readline, b''):
-        if 'access_log_entry' in log_line:
-            assert 'status: 499' in log_line
-            break
-    else:
-        pytest.fail('no access_log_entry in server log')
+    yield server.process.stdout.read_until('access_log_entry')
+    access_log_line = yield server.process.stdout.read_until('\n')
+    assert 'status: 499' in access_log_line
