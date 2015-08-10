@@ -88,9 +88,9 @@ struct timespec gettime_now() {
 namespace {
 
 template <typename InputIterator, typename OutputIterator>
-void escape(
-		const InputIterator& begin, const InputIterator& end,
-		OutputIterator& output,
+OutputIterator escape(
+		InputIterator begin, InputIterator end,
+		OutputIterator output,
 		int quote
 	)
 {
@@ -130,6 +130,8 @@ void escape(
 			output++ = ch;
 		}
 	}
+
+	return output;
 }
 
 std::string headers_to_string(
@@ -158,9 +160,9 @@ std::string headers_to_string(
 			}
 
 			output++ = quote;
-			std::copy(log_header.begin(), log_header.end(), output);
+			output = std::copy(log_header.begin(), log_header.end(), output);
 			output++ = ':'; output++ = ' ';
-			escape(header_value.begin(), header_value.end(), output, quote);
+			output = escape(header_value.begin(), header_value.end(), output, quote);
 			output++ = quote;
 		}
 	}
