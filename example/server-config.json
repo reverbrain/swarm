@@ -29,6 +29,7 @@
     "monitor-port": 20000,
     "request_header": "X-Request",
     "trace_header": "X-Trace",
+    "log_request_headers": ["User-Agent", "Authorization", "Cookie"],
     "application": {
     }
 }
