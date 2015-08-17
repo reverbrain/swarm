@@ -59,6 +59,7 @@ class Server(object):
         ]
     },
     "monitor-port": {{ monitor_port }},
+    "log_request_headers": {{ log_request_headers | tojson | safe }},
     "application": {
         "handlers": {{ handlers | tojson | safe }}
     }
@@ -72,6 +73,7 @@ class Server(object):
         self.opts['buffer_size'] = kwargs.get('buffer_size', 65536)
         self.opts['log_level'] = kwargs.get('log_level', 'info')
         self.opts['monitor_port'] = kwargs.get('monitor_port', 0)
+        self.opts['log_request_headers'] = kwargs.get('log_request_headers', [])
         self.opts['handlers'] = kwargs.get('handlers', [])
         self.config_file = None
 

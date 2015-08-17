@@ -18,6 +18,7 @@
 #include <vector>
 #include <boost/bind.hpp>
 #include <iostream>
+#include <algorithm>
 
 #include "server_p.hpp"
 #include "stream_p.hpp"
@@ -82,6 +83,97 @@ struct timespec gettime_now() {
 }
 
 } // unnamed namespace
+
+
+namespace {
+
+template <typename InputIterator, typename OutputIterator>
+OutputIterator escape(
+		InputIterator begin, InputIterator end,
+		OutputIterator output,
+		int quote
+	)
+{
+	for (auto iter = begin; iter != end; ++iter) {
+		char ch = *iter;
+
+		if (ch == '\a') {
+			output++ = '\\'; output++ = 'a';
+		}
+		else if (ch == '\b') {
+			output++ = '\\'; output++ = 'b';
+		}
+		else if (ch == '\f') {
+			output++ = '\\'; output++ = 'f';
+		}
+		else if (ch == '\n') {
+			output++ = '\\'; output++ = 'n';
+		}
+		else if (ch == '\r') {
+			output++ = '\\'; output++ = 'r';
+		}
+		else if (ch == '\t') {
+			output++ = '\\'; output++ = 't';
+		}
+		else if (ch == '\v') {
+			output++ = '\\'; output++ = 'v';
+		}
+		else if (ch == quote || ch == '\\') {
+			output++ = '\\'; output++ = ch;
+		}
+		else if (ch < ' ' || ch >= 0x7f) {
+			char buf[3];
+			sprintf(buf, "%02x", ch & 0xff);
+			output++ = '\\'; output++ = 'x'; output++ = buf[0]; output++ = buf[1];
+		}
+		else {
+			output++ = ch;
+		}
+	}
+
+	return output;
+}
+
+std::string headers_to_string(
+		const ioremap::swarm::http_headers& headers,
+		const std::vector<std::string>& log_headers,
+		int quote = '"'
+	)
+{
+	typedef std::back_insert_iterator<std::string> output_type;
+
+	std::string headers_string;
+	output_type output(headers_string);
+
+	output++ = '{';
+
+	bool first_header = true;
+	for (const auto& log_header: log_headers) {
+		if (headers.has(log_header)) {
+			const auto& header_value = *headers.get(log_header);
+
+			if (!first_header) {
+				output++ = ','; output++ = ' ';
+			}
+			else {
+				first_header = false;
+			}
+
+			output++ = quote;
+			output = std::copy(log_header.begin(), log_header.end(), output);
+			output++ = ':'; output++ = ' ';
+			output = escape(header_value.begin(), header_value.end(), output, quote);
+			output++ = quote;
+		}
+	}
+
+	output++ = '}';
+
+	return headers_string;
+}
+
+} // unnamed namespace
+
 
 namespace ioremap {
 namespace thevoid {
@@ -588,8 +680,11 @@ void connection<T>::process_next()
 	m_logger = swarm::logger(m_base_logger, m_attributes);
 	m_request = http_request();
 
-	CONNECTION_DEBUG("process next request")
-		("size", m_unprocessed_end - m_unprocessed_begin);
+	CONNECTION_INFO("process next request")
+		("size", m_unprocessed_end - m_unprocessed_begin)
+		("local", m_access_local)
+		("remote", m_access_remote)
+		;
 
 	if (m_unprocessed_begin != m_unprocessed_end) {
 		process_data();
@@ -796,6 +891,15 @@ void connection<T>::process_data()
 				send_error(http_response::bad_request);
 				return;
 			} else {
+				CONNECTION_INFO(
+					"received new request: method: %s, url: %s, local: %s, remote: %s, headers: %s",
+					m_access_method.empty() ? "-" : m_access_method,
+					m_access_url.empty() ? "-" : m_access_url,
+					m_access_local,
+					m_access_remote,
+					headers_to_string(m_request.headers(), m_server->m_data->log_request_headers)
+				);
+
 				auto factory = m_server->factory(m_request);
 
 				if (auto length = m_request.headers().content_length())

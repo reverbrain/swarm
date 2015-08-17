@@ -524,6 +524,32 @@ int base_server::parse_arguments(int argc, char **argv)
 		return -7;
 	}
 
+	if (config.HasMember("log_request_headers")) {
+		auto& log_request_headers = config["log_request_headers"];
+
+		if (!log_request_headers.IsArray()) {
+			BH_LOG(logger(), SWARM_LOG_ERROR, "\"log_request_headers\" field is not an array");
+			return -8;
+		}
+
+		auto* headers_begin = log_request_headers.Begin();
+		auto* headers_end = log_request_headers.End();
+
+		for (auto* iter = headers_begin; iter != headers_end; ++iter) {
+			if (!iter->IsString()) {
+				BH_LOG(logger(), SWARM_LOG_ERROR, "\"log_request_headers\" field is not an array of strings");
+				return -8;
+			}
+		}
+
+		m_data->log_request_headers.clear();
+		for (auto* iter = headers_begin; iter != headers_end; ++iter) {
+			m_data->log_request_headers.push_back(
+					std::string(iter->GetString(), iter->GetStringLength())
+				);
+		}
+	}
+
 	m_data->options_parsed = true;
 
 	return 0;
