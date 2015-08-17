@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.1.0
+Version:	3.2.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -130,6 +130,18 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Aug 17 2015 Danil Osherov <shindo@yandex-team.ru> - 3.2.0
+- thevoid: added functional tests.
+- * These tests are automatically run each time the package is built.
+- * One may manually run tests with 'make check'.
+- thevoid/acceptorlist: fixed print of listening address.
+- * Actual listening address is printed instead of the one from config.
+- * Port 0 may be specified within endpoint in configuration, this way TheVoid server
+- * will bind on unused port.
+- thevoid/server: added 'log_request_headers' config option (optional).
+- * This option accepts an array of strings -- names of request headers that should be
+- * printed on receiving new request.
+
 * Thu Jul 02 2015 Danil Osherov <shindo@yandex-team.ru> - 3.1.0
 - swarm/http_headers: set_keep_alive(bool) method added.
 - * The method should be used instead of set_keep_alive().

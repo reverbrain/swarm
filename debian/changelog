@@ -1,3 +1,18 @@
+swarm (3.2.0) unstable; urgency=low
+
+  * thevoid: added functional tests.
+    These tests are automatically run each time the package is built.
+    One may manually run tests with 'make check'.
+  * thevoid/acceptorlist: fixed print of listening address.
+    Actual listening address is printed instead of the one from config.
+    Port 0 may be specified within endpoint in configuration, this way TheVoid
+    server will bind on unused port.
+  * thevoid/server: added 'log_request_headers' config option (optional).
+    This option accepts an array of strings -- names of request headers that
+    should be printed on receiving new request.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Mon, 17 Aug 2015 12:00:00 +0400
+
 swarm (3.1.0) unstable; urgency=low
 
   * swarm/http_headers: set_keep_alive(bool) method added.
