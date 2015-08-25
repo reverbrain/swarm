@@ -38,6 +38,12 @@ class echo
 				);
 			response.set_code(response_code);
 
+			auto response_reason = url_query.item_value<std::string>(
+					"reason",
+					ioremap::thevoid::http_response::default_reason(response_code)
+				);
+			response.set_reason(response_reason);
+
 			response.headers().set_content_length(*content_length);
 
 			this->send_headers(std::move(response), ioremap::thevoid::reply_stream::result_function());

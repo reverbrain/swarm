@@ -20,6 +20,8 @@
 #include "url.hpp"
 #include "http_headers.hpp"
 
+#include <boost/asio/buffer.hpp>
+
 namespace ioremap {
 namespace swarm {
 
@@ -121,11 +123,18 @@ public:
 	boost::optional<std::string> reason() const;
 	void set_reason(const std::string &reason);
 
+	// The default reason string for a status code.
+	// For unknown status codes, the string "-" is returned.
+	static
+	const char* default_reason(int code);
+
 	// HTTP headers
 	http_headers &headers();
 	const http_headers &headers() const;
 	void set_headers(const http_headers &headers);
 	void set_headers(http_headers &&headers);
+
+	std::vector<boost::asio::const_buffer> to_buffers() const;
 
 protected:
 	std::unique_ptr<http_response_data> m_data;
