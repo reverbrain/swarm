@@ -25,7 +25,9 @@ namespace swarm {
 class http_response_data
 {
 public:
-	http_response_data() : code(0)
+	http_response_data()
+		: code(0)
+		, code_str("0")
 	{
 	}
 
@@ -34,6 +36,8 @@ public:
 	}
 
 	int code;
+	std::string code_str;
+
 	boost::optional<std::string> reason;
 	http_headers headers;
 };

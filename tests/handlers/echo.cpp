@@ -29,9 +29,23 @@ class echo
 {
 	virtual void on_headers(ioremap::thevoid::http_request&& req) {
 		if (auto content_length = req.headers().content_length()) {
+			auto& url_query = req.url().query();
 			ioremap::thevoid::http_response response;
-			response.set_code(ioremap::thevoid::http_response::ok);
+
+			auto response_code = url_query.item_value<int>(
+					"code",
+					ioremap::thevoid::http_response::ok
+				);
+			response.set_code(response_code);
+
+			auto response_reason = url_query.item_value<std::string>(
+					"reason",
+					ioremap::thevoid::http_response::default_reason(response_code)
+				);
+			response.set_reason(response_reason);
+
 			response.headers().set_content_length(*content_length);
+
 			this->send_headers(std::move(response), ioremap::thevoid::reply_stream::result_function());
 		}
 		else {

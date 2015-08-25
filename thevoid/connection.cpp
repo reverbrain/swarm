@@ -22,7 +22,6 @@
 
 #include "server_p.hpp"
 #include "stream_p.hpp"
-#include "stockreplies_p.hpp"
 
 namespace {
 
@@ -344,8 +343,11 @@ void connection<T>::send_headers(http_response &&rep,
 		("status", rep.code())
 		("state", make_state_attribute());
 
+	auto response_buffers = rep.to_buffers();
+	response_buffers.push_back(content);
+
 	buffer_info info(
-		std::move(stock_replies::to_buffers(rep, content)),
+		std::move(response_buffers),
 		std::move(rep),
 		std::move(handler)
 	);
@@ -1022,7 +1024,9 @@ void connection<T>::send_error(http_response::status_type type)
 		("status", type)
 		("state", make_state_attribute());
 
-	auto response = stock_replies::stock_reply(type);
+	http_response response;
+	response.set_code(type);
+	response.headers().set_content_length(0);
 	response.headers().set_keep_alive(false);
 
 	send_headers(std::move(response), boost::asio::const_buffer(), result_function());

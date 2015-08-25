@@ -37,6 +37,43 @@ def test_echo_response_content(server, data):
 
 @pytest.mark.server_options(
     handlers=[
+        {
+            'handler': 'echo',
+            'exact_match': '/echo',
+        }
+    ]
+)
+@pytest.mark.parametrize(
+    'status_code',
+    [
+        101,
+        202,
+        303,
+        444,
+        599,
+    ],
+)
+def test_echo_response_status_code(server, status_code):
+    '''Sends empty POST request to the echo handler with 'code' query parameter.
+
+    The echo handler responds with the status code specified in URL query parameter 'code'.
+
+    Args:
+        server: an instance of `Server`.
+        status_code: custom response's status code.
+    '''
+    response = requests.post(
+        url=server.request_url('/echo'),
+        params={
+            'code': status_code,
+        },
+    )
+
+    assert response.status_code == status_code
+
+
+@pytest.mark.server_options(
+    handlers=[
         {'handler': 'echo',
          'exact_match': '/echo'}
     ])
