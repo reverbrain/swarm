@@ -1,7 +1,6 @@
 import pytest
 from tornado.http1connection import HTTP1Connection
-
-from io_stream import io_stream
+from tornado.http1connection import HTTP1ConnectionParameters
 
 
 @pytest.fixture
@@ -10,4 +9,12 @@ def http_connection(request, io_stream):
 
     `io_stream` fixture will be used for the connection.
     '''
-    return HTTP1Connection(io_stream, is_client=True)
+    opts = request.node.get_marker('http_connection_options')
+    opts = opts.kwargs if opts else {}
+    params = HTTP1ConnectionParameters(**opts)
+
+    return HTTP1Connection(
+        io_stream,
+        is_client=True,
+        params=params,
+    )
