@@ -510,15 +510,9 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 		close_impl(err);
 	}
 	else {
-		do {
-			std::unique_lock<std::mutex> lock(m_outgoing_mutex);
-			if (m_outgoing.empty()) {
-				CONNECTION_ERROR("wrote extra bytes")
-					("size", bytes_written)
-					("state", make_state_attribute());
-				break;
-			}
+		std::unique_lock<std::mutex> lock(m_outgoing_mutex);
 
+		while (!m_outgoing.empty()) {
 			auto &buffers = m_outgoing.front().buffer;
 
 			auto it = buffers.begin();
@@ -526,8 +520,11 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 			for (; it != buffers.end(); ++it) {
 				const size_t size = boost::asio::buffer_size(*it);
 				if (size <= bytes_written) {
+					// the whole buffer was sent
 					bytes_written -= size;
 				} else {
+					// the buffer was sent partially, none of the following buffers
+					// were sent
 					*it = bytes_written + *it;
 					bytes_written = 0;
 					break;
@@ -535,6 +532,7 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 			}
 
 			if (it == buffers.end()) {
+				// the current buffer_info was fully sent, continue processing
 				const auto handler = std::move(m_outgoing.front().handler);
 				m_outgoing.pop_front();
 				if (handler) {
@@ -543,9 +541,18 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 					lock.lock();
 				}
 			} else {
+				// the current buffer_info was sent only partially, processing should
+				// be stopped
 				buffers.erase(buffers.begin(), it);
+				break;
 			}
-		} while (bytes_written);
+		}
+
+		if (bytes_written) {
+			CONNECTION_ERROR("wrote extra bytes")
+				("size", bytes_written)
+				("state", make_state_attribute());
+		}
 	}
 
 	std::unique_lock<std::mutex> lock(m_outgoing_mutex);
