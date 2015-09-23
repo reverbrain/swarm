@@ -635,11 +635,34 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 	}
 
 	if (!m_keep_alive) {
-		print_access_log();
-		boost::system::error_code ignored_ec;
-		m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
-		m_socket.close(ignored_ec);
-		return;
+		if (m_state == processing_request) {
+			// Request is fully received here, just close the connection
+			print_access_log();
+			boost::system::error_code ignored_ec;
+			m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+			m_socket.close(ignored_ec);
+			return;
+		} else {
+			// Request is not fully received here, we cannot just close the connection
+			// as client may not receive the response yet.
+			// Based on:
+			// http://blog.netherlabs.nl/articles/2009/01/18/the-ultimate-so_linger-page-or-why-is-my-tcp-not-reliable
+			m_state |= graceful_close;
+
+			// NOTE: It's assumed that request headers were received and it only remains
+			// to receive request body
+			CONNECTION_DEBUG("gracefully close the connection")
+				("state", make_state_attribute())
+				("remaining_size", m_content_length);
+
+			// Shutdown the send side of the socket as response is assumed to be
+			// sent already
+			boost::system::error_code ignored_ec;
+			m_socket.shutdown(boost::asio::socket_base::shutdown_send, ignored_ec);
+
+			want_more_impl();
+			return;
+		}
 	}
 
 	// Is request data is not fully received yet - receive it
@@ -741,9 +764,11 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 	m_at_read = false;
 
 	// This message is not error in case of disconnect between requests
+	// and in case of graceful close
 	const bool error = err && !((m_state & waiting_for_first_data)
 		&& err.category() == boost::asio::error::get_misc_category()
-		&& err.value() == boost::asio::error::eof);
+		&& err.value() == boost::asio::error::eof) &&
+		!(m_state & graceful_close);
 
 	CONNECTION_LOG(error ? SWARM_LOG_ERROR : SWARM_LOG_DEBUG, "received new data")
 		("error", err.message())
@@ -753,6 +778,16 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		("time", timespec_to_usec(read_time));
 
 	if (err) {
+		if (m_state & graceful_close) {
+			// Client closes the connection during graceful close,
+			// this is the end of graceful close
+			print_access_log();
+			boost::system::error_code ignored_ec;
+			m_socket.shutdown(boost::asio::socket_base::shutdown_both, ignored_ec);
+			m_socket.close(ignored_ec);
+			return;
+		}
+
 		if (m_access_status == 0 || !m_request_processing_was_finished) {
 			m_access_status = 499;
 		}
@@ -985,7 +1020,15 @@ void connection<T>::process_data()
 				m_handler.reset();
 			}
 
-			if (m_state & request_processed) {
+			if (m_state & graceful_close) {
+				// Request is fully received during graceful close,
+				// this is the end of graceful close
+				print_access_log();
+				boost::system::error_code ignored_ec;
+				m_socket.shutdown(boost::asio::socket_base::shutdown_receive, ignored_ec);
+				m_socket.close(ignored_ec);
+				return;
+			} else if (m_state & request_processed) {
 				process_next();
 			}
 		}
