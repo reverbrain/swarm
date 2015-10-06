@@ -88,7 +88,8 @@ public:
 		read_headers	   = 0x01,
 		read_data		  = 0x02,
 		request_processed  = 0x04,
-		waiting_for_first_data = 0x08
+		waiting_for_first_data = 0x08,
+		graceful_close = 0x10
 	};
 
 	//! Construct a connection with the given io_service.
@@ -158,6 +159,7 @@ private:
 		add_state_attribute(out, first, read_data, "read_data");
 		add_state_attribute(out, first, request_processed, "request_processed");
 		add_state_attribute(out, first, waiting_for_first_data, "waiting_for_first_data");
+		add_state_attribute(out, first, graceful_close, "graceful_close");
 
 		return out.str();
 	}
