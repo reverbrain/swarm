@@ -16,6 +16,7 @@ Build-Depends:
 	libboost-filesystem-dev,
 	libidn11-dev,
 	blackhole-dev (>= 0.2.2-1),
+	virtualenv,
 	python-virtualenv,
 Standards-Version: 3.9.3
 Section: libs
