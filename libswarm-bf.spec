@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.2.0
+Version:	3.3.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -128,8 +128,26 @@ rm -rf %{buildroot}
 %{_includedir}/thevoid/*
 %{_libdir}/libthevoid.so
 
+swarm (3.3.0) unstable; urgency=low
+
+  * fixed support for response's custom reason phrase.
+  * thevoid/connection: connection is closed gracefully after sending the
+    response.
+    When server attempts to terminate request processing before the whole
+    request was received it should close the connection gracefully after
+    sending the response.
+    To do this server will read remaining request's body until either the whole
+    request is received or the client closes the connection.
 
 %changelog
+* Fri Nov 27 2015 Danil Osherov <shindo@yandex-team.ru> - 3.3.0
+- fixed support for response's custom reason phrase.
+- thevoid/connection: connection is closed gracefully after sending the response.
+- * When server attempts to terminate request processing before the whole request was
+- * received it should close the connection gracefully after sending the response.
+- * To do this server will read remaining request's body until either the whole request
+- * is received or the client closes the connection.
+
 * Mon Aug 17 2015 Danil Osherov <shindo@yandex-team.ru> - 3.2.0
 - thevoid: added functional tests.
 - * These tests are automatically run each time the package is built.
