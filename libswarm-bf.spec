@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.3.0
+Version:	3.4.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -129,6 +129,11 @@ rm -rf %{buildroot}
 %{_libdir}/libthevoid.so
 
 %changelog
+* Tue Jan 12 2016 Danil Osherov <shindo@yandex-team.ru> - 3.4.0
+- swarm/http_response: added descriptive constants for HTTP status codes
+- swarm/http_response: fixed HTTP 226 "IM Used" status code
+- swarm/http_response: added HTTP 302 "Found" and HTTP 303 "See Other" status codes.
+
 * Fri Nov 27 2015 Danil Osherov <shindo@yandex-team.ru> - 3.3.0
 - fixed support for response's custom reason phrase.
 - thevoid/connection: connection is closed gracefully after sending the response.

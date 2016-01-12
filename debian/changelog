@@ -1,3 +1,12 @@
+swarm (3.4.0) unstable; urgency=low
+
+  * swarm/http_response: added descriptive constants for HTTP status codes
+  * swarm/http_response: fixed HTTP 226 "IM Used" status code
+  * swarm/http_response: added HTTP 302 "Found" and HTTP 303 "See Other"
+    status codes.
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Tue, 12 Jan 2016 18:00:00 +0400
+
 swarm (3.3.0) unstable; urgency=low
 
   * fixed support for response's custom reason phrase.
