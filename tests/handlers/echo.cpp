@@ -34,7 +34,7 @@ class echo
 
 			auto response_code = url_query.item_value<int>(
 					"code",
-					ioremap::thevoid::http_response::ok
+					ioremap::thevoid::http_response::HTTP_200_OK
 				);
 			response.set_code(response_code);
 
@@ -49,7 +49,7 @@ class echo
 			this->send_headers(std::move(response), ioremap::thevoid::reply_stream::result_function());
 		}
 		else {
-			this->reply()->send_error(ioremap::thevoid::http_response::bad_request);
+			this->reply()->send_error(ioremap::thevoid::http_response::HTTP_400_BAD_REQUEST);
 		}
 	}
 

@@ -30,7 +30,7 @@ class ok
 	virtual void on_request(const ioremap::thevoid::http_request& /* req */,
 			const boost::asio::const_buffer& /* buffer */)
 	{
-		this->send_reply(ioremap::thevoid::http_response::ok);
+		this->send_reply(ioremap::thevoid::http_response::HTTP_200_OK);
 	}
 };
 
