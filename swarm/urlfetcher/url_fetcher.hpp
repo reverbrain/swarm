@@ -154,6 +154,32 @@ public:
 	 */
 	void get(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request);
 	/*!
+	 * \brief Make HEAD HTTP request to server by \a request. Result will be send to \a stream.
+	 *
+	 * This method is asynchronious, so any information such as received headers/data will
+	 * invoke appropriate methods of \a stream.
+	 *
+	 * This method is thread safe.
+	 *
+	 * Shared pointer to \a stream will be destroyed once the request is finished.
+	 *
+	 * \sa post
+	 */
+	void head(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request);
+	/*!
+	 * \brief Make OPTIONS HTTP request to server by \a request. Result will be send to \a stream.
+	 *
+	 * This method is asynchronious, so any information such as received headers/data will
+	 * invoke appropriate methods of \a stream.
+	 *
+	 * This method is thread safe.
+	 *
+	 * Shared pointer to \a stream will be destroyed once the request is finished.
+	 *
+	 * \sa post
+	 */
+	void options(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request);
+	/*!
 	 * \brief Make POST HTTP request to server by \a request with \a body. Result will be send to \a stream.
 	 *
 	 * This method is asynchronious, so any information such as received headers/data will
@@ -166,6 +192,45 @@ public:
 	 * \sa get
 	 */
 	void post(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body);
+	/*!
+	 * \brief Make PUT HTTP request to server by \a request with \a body. Result will be send to \a stream.
+	 *
+	 * This method is asynchronious, so any information such as received headers/data will
+	 * invoke appropriate methods of \a stream.
+	 *
+	 * This method is thread safe.
+	 *
+	 * Shared pointer to \a stream will be destroyed once the request is finished.
+	 *
+	 * \sa get
+	 */
+	void put(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body);
+	/*!
+	 * \brief Make DELETE HTTP request to server by \a request with \a body. Result will be send to \a stream.
+	 *
+	 * This method is asynchronious, so any information such as received headers/data will
+	 * invoke appropriate methods of \a stream.
+	 *
+	 * This method is thread safe.
+	 *
+	 * Shared pointer to \a stream will be destroyed once the request is finished.
+	 *
+	 * \sa get
+	 */
+	void del(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body);
+	/*!
+	 * \brief Make PATCH HTTP request to server by \a request with \a body. Result will be send to \a stream.
+	 *
+	 * This method is asynchronious, so any information such as received headers/data will
+	 * invoke appropriate methods of \a stream.
+	 *
+	 * This method is thread safe.
+	 *
+	 * Shared pointer to \a stream will be destroyed once the request is finished.
+	 *
+	 * \sa get
+	 */
+	void patch(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body);
 
 private:
 	url_fetcher(const url_fetcher &other) = delete;
