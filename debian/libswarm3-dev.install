@@ -1,3 +1,4 @@
 usr/include/swarm/*
 usr/lib*/libswarm.so
 usr/lib*/libswarm_urlfetcher.so
+usr/lib*/libswarm_xml.so
