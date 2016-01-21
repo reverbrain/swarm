@@ -287,22 +287,22 @@ public:
 			break;
 		case PUT:
 			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
-			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, info->body.size());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
 			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "PUT");
 			break;
 		case POST:
-			curl_easy_setopt(info->easy, CURLOPT_POST, 1);
+			curl_easy_setopt(info->easy, CURLOPT_POST, 1L);
 			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
-			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, info->body.size());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
 			break;
 		case DELETE:
 			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
-			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, info->body.size());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
 			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "DELETE");
 			break;
 		case PATCH:
 			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
-			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, info->body.size());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
 			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "PATCH");
 			break;
 		default:
