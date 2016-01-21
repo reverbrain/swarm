@@ -96,6 +96,15 @@ public:
 		 * If requests performs more than \a timeout ms it will be aborted with error code 110.
 		 */
 		void set_timeout(long timeout);
+
+		bool verify_ssl_peers() const;
+		/*!
+		 * \brief Specifies if the client verifies the SSL peers. True by default.
+		 *
+		 * If verify is true (the default) and the SSL certificate of the peer is self-signed
+		 * then the request fails. A value of false allows for self-signed certificates.
+		 */
+		void set_verify_ssl_peers(bool verify);
 	};
 
 	class response : public http_response

@@ -279,6 +279,11 @@ public:
 
 		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
 
+		if (!info->reply.request().verify_ssl_peers()) {
+			curl_easy_setopt(info->easy, CURLOPT_SSL_VERIFYPEER, 0L);
+			curl_easy_setopt(info->easy, CURLOPT_SSL_VERIFYHOST, 0L);
+		}
+
 		curl_easy_setopt(info->easy, CURLOPT_VERBOSE, 0L);
 		curl_easy_setopt(info->easy, CURLOPT_URL, info->reply.request().url().to_string().c_str());
 		curl_easy_setopt(info->easy, CURLOPT_TIMEOUT_MS, info->reply.request().timeout());
@@ -616,11 +621,13 @@ class url_fetcher_request_data : public http_request_data
 {
 public:
 	url_fetcher_request_data() : follow_location(false), timeout(30000)
+				   , verify_ssl_peers(true)
 	{
 	}
 
 	bool follow_location;
 	long timeout;
+	bool verify_ssl_peers;
 };
 
 class url_fetcher_response_data : public http_response_data
@@ -691,6 +698,16 @@ long url_fetcher::request::timeout() const
 void url_fetcher::request::set_timeout(long timeout)
 {
 	M_DATA()->timeout = timeout;
+}
+
+bool url_fetcher::request::verify_ssl_peers() const
+{
+	return M_DATA()->verify_ssl_peers;
+}
+
+void url_fetcher::request::set_verify_ssl_peers(bool verify)
+{
+	M_DATA()->verify_ssl_peers = verify;
 }
 
 url_fetcher::response::response() : http_response(*new url_fetcher_response_data)
