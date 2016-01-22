@@ -45,7 +45,12 @@ typedef std::chrono::high_resolution_clock clock;
 
 enum http_command {
 	GET,
-	POST
+	HEAD,
+	OPTIONS,
+	POST,
+	PUT,
+	DELETE,
+	PATCH
 };
 
 std::atomic_int alive(0);
@@ -271,10 +276,37 @@ public:
 			headers_list = curl_slist_append(headers_list, line.c_str());
 		}
 
-		if (request->command == POST) {
-			curl_easy_setopt(info->easy, CURLOPT_POST, true);
+		switch (request->command) {
+		case HEAD:
+			curl_easy_setopt(info->easy, CURLOPT_NOBODY, 1l);
+			break;
+		case OPTIONS:
+			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "OPTIONS");
+			break;
+		case GET:
+			break;
+		case PUT:
 			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
-			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE, info->body.size());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
+			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "PUT");
+			break;
+		case POST:
+			curl_easy_setopt(info->easy, CURLOPT_POST, 1L);
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
+			break;
+		case DELETE:
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
+			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "DELETE");
+			break;
+		case PATCH:
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDS, info->body.c_str());
+			curl_easy_setopt(info->easy, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(info->body.size()));
+			curl_easy_setopt(info->easy, CURLOPT_CUSTOMREQUEST, "PATCH");
+			break;
+		default:
+			break;
 		}
 
 		curl_easy_setopt(info->easy, CURLOPT_HTTPHEADER, headers_list);
@@ -594,12 +626,65 @@ const logger &url_fetcher::logger() const
 	return p->logger;
 }
 
+void url_fetcher::options(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request)
+{
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->stream = stream;
+	info->request = std::move(request);
+	info->command = OPTIONS;
+
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+}
+
+void url_fetcher::head(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request)
+{
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->stream = stream;
+	info->request = std::move(request);
+	info->command = HEAD;
+
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+}
+
 void url_fetcher::get(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request)
 {
 	auto info = std::make_shared<network_manager_private::request_info>();
 	info->stream = stream;
 	info->request = std::move(request);
 	info->command = GET;
+
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+}
+
+void url_fetcher::put(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body)
+{
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->stream = stream;
+	info->request = std::move(request);
+	info->command = PUT;
+	info->body = std::move(body);
+
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+}
+
+void url_fetcher::del(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body)
+{
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->stream = stream;
+	info->request = std::move(request);
+	info->command = DELETE;
+	info->body = std::move(body);
+
+	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
+}
+
+void url_fetcher::patch(const std::shared_ptr<base_stream> &stream, url_fetcher::request &&request, std::string &&body)
+{
+	auto info = std::make_shared<network_manager_private::request_info>();
+	info->stream = stream;
+	info->request = std::move(request);
+	info->command = PATCH;
+	info->body = std::move(body);
 
 	p->loop.post(std::bind(&network_manager_private::process_info, p, info));
 }
