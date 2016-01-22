@@ -15,7 +15,7 @@ Build-Depends:
 	libboost-program-options-dev,
 	libboost-filesystem-dev,
 	libidn11-dev,
-	blackhole-dev (>= 0.2.2-1),
+	blackhole-dev (= 0.2.4-1),
 	virtualenv | python-virtualenv,
 Standards-Version: 3.9.3
 Section: libs
@@ -57,7 +57,7 @@ Depends:
 	libswarm-xml3 (= ${binary:Version}),
 	libev-dev,
 	libboost-system-dev,
-	blackhole-dev,
+	blackhole-dev (= 0.2.4-1),
 Provides: libswarm-dev-virtual
 Conflicts: libswarm-dev-virtual
 Description: Swarm is aiming at your web (devel)

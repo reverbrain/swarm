@@ -31,7 +31,7 @@ BuildRequires: curl-devel
 BuildRequires: cmake
 BuildRequires: uriparser-devel
 BuildRequires: libidn-devel
-BuildRequires: libblackhole-devel
+BuildRequires: libblackhole-devel = 0.2.4-1
 BuildRequires: python-virtualenv
 
 %description
@@ -50,7 +50,7 @@ Summary: Swarm - Development files
 Group: Development/Libraries
 Requires: libswarm%{__soname} = %{version}-%{release}
 Requires: boost%{boost_ver}-devel
-Requires: libblackhole-devel
+Requires: libblackhole-devel = 0.2.4-1
 Provides: libswarm-devel = %{version}-%{release}
 Obsoletes: libswarm-devel < 3
 
@@ -73,7 +73,7 @@ Group: Development/Libraries
 Requires: libthevoid%{__soname} = %{version}-%{release}
 Requires: libswarm%{__soname}-devel = %{version}-%{release}
 Requires: boost%{boost_ver}-devel
-Requires: libblackhole-devel
+Requires: libblackhole-devel = 0.2.4-1
 Provides: libthevoid-devel = %{version}-%{release}
 Obsoletes: libthevoid-devel < 3
 
