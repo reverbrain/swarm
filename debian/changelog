@@ -1,3 +1,12 @@
+swarm (3.5.0) unstable; urgency=low
+
+  * urlfetcher: added a flag to urlfetcher::request allowing to specify whether
+    to accept self-signed certificates.
+  * urlfetcher: added support for HEAD, OPTIONS, PUT, DELETE and PATCH methods
+  * updated dependency on blackhole (= 0.2.4-1)
+
+ -- Danil Osherov <shindo@yandex-team.ru>  Mon, 25 Jan 2016 23:00:00 +0400
+
 swarm (3.4.0) unstable; urgency=low
 
   * swarm/http_response: added descriptive constants for HTTP status codes
