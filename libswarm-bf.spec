@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.4.0
+Version:	3.5.0
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -129,6 +129,12 @@ rm -rf %{buildroot}
 %{_libdir}/libthevoid.so
 
 %changelog
+* Mon Jan 25 2016 Danil Osherov <shindo@yandex-team.ru> - 3.5.0
+- urlfetcher: added a flag to urlfetcher::request allowing to specify whether
+- * to accept self-signed certificates.
+- urlfetcher: added support for HEAD, OPTIONS, PUT, DELETE and PATCH methods
+- updated dependency on blackhole (= 0.2.4-1)
+
 * Tue Jan 12 2016 Danil Osherov <shindo@yandex-team.ru> - 3.4.0
 - swarm/http_response: added descriptive constants for HTTP status codes
 - swarm/http_response: fixed HTTP 226 "IM Used" status code
