@@ -13,11 +13,11 @@ FIND_PACKAGE (PythonInterp)
 SET (PYTESTS_FLAGS "-v" "-l" "-x" "-s")
 
 
-INCLUDE_DIRECTORIES (${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+INCLUDE_DIRECTORIES (${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/thevoid)
 
-FILE (GLOB_RECURSE HANDLERS_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "handlers/*.cpp")
+FILE (GLOB_RECURSE HANDLERS_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "thevoid/handlers/*.cpp")
 
-ADD_EXECUTABLE (test_server ${HANDLERS_SRC} handlers_factory.cpp server.cpp)
+ADD_EXECUTABLE (test_server ${HANDLERS_SRC} thevoid/handlers_factory.cpp thevoid/server.cpp)
 SET_TARGET_PROPERTIES (test_server ${TESTS_PROPERTIES})
 TARGET_LINK_LIBRARIES (test_server ${TESTS_LIBRARIES})
 ADD_DEPENDENCIES (test_server swarm thevoid)
@@ -27,6 +27,6 @@ ADD_CUSTOM_TARGET (check
         . bin/activate &&
         export LD_LIBRARY_PATH=.:.. &&
         pip install -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt &&
-        ${TESTS_ENV} py.test ${PYTESTS_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}
+        ${TESTS_ENV} py.test ${PYTESTS_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/thevoid
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS test_server)
