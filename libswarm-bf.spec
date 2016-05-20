@@ -31,7 +31,7 @@ BuildRequires: curl-devel
 BuildRequires: cmake
 BuildRequires: uriparser-devel
 BuildRequires: libidn-devel
-BuildRequires: libblackhole-devel = 0.2.4-1
+BuildRequires: libblackhole-devel = 0.2.4
 BuildRequires: python-virtualenv
 
 %description
