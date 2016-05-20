@@ -50,7 +50,7 @@ Summary: Swarm - Development files
 Group: Development/Libraries
 Requires: libswarm%{__soname} = %{version}-%{release}
 Requires: boost%{boost_ver}-devel
-Requires: libblackhole-devel = 0.2.4-1
+Requires: libblackhole-devel = 0.2.4
 Provides: libswarm-devel = %{version}-%{release}
 Obsoletes: libswarm-devel < 3
 
@@ -73,7 +73,7 @@ Group: Development/Libraries
 Requires: libthevoid%{__soname} = %{version}-%{release}
 Requires: libswarm%{__soname}-devel = %{version}-%{release}
 Requires: boost%{boost_ver}-devel
-Requires: libblackhole-devel = 0.2.4-1
+Requires: libblackhole-devel = 0.2.4
 Provides: libthevoid-devel = %{version}-%{release}
 Obsoletes: libthevoid-devel < 3
 
