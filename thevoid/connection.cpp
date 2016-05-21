@@ -149,7 +149,7 @@ std::string headers_to_string(
 	bool first_header = true;
 	for (const auto& log_header: log_headers) {
 		if (headers.has(log_header)) {
-			const auto& header_value = *headers.get(log_header);
+			std::string header_value = *headers.get(log_header);
 
 			if (!first_header) {
 				output++ = ','; output++ = ' ';

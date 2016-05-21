@@ -201,10 +201,9 @@ std::vector<boost::asio::const_buffer> http_response::to_buffers() const {
 	buffers.push_back(boost::asio::buffer(m_data->code_str));
 	buffers.push_back(to_buffer(" "));
 
-	if (auto reason_phrase = m_data->reason) {
-		buffers.push_back(boost::asio::buffer(*reason_phrase));
-	}
-	else {
+	if (m_data->reason) {
+		buffers.push_back(boost::asio::buffer(m_data->reason.get()));
+	} else {
 		const char* reason = default_reason(code());
 		size_t reason_len = strlen(reason);
 		buffers.push_back(boost::asio::buffer(reason, reason_len));
