@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.5.0
+Version:	3.5.1
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -129,6 +129,12 @@ rm -rf %{buildroot}
 %{_libdir}/libthevoid.so
 
 %changelog
+* Sun May 29 2016 Evgeniy Polyakov <zbr@ioremap.net> - 3.5.1
+- Do not hold a reference to temporal object assigned to boost::optional values, data must be copied.
+- tests: move thevoid tests to tests/thevoid subdirectory
+- tests: restrict pytest tests collection to local swarm/thevoid tests
+- spec: fixed dependency
+
 * Mon Jan 25 2016 Danil Osherov <shindo@yandex-team.ru> - 3.5.0
 - urlfetcher: added a flag to urlfetcher::request allowing to specify whether
 - * to accept self-signed certificates.

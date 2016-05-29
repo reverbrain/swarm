@@ -1,3 +1,12 @@
+swarm (3.5.1) unstable; urgency=low
+
+  * Do not hold a reference to temporal object assigned to boost::optional values, data must be copied.
+  * tests: move thevoid tests to tests/thevoid subdirectory
+  * tests: restrict pytest tests collection to local swarm/thevoid tests
+  * spec: fixed dependency
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Sun, 29 May 2016 18:57:28 +0400
+
 swarm (3.5.0) unstable; urgency=low
 
   * urlfetcher: added a flag to urlfetcher::request allowing to specify whether
