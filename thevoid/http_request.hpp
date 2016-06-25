@@ -36,6 +36,9 @@ public:
 
 	// Checks by Connection header and HTTP version if connection is Keep-Alive
 	bool is_keep_alive() const;
+
+	// If Transfer-Encoding header equals to 'chunked', implement chunked parser
+	bool is_chunked_transfer_encoding() const;
 };
 
 } // namespace thevoid

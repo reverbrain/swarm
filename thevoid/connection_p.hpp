@@ -132,14 +132,18 @@ private:
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
 			struct timespec start_time);
+	void process_headers();
 	void process_data();
+	void process_common_data();
+	void process_chunked_data();
+	void finish_data_state_machine();
 
 	void async_read();
 
 	template <size_t N>
-	inline void add_state_attribute(std::ostringstream &out, bool &first, state st, const char (&name) [N])
+	inline void add_state_attribute(std::ostringstream &out, bool &first, uint32_t mst, state st, const char (&name) [N])
 	{
-		if (m_state & st) {
+		if (mst & st) {
 			if (first)
 				first = false;
 			else
@@ -149,17 +153,17 @@ private:
 		}
 	}
 
-	inline std::string make_state_attribute()
+	inline std::string make_state_attribute(uint32_t mst)
 	{
 		std::ostringstream out;
 		bool first = true;
 
-		add_state_attribute(out, first, processing_request, "processing_request");
-		add_state_attribute(out, first, read_headers, "read_headers");
-		add_state_attribute(out, first, read_data, "read_data");
-		add_state_attribute(out, first, request_processed, "request_processed");
-		add_state_attribute(out, first, waiting_for_first_data, "waiting_for_first_data");
-		add_state_attribute(out, first, graceful_close, "graceful_close");
+		add_state_attribute(out, first, mst, processing_request, "processing_request");
+		add_state_attribute(out, first, mst, read_headers, "read_headers");
+		add_state_attribute(out, first, mst, read_data, "read_data");
+		add_state_attribute(out, first, mst, request_processed, "request_processed");
+		add_state_attribute(out, first, mst, waiting_for_first_data, "waiting_for_first_data");
+		add_state_attribute(out, first, mst, graceful_close, "graceful_close");
 
 		return out.str();
 	}
@@ -211,6 +215,15 @@ private:
 	bool m_sending;
 	//! If current connection is keep-alive
 	bool m_keep_alive;
+
+	//! If current connections resembles chunked transfer encoding
+	//! Content-Length can not be truested in this case and content body has to be parsed
+	bool m_chunked_transfer_encoding;
+	//! Size of the current chunk if transfer encoding is chunked
+	size_t m_chunk_size;
+	//! Current state of the body parser, can either be @read_headers, @read_data or @request_processed
+	uint32_t m_chunk_state;
+
 	//! If async_read is already called
 	bool m_at_read;
 

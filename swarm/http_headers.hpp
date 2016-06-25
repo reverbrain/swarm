@@ -39,6 +39,7 @@ typedef std::pair<std::string, std::string> headers_entry;
 class http_headers
 {
 public:
+	static const std::string CHUNKED_TRANSFER_ENCODING;
 	static const std::string CONNECTION_KEEP_ALIVE;
 	static const std::string CONNECTION_CLOSE;
 
@@ -299,6 +300,8 @@ public:
 	 * \sa is_keep_alive
 	 */
 	boost::optional<bool> is_keep_alive() const;
+
+	boost::optional<bool> is_chunked_transfer_encoding() const;
 
 private:
 	std::unique_ptr<http_headers_private> p;

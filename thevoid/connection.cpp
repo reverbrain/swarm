@@ -251,6 +251,9 @@ connection<T>::connection(base_server *server, boost::asio::io_service &service,
 	m_state(read_headers | waiting_for_first_data),
 	m_sending(false),
 	m_keep_alive(false),
+	m_chunked_transfer_encoding(false),
+	m_chunk_size(0),
+	m_chunk_state(read_headers | waiting_for_first_data),
 	m_at_read(false),
 	m_pause_receive(false),
 	m_receive_time{0, 0},
@@ -341,7 +344,7 @@ void connection<T>::send_headers(http_response &&rep,
 	CONNECTION_DEBUG("handler sends headers to client")
 		("keep_alive", m_keep_alive)
 		("status", rep.code())
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	auto response_buffers = rep.to_buffers();
 	response_buffers.push_back(content);
@@ -360,7 +363,7 @@ void connection<T>::send_data(const boost::asio::const_buffer &buffer,
 {
 	CONNECTION_DEBUG("handler sends data to client")
 		("size", boost::asio::buffer_size(buffer))
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	buffer_info info(
 		std::move(std::vector<boost::asio::const_buffer>(1, buffer)),
@@ -402,7 +405,7 @@ void connection<T>::close(const boost::system::error_code &err)
 
 	CONNECTION_DEBUG("handler asks for closing connection")
 		("error", err.message())
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	// Invoke close_impl some time later, so we won't need any mutexes to guard the logic
 
@@ -439,7 +442,7 @@ template <typename T>
 void connection<T>::want_more_impl()
 {
 	CONNECTION_DEBUG("handler asks for more data from client")
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	// when connection is in processing_request state it means
 	// that all data is received and all handler's callbacks are called,
@@ -450,10 +453,15 @@ void connection<T>::want_more_impl()
 
 	m_pause_receive = false;
 
-	if (m_content_length > 0 && m_unprocessed_begin == m_unprocessed_end) {
-		async_read();
-	}
-	else {
+	if (m_unprocessed_begin == m_unprocessed_end) {
+		if (m_content_length > 0) {
+			async_read();
+		} else if (m_chunked_transfer_encoding && ((m_chunk_size > 0) || (m_chunk_state != request_processed))) {
+			async_read();
+		} else {
+			process_data();
+		}
+	} else {
 		process_data();
 	}
 }
@@ -551,7 +559,7 @@ void connection<T>::write_finished(const boost::system::error_code &err, size_t 
 		if (bytes_written) {
 			CONNECTION_ERROR("wrote extra bytes")
 				("size", bytes_written)
-				("state", make_state_attribute());
+				("state", make_state_attribute(m_state));
 		}
 	}
 
@@ -619,7 +627,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 		("error", err.message())
 		("keep_alive", m_keep_alive)
 		("unreceived_size", m_content_length)
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	if (m_handler) {
 		--m_server->m_data->active_connections_counter;
@@ -659,7 +667,7 @@ void connection<T>::close_impl(const boost::system::error_code &err)
 			// NOTE: It's assumed that request headers were received and it only remains
 			// to receive request body
 			CONNECTION_DEBUG("gracefully close the connection")
-				("state", make_state_attribute())
+				("state", make_state_attribute(m_state))
 				("remaining_size", m_content_length);
 
 			// Shutdown the send side of the socket as response is assumed to be
@@ -763,8 +771,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 
 	if (m_state & waiting_for_first_data) {
 		m_starttransfer_time = read_time;
-	}
-	else {
+	} else {
 		m_receive_time += read_time;
 	}
 
@@ -780,7 +787,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 	CONNECTION_LOG(error ? SWARM_LOG_ERROR : SWARM_LOG_DEBUG, "received new data")
 		("error", err.message())
 		("real_error", error)
-		("state", make_state_attribute())
+		("state", make_state_attribute(m_state))
 		("size", bytes_transferred)
 		("time", timespec_to_usec(read_time));
 
@@ -825,184 +832,141 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 }
 
 template <typename T>
-void connection<T>::process_data()
+void connection<T>::process_chunked_data()
 {
-	if (m_pause_receive) {
+	if (!m_chunked_transfer_encoding)
 		return;
-	}
 
-	const char* begin = m_unprocessed_begin;
+	char* begin = (char *)m_unprocessed_begin;
 	const char* end = m_unprocessed_end;
 
-	CONNECTION_DEBUG("process data")
-		("size", end - begin)
-		("state", make_state_attribute());
+	const char *orig_begin = begin;
 
-	if (m_state & read_headers) {
-		if (m_state & waiting_for_first_data) {
-			m_state &= ~waiting_for_first_data;
-			gettimeofday(&m_access_start, NULL);
-		}
+	size_t access_received = m_access_received;
 
-		boost::tribool result;
-		const char *new_begin = NULL;
-		boost::tie(result, new_begin) = m_request_parser.parse(m_request, begin, end);
+	while (begin != end && m_chunk_state != request_processed) {
+		bool more_data = true;
 
-		CONNECTION_DEBUG("processed headers")
-			("result", result ? "true" : (!result ? "false" : "unknown_state"))
-			("raw_data", std::string(begin, new_begin));
+		if (m_chunk_state & read_headers) {
+			m_chunk_size = 0;
 
-		m_access_received += (new_begin - begin);
-		m_unprocessed_begin = new_begin;
+			// we have to parse current data and find out hex representation of the next chunk size
+			char *cur, *prev;
+			cur = prev = begin;
+			bool found = false;
+			char *hex_begin = NULL;
 
-		if (!result) {
-			send_error(http_response::bad_request);
-			return;
-		} else if (result) {
-			m_access_method = m_request.method();
-			m_access_url = m_request.url().original();
-			uint64_t request_id = 0;
-			bool trace_bit = false;
+			while (cur != end) {
+				CONNECTION_DEBUG("chunk_parser: begin: 0x%x, cur: 0x%02x, prev: 0x%02x", begin - (char *)nullptr, *cur, *prev);
 
-			bool failed_to_parse_request_id = true;
-			const std::string &request_header = m_server->m_data->request_header;
-			int request_header_err = 0;
+				if (!(m_chunk_state & waiting_for_first_data)) {
+					// @waiting_for_first_data means that the first CRLF has been already read
+					// if there is no such flag, this is actually not the first chunk and we have to read CRLF before reading length
 
-			if (!request_header.empty()) {
-				if (auto request_ptr = m_request.headers().get(request_header)) {
-					std::string tmp = request_ptr->substr(0, 16);
-					errno = 0;
-					request_id = strtoull(tmp.c_str(), NULL, 16);
-					request_header_err = -errno;
-					if (request_header_err != 0) {
-						request_id = 0;
-					} else {
-						failed_to_parse_request_id = false;
+					if (*cur == '\r') {
+						prev = cur;
+						++cur;
+						continue;
 					}
-				}
-			}
 
-			if (failed_to_parse_request_id) {
-				unsigned char *buffer = reinterpret_cast<unsigned char *>(&request_id);
-				for (size_t i = 0; i < sizeof(request_id) / sizeof(unsigned char); ++i) {
-					buffer[i] = std::rand();
-				}
-			}
-
-			const std::string &trace_header = m_server->m_data->trace_header;
-			if (!trace_header.empty()) {
-				if (auto trace_bit_ptr = m_request.headers().get(trace_header)) {
-					try {
-						trace_bit = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
-					} catch (std::exception &exc) {
-						CONNECTION_ERROR("failed to parse trace header, must be either 0 or 1")
-							("url", m_request.url().original())
-							("header_value", *trace_bit_ptr)
-							("header_name", trace_header)
-							("error", exc.what());
+					if (*cur == '\n' && *prev == '\r') {
+						++cur;
+						m_chunk_state |= waiting_for_first_data;
+						continue;
 					}
-				}
-			}
 
-			m_attributes = blackhole::log::attributes_t({
-				swarm::keyword::request_id() = request_id,
-				blackhole::keyword::tracebit() = trace_bit
-			});
-			m_logger = swarm::logger(m_base_logger, m_attributes);
+					// this is actually a bug, chunked encoding must include CRLF before length field
+					CONNECTION_ERROR("chunked encoding must include CRLF before length field")
+						("chunk_state", make_state_attribute(m_chunk_state));
 
-			blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
-
-			if (request_header_err != 0) {
-				auto request_ptr = m_request.headers().get(request_header);
-
-				CONNECTION_ERROR("failed to parse request header")
-					("url", m_request.url().original())
-					("header_value", *request_ptr)
-					("header_name", request_header)
-					("error", request_header_err);
-			}
-
-			m_request.set_request_id(request_id);
-			m_request.set_trace_bit(trace_bit);
-			m_request.set_local_endpoint(m_access_local);
-			m_request.set_remote_endpoint(m_access_remote);
-
-			if (!m_request.url().is_valid()) {
-				CONNECTION_ERROR("failed to parse invalid url")
-					("url", m_access_url);
-
-				// terminate connection on invalid url
-				send_error(http_response::bad_request);
-				return;
-			} else {
-				CONNECTION_INFO(
-					"received new request: method: %s, url: %s, local: %s, remote: %s, headers: %s",
-					m_access_method.empty() ? "-" : m_access_method,
-					m_access_url.empty() ? "-" : m_access_url,
-					m_access_local,
-					m_access_remote,
-					headers_to_string(m_request.headers(), m_server->m_data->log_request_headers)
-				);
-
-				auto factory = m_server->factory(m_request);
-
-				if (auto length = m_request.headers().content_length())
-					m_content_length = *length;
-				else
-					m_content_length = 0;
-				m_keep_alive = m_request.is_keep_alive();
-
-				if (factory) {
-					++m_server->m_data->active_connections_counter;
-					m_handler = factory->create();
-					m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-					SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
-				} else {
-					CONNECTION_ERROR("failed to find handler")
-						("method", m_access_method)
-						("url", m_access_url);
-
-					// terminate connection if appropriate handler is not found
-					send_error(http_response::not_found);
+					send_error(http_response::bad_request);
 					return;
 				}
+
+				if (isxdigit(*cur)) {
+					if (!hex_begin)
+						hex_begin = cur;
+
+					prev = cur;
+					++cur;
+					continue;
+				}
+
+				if (*cur == '\n' && *prev == '\r') {
+					++cur;
+					found = true;
+					break;
+				}
+
+				prev = cur;
+				++cur;
 			}
 
-			m_state &= ~read_headers;
-			m_state |=  read_data;
+			if (!found) {
+				async_read();
+				return;
+			}
 
-			process_data();
-			// async_read is called by processed_data
-			return;
-		} else {
-			// need more data for request processing
-			async_read();
+			m_chunk_size = strtoul(hex_begin, NULL, 16);
+
+			if (m_chunk_size == 0) {
+				m_chunk_state = request_processed;
+				more_data = false;
+
+				if (end - cur < 2) {
+					async_read();
+					return;
+				}
+
+				if (*cur != '\r') {
+					CONNECTION_ERROR("chunked encoding must be finished with CRLF, but CR has not been found");
+					send_error(http_response::bad_request);
+					return;
+				}
+				++cur;
+				if (*cur != '\n') {
+					CONNECTION_ERROR("chunked encoding must be finished with CRLF, but LF has not been found");
+					send_error(http_response::bad_request);
+					return;
+				}
+				++cur;
+			} else {
+				m_chunk_state = read_data;
+				more_data = true;
+			}
+
+			CONNECTION_DEBUG("found chunk")
+				("chunk_size", m_chunk_size)
+				("chunk_state", make_state_attribute(m_chunk_state))
+				("more_data", more_data);
+
+			begin = cur;
 		}
-	} else if (m_state & read_data) {
-		size_t data_from_body = std::min<size_t>(m_content_length, end - begin);
-		size_t processed_size = data_from_body;
 
+		size_t data_from_body = std::min<size_t>(m_chunk_size, end - begin);
+
+		size_t handled = data_from_body;
 		if (data_from_body) {
 			if (auto handler = try_handler()) {
-				SAFE_CALL(processed_size = handler->on_data(boost::asio::buffer(begin, data_from_body)),
-					"connection::process_data -> on_data", SAFE_SEND_ERROR);
+				SAFE_CALL(handled = handler->on_data(boost::asio::buffer(begin, data_from_body), more_data),
+					"connection::process_chunked_data -> on_data", SAFE_SEND_ERROR);
 			}
 		}
 
-		if (processed_size > data_from_body) {
-			processed_size = data_from_body;
+		m_chunk_size -= handled;
+		if (m_chunk_size == 0 && m_chunk_state != request_processed) {
+			m_chunk_state = read_headers;
 		}
 
-		m_content_length -= processed_size;
-		m_access_received += processed_size;
-		m_unprocessed_begin = begin + processed_size;
+		begin += handled;
+		m_unprocessed_begin = begin;
+		m_access_received = access_received + begin - orig_begin;
 
-		CONNECTION_DEBUG("processed body")
-			("size", processed_size)
-			("total_size", data_from_body)
-			("need_size", m_content_length)
-			("unprocesed_size", m_unprocessed_end - m_unprocessed_begin)
-			("state", make_state_attribute());
+		CONNECTION_DEBUG("processed chunked request")
+			("data_from_body", data_from_body)
+			("chunk_size", m_chunk_size)
+			("chunk_state", make_state_attribute(m_chunk_state))
+			("unprocesed_size", end - begin);
 
 		if (m_pause_receive) {
 			// Handler don't want to receive more data (and callbacks),
@@ -1010,34 +974,268 @@ void connection<T>::process_data()
 			return;
 		}
 
-		if (data_from_body != processed_size) {
+		if (handled != data_from_body) {
 			// Handler can't process all data, wait until want_more method is called
 			return;
-		} else if (m_content_length > 0) {
-			async_read();
+		} else if (m_chunk_state == request_processed) {
+			break;
+		} else if (end > begin) {
+			// we have data in the buffer, try to find next chunk header
+			continue;
 		} else {
-			m_state &= ~read_data;
+			async_read();
+			return;
+		}
+	}
 
-			if (auto handler = try_handler()) {
-				SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::process_data -> on_close", SAFE_SEND_ERROR);
+	finish_data_state_machine();
+}
+
+template <typename T>
+void connection<T>::process_common_data()
+{
+	const char* begin = m_unprocessed_begin;
+	const char* end = m_unprocessed_end;
+
+	size_t data_from_body = std::min<size_t>(m_content_length, end - begin);
+	size_t processed_size = data_from_body;
+	bool more_data = true;
+
+	if (m_content_length <= data_from_body)
+		more_data = false;
+
+	if (data_from_body) {
+		if (auto handler = try_handler()) {
+			SAFE_CALL(processed_size = handler->on_data(boost::asio::buffer(begin, data_from_body), more_data),
+				"connection::process_common_data -> on_data", SAFE_SEND_ERROR);
+		}
+	}
+
+	m_content_length -= processed_size;
+	m_access_received += processed_size;
+	m_unprocessed_begin = begin + processed_size;
+
+	CONNECTION_DEBUG("processed body")
+		("processed_size", processed_size)
+		("data_from_body", data_from_body)
+		("rest_of_content_length", m_content_length)
+		("unprocesed_size", m_unprocessed_end - m_unprocessed_begin)
+		("state", make_state_attribute(m_state));
+
+	if (m_pause_receive) {
+		// Handler don't want to receive more data (and callbacks),
+		// wait until want_more method is called
+		return;
+	}
+
+	if (processed_size != data_from_body) {
+		// Handler can't process all data, wait until want_more method is called
+		return;
+	} else if (m_content_length > 0) {
+		async_read();
+	} else {
+		finish_data_state_machine();
+	}
+}
+
+template <typename T>
+void connection<T>::finish_data_state_machine()
+{
+	m_state &= ~read_data;
+
+	if (auto handler = try_handler()) {
+		SAFE_CALL(handler->on_close(boost::system::error_code()), "connection::finish_data_state_machine -> on_close", SAFE_SEND_ERROR);
+	}
+
+	if (m_handler) {
+		--m_server->m_data->active_connections_counter;
+		m_handler.reset();
+	}
+
+	if (m_state & graceful_close) {
+		// Request is fully received during graceful close,
+		// this is the end of graceful close
+		print_access_log();
+		boost::system::error_code ignored_ec;
+		m_socket.shutdown(boost::asio::socket_base::shutdown_receive, ignored_ec);
+		m_socket.close(ignored_ec);
+		return;
+	} else if (m_state & request_processed) {
+		process_next();
+	}
+}
+
+template <typename T>
+void connection<T>::process_headers()
+{
+	const char* begin = m_unprocessed_begin;
+	const char* end = m_unprocessed_end;
+
+	if (m_state & waiting_for_first_data) {
+		m_state &= ~waiting_for_first_data;
+		gettimeofday(&m_access_start, NULL);
+	}
+
+	boost::tribool result;
+	const char *new_begin = NULL;
+	boost::tie(result, new_begin) = m_request_parser.parse(m_request, begin, end);
+
+	CONNECTION_DEBUG("processed headers")
+		("result", result ? "true" : (!result ? "false" : "unknown_state"))
+		("raw_data", std::string(begin, new_begin));
+
+	m_access_received += (new_begin - begin);
+	m_unprocessed_begin = new_begin;
+
+	if (!result) {
+		send_error(http_response::bad_request);
+		return;
+	} else if (result) {
+		m_access_method = m_request.method();
+		m_access_url = m_request.url().original();
+		uint64_t request_id = 0;
+		bool trace_bit = false;
+
+		bool failed_to_parse_request_id = true;
+		const std::string &request_header = m_server->m_data->request_header;
+		int request_header_err = 0;
+
+		if (!request_header.empty()) {
+			if (auto request_ptr = m_request.headers().get(request_header)) {
+				std::string tmp = request_ptr->substr(0, 16);
+				errno = 0;
+				request_id = strtoull(tmp.c_str(), NULL, 16);
+				request_header_err = -errno;
+				if (request_header_err != 0) {
+					request_id = 0;
+				} else {
+					failed_to_parse_request_id = false;
+				}
+			}
+		}
+
+		if (failed_to_parse_request_id) {
+			unsigned char *buffer = reinterpret_cast<unsigned char *>(&request_id);
+			for (size_t i = 0; i < sizeof(request_id) / sizeof(unsigned char); ++i) {
+				buffer[i] = std::rand();
+			}
+		}
+
+		const std::string &trace_header = m_server->m_data->trace_header;
+		if (!trace_header.empty()) {
+			if (auto trace_bit_ptr = m_request.headers().get(trace_header)) {
+				try {
+					trace_bit = boost::lexical_cast<uint32_t>(*trace_bit_ptr) > 0;
+				} catch (std::exception &exc) {
+					CONNECTION_ERROR("failed to parse trace header, must be either 0 or 1")
+						("url", m_request.url().original())
+						("header_value", *trace_bit_ptr)
+						("header_name", trace_header)
+						("error", exc.what());
+				}
+			}
+		}
+
+		m_attributes = blackhole::log::attributes_t({
+			swarm::keyword::request_id() = request_id,
+			blackhole::keyword::tracebit() = trace_bit
+		});
+		m_logger = swarm::logger(m_base_logger, m_attributes);
+
+		blackhole::scoped_attributes_t logger_guard(m_logger, blackhole::log::attributes_t(m_attributes));
+
+		if (request_header_err != 0) {
+			auto request_ptr = m_request.headers().get(request_header);
+
+			CONNECTION_ERROR("failed to parse request header")
+				("url", m_request.url().original())
+				("header_value", *request_ptr)
+				("header_name", request_header)
+				("error", request_header_err);
+		}
+
+		m_request.set_request_id(request_id);
+		m_request.set_trace_bit(trace_bit);
+		m_request.set_local_endpoint(m_access_local);
+		m_request.set_remote_endpoint(m_access_remote);
+
+		if (!m_request.url().is_valid()) {
+			CONNECTION_ERROR("failed to parse invalid url")
+				("url", m_access_url);
+
+			// terminate connection on invalid url
+			send_error(http_response::bad_request);
+			return;
+		} else {
+			CONNECTION_INFO(
+				"received new request: method: %s, url: %s, local: %s, remote: %s, headers: %s",
+				m_access_method.empty() ? "-" : m_access_method,
+				m_access_url.empty() ? "-" : m_access_url,
+				m_access_local,
+				m_access_remote,
+				headers_to_string(m_request.headers(), m_server->m_data->log_request_headers)
+			);
+
+			auto factory = m_server->factory(m_request);
+
+			if (auto length = m_request.headers().content_length())
+				m_content_length = *length;
+			else
+				m_content_length = 0;
+			m_keep_alive = m_request.is_keep_alive();
+			m_chunked_transfer_encoding = m_request.is_chunked_transfer_encoding();
+			if (m_chunked_transfer_encoding) {
+				m_content_length = 0;
+				m_chunk_state = read_headers | waiting_for_first_data;
 			}
 
-			if (m_handler) {
-				--m_server->m_data->active_connections_counter;
-				m_handler.reset();
-			}
+			if (factory) {
+				++m_server->m_data->active_connections_counter;
+				m_handler = factory->create();
+				m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
+				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
+			} else {
+				CONNECTION_ERROR("failed to find handler")
+					("method", m_access_method)
+					("url", m_access_url);
 
-			if (m_state & graceful_close) {
-				// Request is fully received during graceful close,
-				// this is the end of graceful close
-				print_access_log();
-				boost::system::error_code ignored_ec;
-				m_socket.shutdown(boost::asio::socket_base::shutdown_receive, ignored_ec);
-				m_socket.close(ignored_ec);
+				// terminate connection if appropriate handler is not found
+				send_error(http_response::not_found);
 				return;
-			} else if (m_state & request_processed) {
-				process_next();
 			}
+		}
+
+		m_state &= ~read_headers;
+		m_state |=  read_data;
+
+		process_data();
+		// async_read is called by processed_data
+		return;
+	} else {
+		// need more data for request processing
+		async_read();
+	}
+}
+
+template <typename T>
+void connection<T>::process_data()
+{
+	if (m_pause_receive) {
+		return;
+	}
+
+	CONNECTION_DEBUG("process data")
+		("size", m_unprocessed_end - m_unprocessed_begin)
+		("state", make_state_attribute(m_state))
+		("chunk_state", make_state_attribute(m_chunk_state));
+
+	if (m_state & read_headers) {
+		process_headers();
+	} else if (m_state & read_data) {
+		if (m_chunked_transfer_encoding) {
+			process_chunked_data();
+		} else {
+			process_common_data();
 		}
 	}
 }
@@ -1055,7 +1253,7 @@ void connection<T>::async_read()
 	m_unprocessed_end = NULL;
 
 	CONNECTION_DEBUG("request read from client")
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	auto receive_start = gettime_now();
 
@@ -1072,7 +1270,7 @@ void connection<T>::send_error(http_response::status_type type)
 {
 	CONNECTION_DEBUG("handler sends error to client")
 		("status", type)
-		("state", make_state_attribute());
+		("state", make_state_attribute(m_state));
 
 	http_response response;
 	response.set_code(type);

@@ -239,7 +239,7 @@ public:
 	 *
 	 * \sa reply_stream::want_more
 	 */
-	virtual size_t on_data(const boost::asio::const_buffer &buffer) = 0;
+	virtual size_t on_data(const boost::asio::const_buffer &buffer, bool more_data) = 0;
 	/*!
 	 * \brief This method is called as all data from the client is received.
 	 *
@@ -516,8 +516,10 @@ private:
 	/*!
 	 * \internal
 	 */
-	size_t on_data(const boost::asio::const_buffer &buffer)
+	size_t on_data(const boost::asio::const_buffer &buffer, bool more_data)
 	{
+		(void) more_data;
+
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
 		m_data.insert(m_data.end(), begin, begin + size);
@@ -570,9 +572,10 @@ public:
 	};
 
 	buffered_request_stream() :
-		m_chunk_size(10 * 1024), m_client_asked_chunk(false),
-		m_first_chunk(true), m_last_chunk(false),
-		m_unprocessed_size(0)
+		m_chunk_size(10 * 1024),
+		m_real_chunk_size(0),
+		m_client_asked_chunk(false),
+		m_first_chunk(true), m_last_chunk(false)
 	{
 	}
 
@@ -603,7 +606,7 @@ protected:
 	}
 
 	/*!
-	 * \brief Sets size of received chunks.
+	 * \brief Sets size of received chunks. Only valid in @on_request() call, if called in @on_chunk() callbacks, new chunk size will be ignored.
 	 *
 	 * Default size is 10 kilobytes.
 	 *
@@ -621,7 +624,7 @@ protected:
 	 */
 	size_t chunk_size() const
 	{
-		return m_chunk_size;
+		return m_real_chunk_size;
 	}
 
 	/*!
@@ -648,18 +651,18 @@ private:
 	 */
 	void on_headers(http_request &&req)
 	{
-		m_unprocessed_size = req.headers().content_length().get_value_or(0);
 		m_request = std::move(req);
 
 		on_request(m_request);
 
 		m_data.reserve(m_chunk_size);
+		m_real_chunk_size = m_chunk_size;
 	}
 
 	/*!
 	 * \internal
 	 */
-	size_t on_data(const boost::asio::const_buffer &buffer)
+	size_t on_data(const boost::asio::const_buffer &buffer, bool more_data)
 	{
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
@@ -669,8 +672,7 @@ private:
 		// Loop invariant is m_data is not ready to be processed at the beginning of each iteration.
 		while (size) {
 			// The size that we need to pass to the client
-			const auto real_chunk_size = std::min(m_unprocessed_size, m_chunk_size);
-			const auto delta = std::min(size, real_chunk_size - m_data.size());
+			const auto delta = std::min(size, m_real_chunk_size - m_data.size());
 
 			if (delta) {
 				buffered_size += delta;
@@ -679,15 +681,14 @@ private:
 				size -= delta;
 			}
 
-			// We will call on_chunk if both conditions are true
+			// We will call @on_chunk() if both conditions are true
 			// 1. Client asked next chunk
 			// 2. The chunk is ready to be processed
 			// The second condition means either chunk is full or chunk contains last data
-			if (m_data.size() == real_chunk_size) {
+			if (m_data.size() == m_real_chunk_size || !more_data) {
 				if (m_client_asked_chunk) {
-					process_chunk_internal();
-				}
-				else {
+					process_chunk_internal(!more_data);
+				} else {
 					// chunk is ready but client is not
 					if (size == 0) {
 						this->reply()->pause_receive();
@@ -710,8 +711,8 @@ private:
 			return;
 		}
 
-		if (m_unprocessed_size) {
-			process_chunk_internal();
+		if (m_data.size()) {
+			process_chunk_internal(true);
 		}
 	}
 
@@ -721,7 +722,7 @@ private:
 	 * process_chunk_internal() will be called only if both chunk and client
 	 * are ready for processing (m_client_asked_chunk is true).
 	 */
-	void process_chunk_internal()
+	void process_chunk_internal(bool last)
 	{
 		int flags = 0;
 		if (m_first_chunk)
@@ -729,12 +730,11 @@ private:
 		m_first_chunk = false;
 
 		/*
-		 * last_chunk logic must rely on actual unprocessed size,
+		 * last_chunk logic must rely on actual unprocessed size (it is transferred from the higher levels in @last parameter),
 		 * not on on_close() method call because on_close() method might be called after
 		 * "last chunk" processing (if content length is multiple of chunk size).
 		 */
-		m_unprocessed_size -= m_data.size();
-		if (!m_unprocessed_size) {
+		if (last) {
 			m_last_chunk = true;
 			flags |= last_chunk;
 		}
@@ -754,11 +754,10 @@ private:
 
 	http_request m_request;
 	std::vector<char> m_data;
-	size_t m_chunk_size;
+	size_t m_chunk_size, m_real_chunk_size;
 	std::atomic<bool> m_client_asked_chunk;
 	bool m_first_chunk;
 	bool m_last_chunk;
-	size_t m_unprocessed_size;
 };
 
 }} // namespace ioremap::thevoid

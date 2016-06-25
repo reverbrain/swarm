@@ -128,5 +128,13 @@ bool http_request::is_keep_alive() const
 	return http_major_version() == 1 && http_minor_version() >= 1;
 }
 
+bool http_request::is_chunked_transfer_encoding() const {
+	if (auto chunked = headers().is_chunked_transfer_encoding()) {
+		return *chunked;
+	}
+
+	return false;
+}
+
 } // namespace thevoid
 } // namespace ioremap

@@ -41,6 +41,10 @@ public:
 			options::exact_match("/echo"),
 			options::methods("GET")
 		);
+		on<on_chunked>(
+			options::exact_match("/chunked"),
+			options::methods("POST")
+		);
 		on<on_ping>(
 			options::exact_match("/header-check"),
 			options::methods("GET"),
@@ -103,6 +107,39 @@ public:
 
 			this->send_reply(std::move(reply), std::string(data, size));
 		}
+	};
+
+	struct on_chunked : public thevoid::buffered_request_stream<http_server> {
+		virtual void on_request(const thevoid::http_request &req) {
+			(void) req;
+
+			this->try_next_chunk();
+		}
+
+		virtual void on_chunk(const boost::asio::const_buffer &buffer, unsigned int flags) {
+			auto data = boost::asio::buffer_cast<const char*>(buffer);
+			size_t size = boost::asio::buffer_size(buffer);
+
+			m_data.insert(m_data.end(), data, data + size);
+			BH_LOG(this->server()->logger(), SWARM_LOG_DEBUG, "received chunk: size: %ld, total_size: %ld, flags: 0x%x", size, m_data.size(), flags);
+
+			if (flags & thevoid::buffered_request_stream<http_server>::last_chunk) {
+				thevoid::http_response reply;
+				reply.set_code(thevoid::http_response::ok);
+				reply.headers().set_content_length(m_data.size());
+				reply.headers().set("X-Total-Size", std::to_string(m_data.size()));
+
+				this->send_reply(std::move(reply), std::move(m_data));
+			} else {
+				this->try_next_chunk();
+			}
+		}
+
+		virtual void on_error(const boost::system::error_code &err) {
+			BH_LOG(this->server()->logger(), SWARM_LOG_ERROR, "connection error: %s [%d]", err.message(), err.value());
+		}
+
+		std::vector<char> m_data;
 	};
 };
 
