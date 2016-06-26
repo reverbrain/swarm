@@ -681,13 +681,20 @@ private:
 				size -= delta;
 			}
 
+			bool last = !more_data;
+			if (size != 0)
+				last = false;
+
+			BH_LOG(this->logger(), SWARM_LOG_DEBUG, "delta: %ld, buffered_size: %ld, mdata_size: %ld, size: %ld, last: %d",
+					delta, buffered_size, m_data.size(), size, last);
+
 			// We will call @on_chunk() if both conditions are true
 			// 1. Client asked next chunk
 			// 2. The chunk is ready to be processed
 			// The second condition means either chunk is full or chunk contains last data
-			if (m_data.size() == m_real_chunk_size || !more_data) {
+			if (m_data.size() == m_real_chunk_size || last) {
 				if (m_client_asked_chunk) {
-					process_chunk_internal(!more_data);
+					process_chunk_internal(last);
 				} else {
 					// chunk is ready but client is not
 					if (size == 0) {
