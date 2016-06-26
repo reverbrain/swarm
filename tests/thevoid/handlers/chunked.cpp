@@ -1,5 +1,5 @@
 /*
- * Copyright 2015+ Danil Osherov <shindo@yandex-team.ru>
+ * Copyright 2016+ Evgeniy Polyakov <zbr@ioremap.net>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
