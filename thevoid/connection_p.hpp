@@ -131,6 +131,7 @@ private:
 
 	//! Handle completion of a read operation.
 	void handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+			size_t offset,
 			struct timespec start_time);
 	void process_headers();
 	void process_data();
@@ -139,6 +140,7 @@ private:
 	void finish_data_state_machine();
 
 	void async_read();
+	void async_read(size_t offset);
 
 	template <size_t N>
 	inline void add_state_attribute(std::ostringstream &out, bool &first, uint32_t mst, state st, const char (&name) [N])

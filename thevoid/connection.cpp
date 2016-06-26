@@ -764,7 +764,7 @@ void connection<T>::print_access_log()
 }
 
 template <typename T>
-void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred,
+void connection<T>::handle_read(const boost::system::error_code &err, std::size_t bytes_transferred, size_t offset,
 		struct timespec start_time)
 {
 	auto read_time = gettime_now() - start_time;
@@ -788,6 +788,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 		("error", err.message())
 		("real_error", error)
 		("state", make_state_attribute(m_state))
+		("chunk_state", make_state_attribute(m_chunk_state))
 		("size", bytes_transferred)
 		("time", timespec_to_usec(read_time));
 
@@ -822,7 +823,7 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 	}
 
 	m_unprocessed_begin = m_buffer.data();
-	m_unprocessed_end = m_buffer.data() + bytes_transferred;
+	m_unprocessed_end = m_buffer.data() + bytes_transferred + offset;
 	process_data();
 
 	// If an error occurs then no new asynchronous operations are started. This
@@ -844,6 +845,19 @@ void connection<T>::process_chunked_data()
 
 	size_t access_received = m_access_received;
 
+	auto move_and_read = [&] () {
+		if (end == begin) {
+			async_read();
+			return;
+		}
+
+
+		CONNECTION_DEBUG("chunk_parser: movind %ld bytes into beginning of the buffer", end - begin);
+
+		memmove((char *)m_buffer.data(), begin, end - begin);
+		async_read(end - begin);
+	};
+
 	while (begin != end && m_chunk_state != request_processed) {
 		bool more_data = true;
 
@@ -857,11 +871,13 @@ void connection<T>::process_chunked_data()
 			char *hex_begin = NULL;
 
 			while (cur != end) {
-				CONNECTION_DEBUG("chunk_parser: begin: 0x%x, cur: 0x%02x, prev: 0x%02x", begin - (char *)nullptr, *cur, *prev);
+				CONNECTION_DEBUG("chunk_parser: begin: 0x%x, cur_CR: %d, cur_LF: %d",
+						begin - (char *)nullptr, *cur == '\r', *cur == '\n');
 
 				if (!(m_chunk_state & waiting_for_first_data)) {
 					// @waiting_for_first_data means that the first CRLF has been already read
-					// if there is no such flag, this is actually not the first chunk and we have to read CRLF before reading length
+					// if there is no such flag, this is actually not the first chunk
+					// and we have to read CRLF before reading length
 
 					if (*cur == '\r') {
 						prev = cur;
@@ -894,7 +910,8 @@ void connection<T>::process_chunked_data()
 
 				if (*cur == '\n' && *prev == '\r') {
 					++cur;
-					found = true;
+					if (hex_begin)
+						found = true;
 					break;
 				}
 
@@ -903,7 +920,9 @@ void connection<T>::process_chunked_data()
 			}
 
 			if (!found) {
-				async_read();
+				m_access_received = access_received + begin - orig_begin;
+				m_chunk_state &= ~waiting_for_first_data;
+				move_and_read();
 				return;
 			}
 
@@ -914,7 +933,9 @@ void connection<T>::process_chunked_data()
 				more_data = false;
 
 				if (end - cur < 2) {
-					async_read();
+					m_access_received = access_received + begin - orig_begin;
+					m_chunk_state &= ~waiting_for_first_data;
+					move_and_read();
 					return;
 				}
 
@@ -983,7 +1004,7 @@ void connection<T>::process_chunked_data()
 			// we have data in the buffer, try to find next chunk header
 			continue;
 		} else {
-			async_read();
+			move_and_read();
 			return;
 		}
 	}
@@ -1241,7 +1262,7 @@ void connection<T>::process_data()
 }
 
 template <typename T>
-void connection<T>::async_read()
+void connection<T>::async_read(size_t offset)
 {
 	// here m_pause_receive is false
 
@@ -1253,16 +1274,24 @@ void connection<T>::async_read()
 	m_unprocessed_end = NULL;
 
 	CONNECTION_DEBUG("request read from client")
-		("state", make_state_attribute(m_state));
+		("state", make_state_attribute(m_state))
+		("chunk_state", make_state_attribute(m_chunk_state));
 
 	auto receive_start = gettime_now();
 
-	m_socket.async_read_some(boost::asio::buffer(m_buffer),
+	m_socket.async_read_some(boost::asio::buffer(m_buffer.data() + offset, m_buffer.size() - offset),
 		detail::attributes_bind(m_logger, m_attributes,
 			std::bind(&connection::handle_read, this->shared_from_this(),
 				std::placeholders::_1,
 				std::placeholders::_2,
+				offset,
 				receive_start)));
+}
+
+template <typename T>
+void connection<T>::async_read()
+{
+	async_read(0);
 }
 
 template <typename T>
