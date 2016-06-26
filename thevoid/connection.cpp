@@ -712,6 +712,10 @@ void connection<T>::process_next()
 	m_content_length = 0;
 	m_pause_receive = false;
 
+	m_chunked_transfer_encoding = false;
+	m_chunk_size = 0;
+	m_chunk_state = read_headers | waiting_for_first_data;
+
 	m_receive_time = {0, 0};
 	m_send_time = {0, 0};
 	m_starttransfer_time = {0, 0};
@@ -1214,7 +1218,7 @@ void connection<T>::process_headers()
 				++m_server->m_data->active_connections_counter;
 				m_handler = factory->create();
 				m_handler->initialize(std::static_pointer_cast<reply_stream>(this->shared_from_this()));
-				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_data -> on_headers", SAFE_SEND_ERROR);
+				SAFE_CALL(m_handler->on_headers(std::move(m_request)), "connection::process_headers -> on_headers", SAFE_SEND_ERROR);
 			} else {
 				CONNECTION_ERROR("failed to find handler")
 					("method", m_access_method)
