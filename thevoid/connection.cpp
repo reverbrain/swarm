@@ -863,8 +863,6 @@ void connection<T>::process_chunked_data()
 	};
 
 	while (begin != end && m_chunk_state != request_processed) {
-		bool more_data = true;
-
 		if (m_chunk_state & read_headers) {
 			m_chunk_size = 0;
 
@@ -934,7 +932,6 @@ void connection<T>::process_chunked_data()
 
 			if (m_chunk_size == 0) {
 				m_chunk_state = request_processed;
-				more_data = false;
 
 				if (end - cur < 2) {
 					m_access_received = access_received + begin - orig_begin;
@@ -957,13 +954,11 @@ void connection<T>::process_chunked_data()
 				++cur;
 			} else {
 				m_chunk_state = read_data;
-				more_data = true;
 			}
 
 			CONNECTION_DEBUG("found chunk")
 				("chunk_size", m_chunk_size)
-				("chunk_state", make_state_attribute(m_chunk_state))
-				("more_data", more_data);
+				("chunk_state", make_state_attribute(m_chunk_state));
 
 			begin = cur;
 		}
@@ -971,11 +966,9 @@ void connection<T>::process_chunked_data()
 		size_t data_from_body = std::min<size_t>(m_chunk_size, end - begin);
 
 		size_t handled = data_from_body;
-		if (data_from_body) {
-			if (auto handler = try_handler()) {
-				SAFE_CALL(handled = handler->on_data(boost::asio::buffer(begin, data_from_body), more_data),
-					"connection::process_chunked_data -> on_data", SAFE_SEND_ERROR);
-			}
+		if (auto handler = try_handler()) {
+			SAFE_CALL(handled = handler->on_data(boost::asio::buffer(begin, data_from_body)),
+				"connection::process_chunked_data -> on_data", SAFE_SEND_ERROR);
 		}
 
 		m_chunk_size -= handled;
@@ -1024,14 +1017,10 @@ void connection<T>::process_common_data()
 
 	size_t data_from_body = std::min<size_t>(m_content_length, end - begin);
 	size_t processed_size = data_from_body;
-	bool more_data = true;
-
-	if (m_content_length <= data_from_body)
-		more_data = false;
 
 	if (data_from_body) {
 		if (auto handler = try_handler()) {
-			SAFE_CALL(processed_size = handler->on_data(boost::asio::buffer(begin, data_from_body), more_data),
+			SAFE_CALL(processed_size = handler->on_data(boost::asio::buffer(begin, data_from_body)),
 				"connection::process_common_data -> on_data", SAFE_SEND_ERROR);
 		}
 	}
@@ -1087,6 +1076,16 @@ void connection<T>::finish_data_state_machine()
 		return;
 	} else if (m_state & request_processed) {
 		process_next();
+	}
+}
+
+template <typename T>
+bool connection<T>::should_be_more_data()
+{
+	if (m_chunked_transfer_encoding) {
+		return m_chunk_state != request_processed;
+	} else {
+		return (ssize_t)m_content_length <= m_unprocessed_end - m_unprocessed_begin;
 	}
 }
 

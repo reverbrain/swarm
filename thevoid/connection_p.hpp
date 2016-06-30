@@ -110,6 +110,7 @@ public:
 		std::function<void (const boost::system::error_code &err)> &&handler) /*override*/;
 	void want_more();
 	void pause_receive();
+	bool should_be_more_data();
 	void send_error(http_response::status_type type);
 	virtual void initialize(base_request_stream_data *data);
 	virtual swarm::logger create_logger();

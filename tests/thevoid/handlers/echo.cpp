@@ -53,8 +53,7 @@ class echo
 		}
 	}
 
-	virtual size_t on_data(const boost::asio::const_buffer& buffer, bool more_data) {
-		(void) more_data;
+	virtual size_t on_data(const boost::asio::const_buffer& buffer) {
 		auto data_size = boost::asio::buffer_size(buffer);
 		this->send_data(buffer, ioremap::thevoid::reply_stream::result_function());
 		return data_size;

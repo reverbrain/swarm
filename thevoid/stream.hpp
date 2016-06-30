@@ -174,6 +174,11 @@ public:
 	virtual void virtual_hook(reply_stream_hook id, void *data);
 
 	blackhole::log::attributes_t *get_logger_attributes();
+
+	/*!
+	 * \breif returns true if given connection has more unprocessed data in the queue (or should receive it from socket)
+	 */
+	virtual bool should_be_more_data() = 0;
 };
 
 /*!
@@ -239,7 +244,7 @@ public:
 	 *
 	 * \sa reply_stream::want_more
 	 */
-	virtual size_t on_data(const boost::asio::const_buffer &buffer, bool more_data) = 0;
+	virtual size_t on_data(const boost::asio::const_buffer &buffer) = 0;
 	/*!
 	 * \brief This method is called as all data from the client is received.
 	 *
@@ -516,10 +521,8 @@ private:
 	/*!
 	 * \internal
 	 */
-	size_t on_data(const boost::asio::const_buffer &buffer, bool more_data)
+	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
-		(void) more_data;
-
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
 		m_data.insert(m_data.end(), begin, begin + size);
@@ -662,7 +665,7 @@ private:
 	/*!
 	 * \internal
 	 */
-	size_t on_data(const boost::asio::const_buffer &buffer, bool more_data)
+	size_t on_data(const boost::asio::const_buffer &buffer)
 	{
 		auto begin = boost::asio::buffer_cast<const char *>(buffer);
 		auto size = boost::asio::buffer_size(buffer);
@@ -670,7 +673,7 @@ private:
 		size_t buffered_size = 0;
 
 		// Loop invariant is m_data is not ready to be processed at the beginning of each iteration.
-		while (size) {
+		while (size || !this->reply()->should_be_more_data()) {
 			// The size that we need to pass to the client
 			const auto delta = std::min(size, m_real_chunk_size - m_data.size());
 
@@ -681,7 +684,7 @@ private:
 				size -= delta;
 			}
 
-			bool last = !more_data;
+			bool last = !this->reply()->should_be_more_data();
 			if (size != 0)
 				last = false;
 
@@ -703,6 +706,9 @@ private:
 					break;
 				}
 			}
+
+			if (!size)
+				break;
 		}
 
 		return buffered_size;
