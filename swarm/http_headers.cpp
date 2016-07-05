@@ -29,8 +29,10 @@ namespace swarm {
 #define IF_MODIFIED_SINCE_HEADER "If-Modified-Since"
 #define CONNECTION_HEADER "Connection"
 #define CONTENT_LENGTH_HEADER "Content-Length"
+#define TRANSFER_ENCODING_HEADER "Transfer-Encoding"
 #define CONTENT_TYPE_HEADER "Content-Type"
 
+const std::string http_headers::CHUNKED_TRANSFER_ENCODING = "chunked";
 const std::string http_headers::CONNECTION_KEEP_ALIVE = "Keep-Alive";
 const std::string http_headers::CONNECTION_CLOSE = "Close";
 
@@ -538,6 +540,15 @@ boost::optional<bool> http_headers::is_keep_alive() const
 {
 	if (auto tmp = connection()) {
 		return are_case_insensitive_equal(*tmp, CONNECTION_KEEP_ALIVE.c_str(), CONNECTION_KEEP_ALIVE.size());
+	}
+
+	return boost::none;
+}
+
+boost::optional<bool> http_headers::is_chunked_transfer_encoding() const
+{
+	if (auto header = p->get_header(TRANSFER_ENCODING_HEADER)) {
+		return are_case_insensitive_equal(*header, CHUNKED_TRANSFER_ENCODING.c_str(), CHUNKED_TRANSFER_ENCODING.size());
 	}
 
 	return boost::none;

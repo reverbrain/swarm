@@ -174,6 +174,11 @@ public:
 	virtual void virtual_hook(reply_stream_hook id, void *data);
 
 	blackhole::log::attributes_t *get_logger_attributes();
+
+	/*!
+	 * \breif returns true if given connection has more unprocessed data in the queue (or should receive it from socket)
+	 */
+	virtual bool should_be_more_data() = 0;
 };
 
 /*!
@@ -570,9 +575,10 @@ public:
 	};
 
 	buffered_request_stream() :
-		m_chunk_size(10 * 1024), m_client_asked_chunk(false),
-		m_first_chunk(true), m_last_chunk(false),
-		m_unprocessed_size(0)
+		m_chunk_size(10 * 1024),
+		m_real_chunk_size(0),
+		m_client_asked_chunk(false),
+		m_first_chunk(true), m_last_chunk(false)
 	{
 	}
 
@@ -603,7 +609,7 @@ protected:
 	}
 
 	/*!
-	 * \brief Sets size of received chunks.
+	 * \brief Sets size of received chunks. Only valid in @on_request() call, if called in @on_chunk() callbacks, new chunk size will be ignored.
 	 *
 	 * Default size is 10 kilobytes.
 	 *
@@ -621,7 +627,7 @@ protected:
 	 */
 	size_t chunk_size() const
 	{
-		return m_chunk_size;
+		return m_real_chunk_size;
 	}
 
 	/*!
@@ -648,12 +654,12 @@ private:
 	 */
 	void on_headers(http_request &&req)
 	{
-		m_unprocessed_size = req.headers().content_length().get_value_or(0);
 		m_request = std::move(req);
 
 		on_request(m_request);
 
 		m_data.reserve(m_chunk_size);
+		m_real_chunk_size = m_chunk_size;
 	}
 
 	/*!
@@ -667,10 +673,9 @@ private:
 		size_t buffered_size = 0;
 
 		// Loop invariant is m_data is not ready to be processed at the beginning of each iteration.
-		while (size) {
+		while (size || !this->reply()->should_be_more_data()) {
 			// The size that we need to pass to the client
-			const auto real_chunk_size = std::min(m_unprocessed_size, m_chunk_size);
-			const auto delta = std::min(size, real_chunk_size - m_data.size());
+			const auto delta = std::min(size, m_real_chunk_size - m_data.size());
 
 			if (delta) {
 				buffered_size += delta;
@@ -679,15 +684,21 @@ private:
 				size -= delta;
 			}
 
-			// We will call on_chunk if both conditions are true
+			bool last = !this->reply()->should_be_more_data();
+			if (size != 0)
+				last = false;
+
+			BH_LOG(this->logger(), SWARM_LOG_DEBUG, "delta: %ld, buffered_size: %ld, mdata_size: %ld, size: %ld, last: %d",
+					delta, buffered_size, m_data.size(), size, last);
+
+			// We will call @on_chunk() if both conditions are true
 			// 1. Client asked next chunk
 			// 2. The chunk is ready to be processed
 			// The second condition means either chunk is full or chunk contains last data
-			if (m_data.size() == real_chunk_size) {
+			if (m_data.size() == m_real_chunk_size || last) {
 				if (m_client_asked_chunk) {
-					process_chunk_internal();
-				}
-				else {
+					process_chunk_internal(last);
+				} else {
 					// chunk is ready but client is not
 					if (size == 0) {
 						this->reply()->pause_receive();
@@ -695,6 +706,9 @@ private:
 					break;
 				}
 			}
+
+			if (!size)
+				break;
 		}
 
 		return buffered_size;
@@ -710,8 +724,8 @@ private:
 			return;
 		}
 
-		if (m_unprocessed_size) {
-			process_chunk_internal();
+		if (m_data.size()) {
+			process_chunk_internal(true);
 		}
 	}
 
@@ -721,7 +735,7 @@ private:
 	 * process_chunk_internal() will be called only if both chunk and client
 	 * are ready for processing (m_client_asked_chunk is true).
 	 */
-	void process_chunk_internal()
+	void process_chunk_internal(bool last)
 	{
 		int flags = 0;
 		if (m_first_chunk)
@@ -729,12 +743,11 @@ private:
 		m_first_chunk = false;
 
 		/*
-		 * last_chunk logic must rely on actual unprocessed size,
+		 * last_chunk logic must rely on actual unprocessed size (it is transferred from the higher levels in @last parameter),
 		 * not on on_close() method call because on_close() method might be called after
 		 * "last chunk" processing (if content length is multiple of chunk size).
 		 */
-		m_unprocessed_size -= m_data.size();
-		if (!m_unprocessed_size) {
+		if (last) {
 			m_last_chunk = true;
 			flags |= last_chunk;
 		}
@@ -754,11 +767,10 @@ private:
 
 	http_request m_request;
 	std::vector<char> m_data;
-	size_t m_chunk_size;
+	size_t m_chunk_size, m_real_chunk_size;
 	std::atomic<bool> m_client_asked_chunk;
 	bool m_first_chunk;
 	bool m_last_chunk;
-	size_t m_unprocessed_size;
 };
 
 }} // namespace ioremap::thevoid
