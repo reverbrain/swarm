@@ -120,6 +120,9 @@ def test_no_graceful_close_on_full_request(server, data, chunk):
     assert response.headers['Connection'] == 'Close'
 
     request_log = yield request_log_future
+    if 'gracefully close the connection' in request_log:
+        print request_log
+
     assert 'gracefully close the connection' not in request_log
 
 
