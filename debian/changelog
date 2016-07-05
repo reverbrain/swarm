@@ -1,3 +1,9 @@
+swarm (3.5.2) unstable; urgency=low
+
+  * Added chunked transfer encoding support.
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Tue, 05 Jul 2016 16:24:42 +0400
+
 swarm (3.5.1) unstable; urgency=low
 
   * Do not hold a reference to temporal object assigned to boost::optional values, data must be copied.

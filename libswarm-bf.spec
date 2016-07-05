@@ -3,7 +3,7 @@
 
 Summary:	Swarm
 Name:		libswarm
-Version:	3.5.1
+Version:	3.5.2
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -129,6 +129,9 @@ rm -rf %{buildroot}
 %{_libdir}/libthevoid.so
 
 %changelog
+* Tue Jul 05 2016 Evgeniy Polyakov <zbr@ioremap.net> - 3.5.2
+- Added chunked transfer encoding support.
+
 * Sun May 29 2016 Evgeniy Polyakov <zbr@ioremap.net> - 3.5.1
 - Do not hold a reference to temporal object assigned to boost::optional values, data must be copied.
 - tests: move thevoid tests to tests/thevoid subdirectory
