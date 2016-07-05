@@ -837,6 +837,21 @@ void connection<T>::handle_read(const boost::system::error_code &err, std::size_
 }
 
 template <typename T>
+void connection<T>::chunked_move_and_read(const char *begin, const char *end)
+{
+	if (end == begin) {
+		async_read();
+		return;
+	}
+
+
+	CONNECTION_DEBUG("chunk_parser: movind %ld bytes into beginning of the buffer", end - begin);
+
+	memmove((char *)m_buffer.data(), begin, end - begin);
+	async_read(end - begin);
+}
+
+template <typename T>
 void connection<T>::process_chunked_data()
 {
 	if (!m_chunked_transfer_encoding)
@@ -848,19 +863,6 @@ void connection<T>::process_chunked_data()
 	const char *orig_begin = begin;
 
 	size_t access_received = m_access_received;
-
-	auto move_and_read = [&] () {
-		if (end == begin) {
-			async_read();
-			return;
-		}
-
-
-		CONNECTION_DEBUG("chunk_parser: movind %ld bytes into beginning of the buffer", end - begin);
-
-		memmove((char *)m_buffer.data(), begin, end - begin);
-		async_read(end - begin);
-	};
 
 	while (begin != end && m_chunk_state != request_processed) {
 		if (m_chunk_state & read_headers) {
@@ -924,7 +926,7 @@ void connection<T>::process_chunked_data()
 			if (!found) {
 				m_access_received = access_received + begin - orig_begin;
 				m_chunk_state &= ~waiting_for_first_data;
-				move_and_read();
+				chunked_move_and_read(begin, end);
 				return;
 			}
 
@@ -936,7 +938,7 @@ void connection<T>::process_chunked_data()
 				if (end - cur < 2) {
 					m_access_received = access_received + begin - orig_begin;
 					m_chunk_state &= ~waiting_for_first_data;
-					move_and_read();
+					chunked_move_and_read(begin, end);
 					return;
 				}
 
@@ -1001,7 +1003,7 @@ void connection<T>::process_chunked_data()
 			// we have data in the buffer, try to find next chunk header
 			continue;
 		} else {
-			move_and_read();
+			chunked_move_and_read(begin, end);
 			return;
 		}
 	}
@@ -1085,7 +1087,7 @@ bool connection<T>::should_be_more_data()
 	if (m_chunked_transfer_encoding) {
 		return m_chunk_state != request_processed;
 	} else {
-		return (ssize_t)m_content_length <= m_unprocessed_end - m_unprocessed_begin;
+		return (ssize_t)m_content_length > m_unprocessed_end - m_unprocessed_begin;
 	}
 }
 

@@ -138,6 +138,8 @@ private:
 	void process_data();
 	void process_common_data();
 	void process_chunked_data();
+	void chunked_move_and_read(const char *begin, const char *end);
+
 	void finish_data_state_machine();
 
 	void async_read();
